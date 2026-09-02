@@ -1,0 +1,36 @@
+# Dependencies
+/node_modules
+
+# Compilation output
+/dist
+
+# Hardhat build artifacts
+/artifacts
+/cache
+
+# Typechain output
+/types
+
+# Coverage reports (configured in #43)
+/coverage
+
+# Gas snapshots and cheatcode snapshot output
+/.gas-snapshot
+/snapshots
+
+# Local throwaway chain only. Test-network deployments are evidence and ARE committed.
+/ignition/deployments/chain-31337
+
+# Secrets. .env is never committed; .env.example is.
+.env
+.env.*
+!.env.example
+
+# Editor and OS
+.DS_Store
+.vscode/
+*.log
+npm-debug.log*
+
+# NOTE: docs/decisions/ is TRACKED — 24 files holding the argument behind every
+# design decision. Do not add it here.
