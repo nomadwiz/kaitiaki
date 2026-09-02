@@ -1,0 +1,38 @@
+# Evidence
+
+Artefacts the report cites. Captured as the work happens, not retro-fitted in
+the last week — a screenshot taken in a hurry is illegible, and an unexplained
+figure earns nothing (C7).
+
+## Conventions
+
+- **One folder per week**: `week1/`, `week2/`, …
+- **Filenames are `<issue-number>-<slug>.<ext>`**, so every artefact traces back
+  to the pull request that produced it and the acceptance criterion it proves.
+- **Every artefact records the command that reproduces it.** Text captures put
+  the command in a header comment or the surrounding entry below; images get a
+  caption here.
+- **Every image has a one-line caption** saying what is being demonstrated and
+  why it matters. The rubric requires each piece of visual evidence to be
+  individually explained.
+- **Screenshots at 14pt or larger, light background.** They end up in a Word
+  document at half width.
+
+## week1
+
+### Issue #42 — repository and Hardhat 3 skeleton
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `42-hardhat-test.txt` | Both test runners green: three Solidity tests and two TypeScript tests | `npx hardhat test` |
+| `42-toolchain-versions.txt` | The exact Node, npm, Hardhat, compiler and library versions this project builds on | `node -v; npm -v; npx hardhat --version; npm ls --depth=0` |
+| `42-hardhat-test-green.png` | Terminal screenshot of the green run. **Not yet captured** — see below | screenshot of `npx hardhat test` |
+
+`42-toolchain-versions.txt` is the one with lasting value. It is the
+reproducibility record behind every gas number and test result the report later
+prints, and the Prototype Implementation criterion asks explicitly for the
+technologies, frameworks and tools used.
+
+The green suite itself is a canary for the toolchain, not a demonstration of
+system functionality — there are no contracts yet. It belongs in an appendix,
+not as a numbered figure.

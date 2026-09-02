@@ -1,0 +1,22 @@
+No contracts to compile
+
+Running Solidity tests
+
+  contracts/Toolchain.t.sol:ToolchainTest
+    ✔ test_RunnerExecutes()
+    ✔ test_ExpectRevertIsAvailable()
+    ✔ test_CheatcodesAreAvailable()
+
+Running Mocha tests
+
+
+  toolchain
+    ✔ connects to the in-process simulated network (335ms)
+    ✔ gives tests funded signers
+
+
+  2 passing (343ms)
+
+
+5 passing (3 solidity, 2 mocha)
+
