@@ -131,6 +131,16 @@ Named on the behavioural view and in the report's evaluation section.
 There is no B7; it was withdrawn with an earlier design and the number is left
 unused rather than reassigned.
 
+**Write these in Solidity.** A Solidity test is a transaction, so `msg.sender`,
+reverts and gas behave exactly as they will in production. Use `vm.prank` to call
+as another address, and `vm.expectRevert` naming the contract's own error — never
+a generic revert.
+
+**Fuzz the value guards.** G3 and G4 are properties, not examples: no amount
+above a proposal's cap may ever succeed, and no release may ever draw on a fund
+other than the approved one. Write those as fuzz tests taking the amount and the
+fund as parameters, rather than as three hand-picked values.
+
 B2′ is proved by calling `Treasury.release` directly with an unregistered payee,
 because registry removal is designed and not built. The report says so in those
 words — do not implement removal to make the end-to-end version work.
@@ -209,8 +219,8 @@ built. Building one of them makes that explanation wrong.
 | --- | --- |
 | Contracts | Solidity; OpenZeppelin `AccessControl`, `TimelockController`, `ERC20` |
 | Voting | `Governance`, written for this project |
-| Toolchain | Hardhat with TypeScript |
-| Testing | Hardhat Network, `hardhat-gas-reporter`, `solidity-coverage` |
+| Toolchain | Hardhat 3 |
+| Testing | **Solidity tests** — `.t.sol` files, `forge-std` assertions, cheatcodes, `npx hardhat test solidity`. Coverage (`--coverage`) and gas statistics are built in |
 | Settlement | A mock ERC-20 standing in for an NZD-pegged stablecoin. This project issues nothing |
 | Interface | Vite and `ethers`, reading events. Holds no key and no role |
 | Deployment | A public test network, week 5 — **not** the permissioned national chain the design assumes |

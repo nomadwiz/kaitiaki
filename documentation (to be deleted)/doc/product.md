@@ -643,11 +643,35 @@ comfortable with JavaScript and TypeScript and with Git, new to Solidity (C9).
 | --- | --- | --- |
 | Contracts | Solidity, OpenZeppelin `AccessControl`, `TimelockController`, `ERC20` | The timelock and the role machinery are the parts hardest to get right by hand, and the only parts where an audited component costs the argument nothing ([ADR-013](../work/decision/013-own-voting-contract.md)) |
 | Voting | Written for this project | [ADR-013](../work/decision/013-own-voting-contract.md) — there is no general execution path to constrain because none is written |
-| Toolchain | Hardhat with TypeScript | Tests are written in the one language the team already has. The alternative, Foundry, would have meant tests in Solidity — one language instead of two, but that one language is the unfamiliar one |
-| Testing | Hardhat Network, `hardhat-gas-reporter`, `solidity-coverage` | Gas reporting is not an extra: NFR11 measures gas per owner per levy cycle. Coverage is cheap evidence for Testing and Evaluation |
+| Toolchain | Hardhat 3 | Keeps the JavaScript tooling the team knows for the interface and the deployment scripts, while allowing tests to be written in Solidity |
+| Testing | **Solidity tests** (`.t.sol`, `npx hardhat test solidity`), with `forge-std` assertions and cheatcodes; built-in coverage and gas statistics | See the note below. TypeScript is kept only where a claim is off-chain by definition |
 | Settlement | A mock ERC-20 standing in for the NZD stablecoin | C13 names the real dependency; the prototype issues nothing ([`@work/sad.md` §3.1](../work/sad.md#3.1%20Context%20view)) |
 | Interface | Vite and `ethers`, reading events | The interface holds no authority ([`@work/sad.md` §3.2](../work/sad.md#3.2%20Functional%20view%20%E2%80%94%20the%20permission%20structure)), so a thin one is faithful rather than a shortcut. It exists to produce legible screenshots (C7) |
 | Public deployment | A public test network, week 5 | Not the permissioned chain the design assumes. FR42's readability claim is argued rather than demonstrated, and [`@work/sad.md` §6.2](../work/sad.md#6.2%20Requirements) already says so |
+
+`[DECIDED:02-09-2026]` **Tests are written in Solidity, not TypeScript.** The
+earlier choice was TypeScript, on the reasoning that it is the one language the
+team already has. That was reversed for precision: a Solidity test *is* a
+transaction, so `msg.sender`, reverts, storage and gas behave exactly as they
+will in production, whereas a TypeScript test describes the EVM through a client
+library whose own behaviour — how a custom error is decoded, how a revert
+bubbles — becomes a source of failures that say nothing about the contract. It
+is the less friendly option and the group has accepted that.
+
+Three consequences follow. Hardhat 3's Solidity tests are Foundry-compatible, so
+`vm.prank` and the rest of the cheatcodes are available and each of the eight
+refusals is a short, direct test. **Fuzz and invariant tests come with them**,
+which matters most for G3 and G4: instead of asserting that 5,001 against a
+5,000 cap reverts, the test asserts that no amount above the cap ever succeeds.
+And coverage and gas statistics are built into Hardhat 3, so
+`hardhat-gas-reporter` and `solidity-coverage` are no longer needed.
+
+**What stays in TypeScript, and why.** The QAS-4 replay test derives every
+balance from the event log alone, on an independent node, without reading
+contract storage — it is off-chain by definition, and writing it in Solidity
+would defeat the claim it exists to prove. The week-5 interface is TypeScript for
+the same reason it always was. Everything that runs against the contracts is
+Solidity.
 
 **Two things to do early because they bite late.** Test-network funds are
 unreliable to obtain and are needed in week 5, so they are acquired in week 2 and

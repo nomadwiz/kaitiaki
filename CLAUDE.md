@@ -48,6 +48,16 @@ architecture:
 - **Every guard reverts with a distinct named error.** No bare `require` with a
   string, no shared `Unauthorized()` covering four cases. A test asserts the
   specific error, and the report tabulates them.
+- **Tests are written in Solidity**, as `.t.sol` files run with `npx hardhat test
+  solidity`, using `forge-std` assertions and cheatcodes. A Solidity test is a
+  transaction, so it exercises the EVM rather than describing it through a client
+  library. Assert the contract's own named error with `vm.expectRevert`, never a
+  generic revert. Where a guard is a property rather than an example — no amount
+  above the cap, no release from the wrong fund — write a fuzz test.
+- **TypeScript only where a claim is off-chain.** The event-replay verification
+  derives balances from the log alone on an independent node, so it must run
+  outside the EVM; the week-5 interface is TypeScript for the same reason.
+  Everything that runs against the contracts is Solidity.
 - **Events must be sufficient to reconstruct state.** Someone replaying the log
   alone, with no contract storage reads, must be able to derive every fund
   balance and every transition. An event carrying only an identifier fails this.
