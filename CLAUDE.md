@@ -3,7 +3,13 @@
 A body corporate treasury on a permissioned national housing chain. Owners vote
 on what levy money buys; a contract releases it. This file is the standing brief
 for anyone working in this repository, including AI assistants. Read it and
-[`docs/spec.md`](spec.md) before writing code.
+[`docs/spec.md`](docs/spec.md) before writing code.
+
+**This file is the brief, and the only full copy.**
+`.github/copilot-instructions.md` is a short pointer to it, so that a teammate
+working with GitHub Copilot starts from the same facts; it repeats only the hard
+prohibitions. If a decision changes, change this file, and check in the same
+commit whether that prohibition list still matches.
 
 This is university coursework (COMP842, assignment 1). Three people, seven weeks,
 and **80 of the 100 marks are for written work**. The prototype exists to make
@@ -37,7 +43,7 @@ architecture:
 
 - **Parameters are not choices.** Quorum, thresholds, windows and the timelock
   delay come from New Zealand's unit titles statutory scheme and are listed in
-  [`docs/spec.md`](spec.md). Do not invent, round or "improve" one. If a value
+  [`docs/spec.md`](docs/spec.md). Do not invent, round or "improve" one. If a value
   seems wrong, raise it as an issue rather than changing it.
 - **Every guard reverts with a distinct named error.** No bare `require` with a
   string, no shared `Unauthorized()` covering four cases. A test asserts the
@@ -65,7 +71,7 @@ figures end up illegible, and an unexplained figure earns nothing.
 
 Six contracts are built. A seventh, `MaintenancePlan`, is designed and not
 built, and nine requirements depend on it or on systems outside the prototype.
-[`docs/spec.md`](spec.md) marks each one.
+[`docs/spec.md`](docs/spec.md) marks each one.
 
 **Do not build the unbuilt.** If an issue seems to need `MaintenancePlan`,
 ownership transfer, arrears enforcement, payee removal, or owners raising
