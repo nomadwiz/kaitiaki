@@ -5,6 +5,7 @@ Three files sit behind this one, and they are the authority:
 - **[`../CLAUDE.md`](../CLAUDE.md)** — the full brief. Where this file and it disagree, it is right
 - **[`../docs/spec.md`](../docs/spec.md)** — the build specification: the four guarantees, the contracts and their guards, the statutory parameters, the events, the refusal tests, and every requirement marked built or designed
 - **[`../docs/ownership.md`](../docs/ownership.md)** — who owns which vertical, and who writes which tests
+- **[`../docs/decisions/`](../docs/decisions/README.md)** — why the design is the way it is: thirteen decision records and the five architecture views, each naming the alternative that was rejected
 
 Read the brief and the specification before writing code.
 
@@ -33,6 +34,14 @@ seems to need one, say so on the issue instead of implementing it.
 
 Every guard reverts with its own named error, and events must carry enough to
 reconstruct state from the log alone.
+
+## Before disagreeing with a rule
+
+Check `docs/decisions/` first. Most obvious alternatives — the standard
+governance execution path, extending OpenZeppelin's Governor, withholding part of
+the firm's fee — were considered and refused for a stated reason. If you think a
+decision is wrong, raise an issue rather than reopening it in code, and never
+implement a rejected alternative because it looks tidier.
 
 ## Picking up a piece of work
 

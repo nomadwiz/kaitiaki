@@ -39,6 +39,14 @@ architecture:
 - a way to grant `RELEASER_ROLE` after deployment
 - an owner or admin function that can pause, reverse or redirect a payment
 
+**Before disagreeing with a rule, check whether it is already settled.**
+[`docs/decisions/`](docs/decisions/README.md) holds thirteen decision records and the five
+architecture views, each naming the alternative that was rejected and why. Most
+obvious alternatives — the standard governance execution path, extending
+OpenZeppelin's Governor, withholding part of the firm's fee — were considered and
+refused for a stated reason. If you think one is wrong, raise an issue rather
+than reopening it in code.
+
 ## Conventions
 
 - **Parameters are not choices.** Quorum, thresholds, windows and the timelock
