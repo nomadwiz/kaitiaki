@@ -79,6 +79,30 @@ proposals, it is out of scope — say so on the issue rather than implementing i
 The report explains what was designed and not built, and why; quietly building
 one of them makes that section wrong.
 
+## Picking up a piece of work
+
+**The GitHub issues are the checklist.** There is no task list in this
+repository, deliberately — a file three people tick on three branches conflicts
+constantly, and a box an assistant ticks proves only that it believed it was
+finished. An issue closes because a reviewed pull request merged, which is
+evidence.
+
+To pick up work:
+
+```
+gh issue list --assignee @me                 # what is mine
+gh issue view <n>                            # the task and its acceptance criteria
+git checkout -b <n>-short-description
+```
+
+Tick the acceptance criteria on the issue as they are actually met — `gh issue
+edit <n>` or the web interface — and open a pull request whose description says
+`Closes #<n>`. Do not tick a box for work that has not passed its test.
+
+`docs/ownership.md` says who owns which vertical. If a task seems to need a
+contract you do not own, say so on the issue rather than building it: the build
+order is nearly serial, so write against the interface and use a stub.
+
 ## Working with issues
 
 Every issue names the requirements it closes and the guarantees or tests it
