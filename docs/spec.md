@@ -217,13 +217,24 @@ built. Building one of them makes that explanation wrong.
 
 | Piece | Choice |
 | --- | --- |
-| Contracts | Solidity; OpenZeppelin `AccessControl`, `TimelockController`, `ERC20` |
+| Contracts | Solidity **0.8.36**, fixed pragma; optimiser on, 200 runs; `prague` EVM target. OpenZeppelin Contracts **5.6.1** — `AccessControl`, `TimelockController`, `ERC20`, and nothing else |
 | Voting | `Governance`, written for this project |
-| Toolchain | Hardhat 3 |
-| Testing | **Solidity tests** — `.t.sol` files, `forge-std` assertions, cheatcodes, `npx hardhat test solidity`. Coverage (`--coverage`) and gas statistics are built in |
+| Toolchain | Hardhat **3.15** with `@nomicfoundation/hardhat-toolbox-mocha-ethers` 3. Node **22.13 or newer** — Hardhat 3 refuses to start below it; the exact version is pinned in `.nvmrc` |
+| Testing | **Solidity tests** — `.t.sol` files, `forge-std` v1.16.2 assertions, cheatcodes, `npx hardhat test solidity`. Coverage (`--coverage`) and gas statistics are built in |
 | Settlement | A mock ERC-20 standing in for an NZD-pegged stablecoin. This project issues nothing |
 | Interface | Vite and `ethers`, reading events. Holds no key and no role |
 | Deployment | A public test network, week 5 — **not** the permissioned national chain the design assumes |
+
+**The compiler version is pinned, and the pragma is fixed rather than floating.**
+Write `pragma solidity 0.8.36;`, not `^0.8.36`. NFR11 measures gas per owner per
+levy cycle and the report publishes the number; a gas measurement is only
+meaningful if the bytecode behind it can be reproduced, and a floating pragma
+means the build that produced the table and the build deployed to the test
+network can come from different compilers. The `prague` EVM target is stated
+explicitly for the same reason — it is supported by every current public test
+network, and nothing here needs a newer opcode. Both compiler profiles carry the
+same optimiser settings, so gas measured in a test is gas of the deployed
+contract.
 
 ## 10. What is deliberately absent
 

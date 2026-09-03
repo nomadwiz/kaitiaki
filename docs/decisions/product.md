@@ -1,6 +1,6 @@
 # Body Corporate Treasury — project proposal
 
-**COMP842 Assignment 1 · Blockchain and Cryptocurrency**
+**COMP842 Assignment 1 · Applied Blockchain and Cryptocurrency**
 Status: agreed group direction. This document is the project's source of truth for
 the problem, the design and the decisions — **except requirements and build scope,
 which are owned by [`@work/sad.md` §6.2](../work/sad.md#6.2%20Requirements), and the Introduction draft in
@@ -641,9 +641,9 @@ comfortable with JavaScript and TypeScript and with Git, new to Solidity (C9).
 
 | Piece | Choice | Why |
 | --- | --- | --- |
-| Contracts | Solidity, OpenZeppelin `AccessControl`, `TimelockController`, `ERC20` | The timelock and the role machinery are the parts hardest to get right by hand, and the only parts where an audited component costs the argument nothing ([ADR-013](../work/decision/013-own-voting-contract.md)) |
+| Contracts | Solidity 0.8.36, fixed pragma; optimiser on, 200 runs; `prague` EVM target. OpenZeppelin Contracts 5.6.1 — `AccessControl`, `TimelockController`, `ERC20` | The timelock and the role machinery are the parts hardest to get right by hand, and the only parts where an audited component costs the argument nothing ([ADR-013](../work/decision/013-own-voting-contract.md)). `[DECIDED:02-09-2026]` OpenZeppelin 5.6.1 sets the floor at `^0.8.20`; 0.8.36 is the current release. The version and the EVM target are pinned, and the pragma fixed rather than floating, because [`@work/sad.md` §6.2](../work/sad.md#6.2%20Requirements) requires gas per owner per levy cycle to be measured (NFR11) and the report publishes the number — a measurement is only meaningful if the bytecode behind it can be reproduced |
 | Voting | Written for this project | [ADR-013](../work/decision/013-own-voting-contract.md) — there is no general execution path to constrain because none is written |
-| Toolchain | Hardhat 3 | Keeps the JavaScript tooling the team knows for the interface and the deployment scripts, while allowing tests to be written in Solidity |
+| Toolchain | Hardhat 3.15 with `@nomicfoundation/hardhat-toolbox-mocha-ethers`. Node 22.13 or newer | Keeps the JavaScript tooling the team knows for the interface and the deployment scripts, while allowing tests to be written in Solidity. Hardhat 3 refuses to start below Node 22.13, so the exact version is pinned in `.nvmrc` and three laptops and the CI runner agree |
 | Testing | **Solidity tests** (`.t.sol`, `npx hardhat test solidity`), with `forge-std` assertions and cheatcodes; built-in coverage and gas statistics | See the note below. TypeScript is kept only where a claim is off-chain by definition |
 | Settlement | A mock ERC-20 standing in for the NZD stablecoin | C13 names the real dependency; the prototype issues nothing ([`@work/sad.md` §3.1](../work/sad.md#3.1%20Context%20view)) |
 | Interface | Vite and `ethers`, reading events | The interface holds no authority ([`@work/sad.md` §3.2](../work/sad.md#3.2%20Functional%20view%20%E2%80%94%20the%20permission%20structure)), so a thin one is faithful rather than a shortcut. It exists to produce legible screenshots (C7) |
@@ -675,8 +675,10 @@ Solidity.
 
 **Two things to do early because they bite late.** Test-network funds are
 unreliable to obtain and are needed in week 5, so they are acquired in week 2 and
-held. And the gas reporter and coverage tool go in during week 1, because
-retro-fitting measurement in week 4 produces numbers nobody trusts.
+held. And coverage and gas statistics are exercised in week 1 rather than left
+until they are needed, because retro-fitting measurement in week 4 produces
+numbers nobody trusts. Both are built into Hardhat 3, so this costs a command,
+not a dependency.
 
 **How three people divide it.** `[DECIDED:02-09-2026]` The work is split into
 three **verticals**, one owner each. Each owner designs their slice, builds it,

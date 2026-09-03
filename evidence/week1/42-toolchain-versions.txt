@@ -1,0 +1,23 @@
+# Toolchain versions for kaitiaki, captured for issue #42
+# Reproduce: node -v; npm -v; npx hardhat --version; npm ls --depth=0
+# Captured: 2026-09-02 06:49 UTC
+
+node    v22.23.2
+npm     10.9.8
+hardhat 3.15.0
+solc    0.8.36 (optimiser on, 200 runs, evm target prague — see hardhat.config.ts)
+
+--- npm ls --depth=0 ---
+kaitiaki@0.1.0 /Users/nicholas/Personal/second-brain/1-projects/assignment/comp842-a1/work/build/kaitiaki
+├── @nomicfoundation/hardhat-toolbox-mocha-ethers@3.0.7
+├── @openzeppelin/contracts@5.6.1
+├── @types/chai@5.2.3
+├── @types/mocha@10.0.10
+├── @types/node@22.20.1
+├── chai@6.2.2
+├── ethers@6.17.0
+├── forge-std@1.16.2 (git+ssh://git@github.com/foundry-rs/forge-std.git#bf647bd6046f2f7da30d0c2bf435e5c76a780c1b)
+├── hardhat@3.15.0
+├── mocha@11.8.0
+└── typescript@6.0.3
+
