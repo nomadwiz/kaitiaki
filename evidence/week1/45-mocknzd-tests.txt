@@ -1,0 +1,31 @@
+
+Compiled 2 Solidity files with solc 0.8.36 (evm target: prague)
+
+Running Solidity tests
+
+  contracts/Toolchain.t.sol:ToolchainTest
+    ✔ test_RunnerExecutes()
+    ✔ test_ExpectRevertIsAvailable()
+    ✔ test_CheatcodesAreAvailable()
+
+  contracts/MockNZD.t.sol:MockNZDTest
+    ✔ test_NoGovernanceSurface()
+    ✔ test_NameSymbolAndDecimals()
+    ✔ test_MintOnSepolia()
+    ✔ test_MintOnHardhatNetwork()
+    ✔ test_AnyAddressMayMint()
+    ✔ testFuzz_MintRefusedOffTestChains(uint256) (runs: 256)
+
+Running Mocha tests
+
+
+  toolchain
+    ✔ connects to the in-process simulated network (574ms)
+    ✔ gives tests funded signers
+
+
+  2 passing (587ms)
+
+
+11 passing (9 solidity, 2 mocha)
+

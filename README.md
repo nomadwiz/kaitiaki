@@ -17,11 +17,11 @@ contract snippets only, never the full source.
 
 ## The group
 
-| Member | GitHub | Vertical |
-| --- | --- | --- |
-| Nicholas Ng | `@nomadwiz` | **Money in** — `MembershipRegistry`, `LevyLedger`, the mock settlement token |
-| | `@tutd-work` | **Money out** — `Treasury`, `PayeeRegistry` |
-| | `@laysokhour-computer` | **Decisions** — `Governance`, `Timelock` |
+| Member      | GitHub                 | Vertical                                                                     |
+| ----------- | ---------------------- | ---------------------------------------------------------------------------- |
+| Nicholas Ng | `@nomadwiz`            | **Money in** — `MembershipRegistry`, `LevyLedger`, the mock settlement token |
+|             | `@tutd-work`           | **Money out** — `Treasury`, `PayeeRegistry`                                  |
+|             | `@laysokhour-computer` | **Decisions** — `Governance`, `Timelock`                                     |
 
 `docs/ownership.md` says who writes which tests, and why nobody writes the
 refusal tests for their own contracts.
@@ -47,13 +47,13 @@ npx hardhat test mocha
 
 ## Stack
 
-| Piece | Choice |
-| --- | --- |
-| Contracts | Solidity 0.8.36, fixed pragma; optimiser on, 200 runs; `prague` EVM target |
-| Libraries | OpenZeppelin Contracts 5.6.1 — `AccessControl`, `TimelockController`, `ERC20`, and nothing else |
-| Toolchain | Hardhat 3.15 with `@nomicfoundation/hardhat-toolbox-mocha-ethers` |
-| Testing | Solidity tests (`.t.sol`) with `forge-std` assertions and cheatcodes. Coverage and gas statistics are built into Hardhat 3 |
-| Settlement | A mock ERC-20 standing in for an NZD-pegged stablecoin. This project issues nothing |
+| Piece      | Choice                                                                                                                                                                                                                      |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Contracts  | Solidity 0.8.36, fixed pragma; optimiser on, 200 runs; `prague` EVM target                                                                                                                                                  |
+| Libraries  | OpenZeppelin Contracts 5.6.1 — `AccessControl`, `TimelockController`, `ERC20`, and nothing else                                                                                                                             |
+| Toolchain  | Hardhat 3.15 with `@nomicfoundation/hardhat-toolbox-mocha-ethers`                                                                                                                                                           |
+| Testing    | Solidity tests (`.t.sol`) with `forge-std` assertions and cheatcodes. Coverage and gas statistics are built into Hardhat 3                                                                                                  |
+| Settlement | `MockNZD` (`contracts/MockNZD.sol`) — a **mock** ERC-20 standing in for an NZD-pegged stablecoin. Anyone may mint it, but only on the Hardhat network or Sepolia. This project issues nothing, and holding it gives no vote |
 
 The compiler version and the EVM target are pinned rather than floating because
 the report publishes gas measurements, and a measurement is only meaningful if
@@ -62,11 +62,11 @@ the bytecode behind it can be reproduced. The reasoning for every row is in
 
 ## Status
 
-**Week 1.** The toolchain is in place and no contracts are built yet.
+**Week 1.** The toolchain, the contract interfaces and their stubs (#44), and the mock settlement token `MockNZD` (#45) are in place. None of the six system contracts is built yet.
 
 Six contracts are planned, in this build order — `MembershipRegistry`, then
 `Treasury` and `PayeeRegistry`, then `Governance` and `Timelock`, then
-`LevyLedger` — plus a mock NZD ERC-20. A seventh, `MaintenancePlan`, is designed
+`LevyLedger` — plus `MockNZD`, a mock NZD ERC-20. A seventh, `MaintenancePlan`, is designed
 and deliberately **not** built; nine requirements depend on it or on systems
 outside the prototype, and `docs/spec.md` marks each one.
 
@@ -76,16 +76,16 @@ file.
 
 ## Where things are
 
-| Path | What is in it |
-| --- | --- |
-| `contracts/` | Solidity sources, and the `.t.sol` tests that run against them |
-| `test/` | TypeScript tests, for the claims that are off-chain by definition |
-| `docs/product.md` | The product in plain language — the problem, the evidence, the build plan and the timeline |
-| `docs/spec.md` | The build specification: the guarantees, the contracts and their guards, the statutory parameters, the events, the refusal tests |
-| `docs/ownership.md` | Who owns which vertical, and who writes which tests |
-| `docs/decisions/` | Why the design is the way it is — thirteen decision records, and five architecture views |
-| `CLAUDE.md` | The working agreement, for people and their assistants |
-| `evidence/` | Screenshots, test listings and gas tables the report cites |
+| Path                | What is in it                                                                                                                    |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `contracts/`        | Solidity sources, and the `.t.sol` tests that run against them                                                                   |
+| `test/`             | TypeScript tests, for the claims that are off-chain by definition                                                                |
+| `docs/product.md`   | The product in plain language — the problem, the evidence, the build plan and the timeline                                       |
+| `docs/spec.md`      | The build specification: the guarantees, the contracts and their guards, the statutory parameters, the events, the refusal tests |
+| `docs/ownership.md` | Who owns which vertical, and who writes which tests                                                                              |
+| `docs/decisions/`   | Why the design is the way it is — thirteen decision records, and five architecture views                                         |
+| `CLAUDE.md`         | The working agreement, for people and their assistants                                                                           |
+| `evidence/`         | Screenshots, test listings and gas tables the report cites                                                                       |
 
 ## Licence
 

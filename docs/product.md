@@ -57,7 +57,7 @@ adjudication, the courts — runs on a record no participant, including the
 operator, can revise. Small firms face no barrier to entry because nothing is
 required of them up front.
 
-*(Full reasoning: [`decisions/adr/012-no-built-in-accountability.md`](decisions/adr/012-no-built-in-accountability.md).)*
+_(Full reasoning: [`decisions/adr/012-no-built-in-accountability.md`](decisions/adr/012-no-built-in-accountability.md).)_
 
 **What will exist at the end:** a working prototype on a test network — membership,
 treasury, payee registry and operation-governance contracts, with a web interface
@@ -89,7 +89,7 @@ The owners who funded it do not.
 reporting — after the decisions, after the money moved, and in summary.
 
 **Administration swamps oversight.** The same small group carries invoicing,
-reconciliation, arrears, meetings, vote counting, maintenance scheduling *and* the
+reconciliation, arrears, meetings, vote counting, maintenance scheduling _and_ the
 production of the reports by which it is judged. That load is why the decisions go
 unreviewed. Nobody audits what nobody has time to produce.
 
@@ -136,7 +136,7 @@ mismanagement or, in rare cases, intentional misconduct."
 > anecdote and a small number of Tribunal decisions. **This report does not claim
 > that mismanagement is prevalent.** It claims that the Crown identified
 > information asymmetry, optimism bias and conflicted decision-making as
-> *structural* features of the model, serious enough to legislate against. That is
+> _structural_ features of the model, serious enough to legislate against. That is
 > firmer ground than any individual case.
 
 ---
@@ -144,8 +144,8 @@ mismanagement or, in rare cases, intentional misconduct."
 # 3. Objectives
 
 `[DECIDED:31-08-2026]` **The two lists are split by who does the thing.** A
-product objective is something the *system* does, and the Conclusion answers yes
-or no to each one. An assignment objective is something *this project* does.
+product objective is something the _system_ does, and the Conclusion answers yes
+or no to each one. An assignment objective is something _this project_ does.
 "State honestly what the system cannot prevent" was in the product list and is a
 thing the report does, not the system, so it has moved to [§3.2](#32-assignment-objectives). Each product
 objective is now worded so it can be answered rather than merely asserted.
@@ -253,7 +253,7 @@ keys" (European Commission, 2025). The same technology has been deployed by the
 Dutch Judicial Information Service and US federal agencies.
 
 **But the precedent must be used precisely, and it is narrower than it first
-appears.** KSI is *integrity timestamping*. It proves a record has not been
+appears.** KSI is _integrity timestamping_. It proves a record has not been
 altered. It does not execute contracts, hold value, or reach consensus over state
 transitions. So Estonia establishes that **a state can operate tamper-evident
 ledger infrastructure at national scale for public records** — it does not
@@ -274,8 +274,8 @@ One Estonian informant puts the objection bluntly:
 **That objection applies to this project too, and [§5.1](#51-the-condition-the-argument-rests-on) is written to answer it.**
 The proposed network is permissioned, so the question of whether a
 government-operated chain is "really" a blockchain lands squarely on it. The answer
-offered is not that the label applies, but that the *property owners depend
-on* — that no single party, including the state, can revise the record
+offered is not that the label applies, but that the _property owners depend
+on_ — that no single party, including the state, can revise the record
 unnoticed — is delivered by validator diversity plus public verifiability. If that
 diversity fails, the criticism is correct.
 
@@ -311,7 +311,7 @@ than an accident ([`deployment-view.md`](decisions/views/deployment-view.md), an
 
 ## 5.2 What the database version cannot do
 
-A conventional system can be transparent, but its transparency is *granted*. The
+A conventional system can be transparent, but its transparency is _granted_. The
 operator decides what to publish, when, and in what form; can correct history
 without trace; and can be compelled to. An owner disputing a payment must ask the
 holder of the record for the record. That is the status quo with better software.
@@ -326,7 +326,7 @@ holder of the record for the record. That is the status quo with better software
   the whole national record and check it themselves.
 - **A comparable payment record** across every building a firm manages, which is
   only possible because the network is national rather than per-building. Note
-  the limit: this shows *what was paid*, not whether anyone was satisfied. The
+  the limit: this shows _what was paid_, not whether anyone was satisfied. The
   design makes no reputation claim — see
   [`decisions/adr/012-no-built-in-accountability.md`](decisions/adr/012-no-built-in-accountability.md).
 
@@ -346,14 +346,14 @@ rather than written per building.
 
 ## 6.1 Actors
 
-| Actor | Role |
-| --- | --- |
-| **Unit owner** | Pays levies. Votes on proposals and on admitting vendors. Reads the whole record. Collectively, the owners *are* the body corporate. |
-| **Management firm** | Raises proposals for work the building needs, recommends vendors, attests that work is complete, is paid from the treasury for its services. Holds no power to move funds. |
-| **Vendor** | Admitted to the payee registry by owner vote. Performs work. Receives payment directly. |
-| **Schedule** | A temporal trigger, not a person. Levy issuance and plan-scheduled proposals become callable when due. |
-| **Land title register** | External authority for who owns which unit. |
-| **Stablecoin settlement** | External NZD-pegged asset in which levies and payments are denominated. |
+| Actor                     | Role                                                                                                                                                                       |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Unit owner**            | Pays levies. Votes on proposals and on admitting vendors. Reads the whole record. Collectively, the owners _are_ the body corporate.                                       |
+| **Management firm**       | Raises proposals for work the building needs, recommends vendors, attests that work is complete, is paid from the treasury for its services. Holds no power to move funds. |
+| **Vendor**                | Admitted to the payee registry by owner vote. Performs work. Receives payment directly.                                                                                    |
+| **Schedule**              | A temporal trigger, not a person. Levy issuance and plan-scheduled proposals become callable when due.                                                                     |
+| **Land title register**   | External authority for who owns which unit.                                                                                                                                |
+| **Stablecoin settlement** | External NZD-pegged asset in which levies and payments are denominated.                                                                                                    |
 
 **There is no committee.** The management firm acts for the body corporate in
 raising and administering work; the owners hold every decision. Removing the
@@ -372,7 +372,7 @@ cannot be charged until owners **ratify** the configuration at a high threshold
 `[ASSUMED]`.
 
 **Levy cycle.** Levies are derived from the plan and the operating budget rather
-than negotiated, and become chargeable on schedule. Payment *is* the record, so
+than negotiated, and become chargeable on schedule. Payment _is_ the record, so
 nothing is reconciled. Arrears accrue by rule and are publicly visible
 ([`decisions/adr/005-arrears-published-per-unit.md`](decisions/adr/005-arrears-published-per-unit.md)).
 
@@ -409,15 +409,15 @@ neither of which the architecture has.
 
 The report's System Design section is cut from the SAD, not from here.
 
-| What you came for | Now in |
-| --- | --- |
+| What you came for                                                  | Now in                                                                                                                                                                                                                               |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | The national network, its validators, and why the ledger is public | [`deployment-view.md`](decisions/views/deployment-view.md), [`decisions/adr/007-proof-of-authority.md`](decisions/adr/007-proof-of-authority.md), [`decisions/adr/009-publicly-readable.md`](decisions/adr/009-publicly-readable.md) |
-| The layering of a building instance, and one standard contract set | [`deployment-view.md`](decisions/views/deployment-view.md), [`decisions/adr/010-one-standard-set.md`](decisions/adr/010-one-standard-set.md) |
-| The contract decomposition and where authority stops | [`functional-view.md`](decisions/views/functional-view.md), [`decisions/adr/001-narrow-release-interface.md`](decisions/adr/001-narrow-release-interface.md) |
-| What is on the chain, what is hashed, and who it exposes | [`information-view.md`](decisions/views/information-view.md) |
-| The loop, and the eight places it refuses | [`behavioural-view.md`](decisions/views/behavioural-view.md) |
-| The design decisions and their trade-offs | [`adr/index.md`](decisions/adr/index.md), and the records in `@work/decision/` |
-| The parameter values, and the basis for each | [`spec.md` §5](spec.md#5-parameters--statutory-not-chosen) |
+| The layering of a building instance, and one standard contract set | [`deployment-view.md`](decisions/views/deployment-view.md), [`decisions/adr/010-one-standard-set.md`](decisions/adr/010-one-standard-set.md)                                                                                         |
+| The contract decomposition and where authority stops               | [`functional-view.md`](decisions/views/functional-view.md), [`decisions/adr/001-narrow-release-interface.md`](decisions/adr/001-narrow-release-interface.md)                                                                         |
+| What is on the chain, what is hashed, and who it exposes           | [`information-view.md`](decisions/views/information-view.md)                                                                                                                                                                         |
+| The loop, and the eight places it refuses                          | [`behavioural-view.md`](decisions/views/behavioural-view.md)                                                                                                                                                                         |
+| The design decisions and their trade-offs                          | [`adr/index.md`](decisions/adr/index.md), and the records in `@work/decision/`                                                                                                                                                       |
+| The parameter values, and the basis for each                       | [`spec.md` §5](spec.md#5-parameters--statutory-not-chosen)                                                                                                                                                                           |
 
 **Why the objection window and fee retention are gone**, rather than deferred:
 [`decisions/adr/011-payment-on-attestation.md`](decisions/adr/011-payment-on-attestation.md) and
@@ -553,14 +553,14 @@ identifiers at all.
 # 14. Testing and evaluation — superseded by the architecture description
 
 **This section has been cut.** The test set is held in [`spec.md` §7](spec.md#7-the-eight-refusals--each-one-is-a-test), which
-supersedes it. The version here still listed *an objection sustained* among the
+supersedes it. The version here still listed _an objection sustained_ among the
 scenario tests, for a mechanism the design no longer has.
 
-| What you came for | Now in |
-| --- | --- |
-| The ten tests, and what each one decides | [`spec.md` §7](spec.md#7-the-eight-refusals--each-one-is-a-test) |
+| What you came for                                | Now in                                                           |
+| ------------------------------------------------ | ---------------------------------------------------------------- |
+| The ten tests, and what each one decides         | [`spec.md` §7](spec.md#7-the-eight-refusals--each-one-is-a-test) |
 | What cannot be tested, and why saying so matters | [`spec.md` §7](spec.md#7-the-eight-refusals--each-one-is-a-test) |
-| How each requirement is evidenced | [`spec.md` §8](spec.md#8-requirements) |
+| How each requirement is evidenced                | [`spec.md` §8](spec.md#8-requirements)                           |
 
 ## 14.3 Adversarial tests — the headline evidence
 
@@ -583,15 +583,15 @@ implementation — the network is designed and described, not stood up.
 
 ## 15.2 Risks
 
-| Risk | Impact | Mitigation |
-| --- | --- | --- |
-| Team new to Solidity | High | Audited OpenZeppelin components; P1–P4 kept small; start early; week 1 budgets for the learning cost and week 7 absorbs the overrun |
-| Scope creep beyond the loop | High | Every requirement is built or designed-only in [`spec.md` §8](spec.md#8-requirements); there is no middle category for work to drift into |
-| "It's just a database" objection | High | Met head-on in [§5.1](#51-the-condition-the-argument-rests-on) with validator diversity as a stated requirement |
+| Risk                                                                                  | Impact                                                               | Mitigation                                                                                                                                                                                        |
+| ------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Team new to Solidity                                                                  | High                                                                 | Audited OpenZeppelin components; P1–P4 kept small; start early; week 1 budgets for the learning cost and week 7 absorbs the overrun                                                               |
+| Scope creep beyond the loop                                                           | High                                                                 | Every requirement is built or designed-only in [`spec.md` §8](spec.md#8-requirements); there is no middle category for work to drift into                                                         |
+| "It's just a database" objection                                                      | High                                                                 | Met head-on in [§5.1](#51-the-condition-the-argument-rests-on) with validator diversity as a stated requirement                                                                                   |
 | Independent validators do not participate, leaving the set skewed to management firms | High — [§5.1](#51-the-condition-the-argument-rests-on) fails with it | Motivations argued in [`deployment-view.md`](decisions/views/deployment-view.md); minimum-composition rule enforced by the operator; named as an adoption dependency rather than a solved problem |
-| Attestation trust boundary attacked as unsolved | Medium | It *is* unsolved; named in `sad.md` §7.1 and [`decisions/adr/012-no-built-in-accountability.md`](decisions/adr/012-no-built-in-accountability.md) rather than hidden |
-| Arrears publication attacked as disproportionate | Medium | Trade-off and mitigation in [`decisions/adr/005-arrears-published-per-unit.md`](decisions/adr/005-arrears-published-per-unit.md), with the aggregate alternative recorded |
-| Testnet instability before the demo | Medium | Local-chain fallback; capture screenshots early |
+| Attestation trust boundary attacked as unsolved                                       | Medium                                                               | It _is_ unsolved; named in `sad.md` §7.1 and [`decisions/adr/012-no-built-in-accountability.md`](decisions/adr/012-no-built-in-accountability.md) rather than hidden                              |
+| Arrears publication attacked as disproportionate                                      | Medium                                                               | Trade-off and mitigation in [`decisions/adr/005-arrears-published-per-unit.md`](decisions/adr/005-arrears-published-per-unit.md), with the aggregate alternative recorded                         |
+| Testnet instability before the demo                                                   | Medium                                                               | Local-chain fallback; capture screenshots early                                                                                                                                                   |
 
 ## 15.3 Future work
 
@@ -612,15 +612,15 @@ with what each would cost, is [§15.3](#153-future-work).
 **25 October**; the group works to the 18th and holds the last week back. The
 brief itself states no deadline, so both dates come from the group.
 
-| Week | Dates | Focus |
-| --- | --- | --- |
-| 1 | 30 Aug – 5 Sep | Foundations and the first contracts. Expect little visible output — budgeting for the learning cost prevents panic in week 3. |
-| 2 | 6 – 12 Sep | Treasury with two funds and the narrow release interface; payee registry. **System Design drafted from the SAD this week**, not left for the end. |
-| 3 | 13 – 19 Sep | Governance and timelock wiring; the proposal lifecycle end to end |
-| 4 | 20 – 26 Sep | Test suite, including all four adversarial tests. **Hard gate — if the contracts are not feature-complete, stop adding and start testing anyway.** |
-| 5 | 27 Sep – 3 Oct | Minimal interface; deployment to a test network; screenshots. **Nothing new is built after this week.** |
-| 6 | 4 – 10 Oct | Report only. |
-| 7 | 11 – 17 Oct | **Contingency.** Held empty on purpose. If weeks 1–6 hold, this is proofreading and the pre-submission checklist; if they slip, this is where the slip goes. |
+| Week | Dates          | Focus                                                                                                                                                        |
+| ---- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1    | 30 Aug – 5 Sep | Foundations and the first contracts. Expect little visible output — budgeting for the learning cost prevents panic in week 3.                                |
+| 2    | 6 – 12 Sep     | Treasury with two funds and the narrow release interface; payee registry. **System Design drafted from the SAD this week**, not left for the end.            |
+| 3    | 13 – 19 Sep    | Governance and timelock wiring; the proposal lifecycle end to end                                                                                            |
+| 4    | 20 – 26 Sep    | Test suite, including all four adversarial tests. **Hard gate — if the contracts are not feature-complete, stop adding and start testing anyway.**           |
+| 5    | 27 Sep – 3 Oct | Minimal interface; deployment to a test network; screenshots. **Nothing new is built after this week.**                                                      |
+| 6    | 4 – 10 Oct     | Report only.                                                                                                                                                 |
+| 7    | 11 – 17 Oct    | **Contingency.** Held empty on purpose. If weeks 1–6 hold, this is proofreading and the pre-submission checklist; if they slip, this is where the slip goes. |
 
 **Why the seventh week is empty.** The alternative was to spend it building —
 `MaintenancePlan`, or letting owners raise proposals. Both were considered and
@@ -639,19 +639,19 @@ week-6 work.
 Chosen 1 September 2026, from the team the project actually has: three people,
 comfortable with JavaScript and TypeScript and with Git, new to Solidity (C9).
 
-| Piece | Choice | Why |
-| --- | --- | --- |
-| Contracts | Solidity 0.8.36, fixed pragma; optimiser on, 200 runs; `prague` EVM target. OpenZeppelin Contracts 5.6.1 — `AccessControl`, `TimelockController`, `ERC20` | The timelock and the role machinery are the parts hardest to get right by hand, and the only parts where an audited component costs the argument nothing ([ADR-013](decisions/adr/013-own-voting-contract.md)). `[DECIDED:02-09-2026]` OpenZeppelin 5.6.1 sets the floor at `^0.8.20`; 0.8.36 is the current release. The version and the EVM target are pinned, and the pragma fixed rather than floating, because [`spec.md` §8](spec.md#8-requirements) requires gas per owner per levy cycle to be measured (NFR11) and the report publishes the number — a measurement is only meaningful if the bytecode behind it can be reproduced |
-| Voting | Written for this project | [ADR-013](decisions/adr/013-own-voting-contract.md) — there is no general execution path to constrain because none is written |
-| Toolchain | Hardhat 3.15 with `@nomicfoundation/hardhat-toolbox-mocha-ethers`. Node 22.13 or newer | Keeps the JavaScript tooling the team knows for the interface and the deployment scripts, while allowing tests to be written in Solidity. Hardhat 3 refuses to start below Node 22.13, so the exact version is pinned in `.nvmrc` and three laptops and the CI runner agree |
-| Testing | **Solidity tests** (`.t.sol`, `npx hardhat test solidity`), with `forge-std` assertions and cheatcodes; built-in coverage and gas statistics | See the note below. TypeScript is kept only where a claim is off-chain by definition |
-| Settlement | A mock ERC-20 standing in for the NZD stablecoin | C13 names the real dependency; the prototype issues nothing ([`context-view.md`](decisions/views/context-view.md)) |
-| Interface | Vite and `ethers`, reading events | The interface holds no authority ([`functional-view.md`](decisions/views/functional-view.md)), so a thin one is faithful rather than a shortcut. It exists to produce legible screenshots (C7) |
-| Public deployment | A public test network, week 5 | Not the permissioned chain the design assumes. FR42's readability claim is argued rather than demonstrated, and [`spec.md` §8](spec.md#8-requirements) already says so |
+| Piece             | Choice                                                                                                                                                    | Why                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Contracts         | Solidity 0.8.36, fixed pragma; optimiser on, 200 runs; `prague` EVM target. OpenZeppelin Contracts 5.6.1 — `AccessControl`, `TimelockController`, `ERC20` | The timelock and the role machinery are the parts hardest to get right by hand, and the only parts where an audited component costs the argument nothing ([ADR-013](decisions/adr/013-own-voting-contract.md)). `[DECIDED:02-09-2026]` OpenZeppelin 5.6.1 sets the floor at `^0.8.20`; 0.8.36 is the current release. The version and the EVM target are pinned, and the pragma fixed rather than floating, because [`spec.md` §8](spec.md#8-requirements) requires gas per owner per levy cycle to be measured (NFR11) and the report publishes the number — a measurement is only meaningful if the bytecode behind it can be reproduced |
+| Voting            | Written for this project                                                                                                                                  | [ADR-013](decisions/adr/013-own-voting-contract.md) — there is no general execution path to constrain because none is written                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Toolchain         | Hardhat 3.15 with `@nomicfoundation/hardhat-toolbox-mocha-ethers`. Node 22.13 or newer                                                                    | Keeps the JavaScript tooling the team knows for the interface and the deployment scripts, while allowing tests to be written in Solidity. Hardhat 3 refuses to start below Node 22.13, so the exact version is pinned in `.nvmrc` and three laptops and the CI runner agree                                                                                                                                                                                                                                                                                                                                                                |
+| Testing           | **Solidity tests** (`.t.sol`, `npx hardhat test solidity`), with `forge-std` assertions and cheatcodes; built-in coverage and gas statistics              | See the note below. TypeScript is kept only where a claim is off-chain by definition                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Settlement        | `MockNZD`, a mock ERC-20 standing in for the NZD stablecoin, mintable only on the Hardhat network and Sepolia                                             | C13 names the real dependency; the prototype issues nothing ([`context-view.md`](decisions/views/context-view.md))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Interface         | Vite and `ethers`, reading events                                                                                                                         | The interface holds no authority ([`functional-view.md`](decisions/views/functional-view.md)), so a thin one is faithful rather than a shortcut. It exists to produce legible screenshots (C7)                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Public deployment | A public test network, week 5                                                                                                                             | Not the permissioned chain the design assumes. FR42's readability claim is argued rather than demonstrated, and [`spec.md` §8](spec.md#8-requirements) already says so                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 
 `[DECIDED:02-09-2026]` **Tests are written in Solidity, not TypeScript.** The
 earlier choice was TypeScript, on the reasoning that it is the one language the
-team already has. That was reversed for precision: a Solidity test *is* a
+team already has. That was reversed for precision: a Solidity test _is_ a
 transaction, so `msg.sender`, reverts, storage and gas behave exactly as they
 will in production, whereas a TypeScript test describes the EVM through a client
 library whose own behaviour — how a custom error is decoded, how a revert
@@ -686,11 +686,11 @@ and writes the report material for it — their part of Section 3, their rows in
 Section 4's requirements table, their rows in Section 5's test table. The person
 who wrote a guard is the person who can explain what it refuses.
 
-| Owner | Vertical | Also owns |
-| --- | --- | --- |
+| Owner                 | Vertical                                                          | Also owns                                                                       |
+| --------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------- |
 | Nicholas (`nomadwiz`) | **Money in** — `MembershipRegistry`, `LevyLedger`, the mock token | Sections 1, 2, 5 and 6; the week-6 consistency pass; reviews every pull request |
-| `tutd-work` | **Money out** — `Treasury`, `PayeeRegistry` | Test-network funds, the read interface, deployment; Section 3 |
-| `laysokhour-computer` | **Decisions** — `Governance`, `Timelock` | Repository, CI and the contract interfaces in week 1; README; Section 4 |
+| `tutd-work`           | **Money out** — `Treasury`, `PayeeRegistry`                       | Test-network funds, the read interface, deployment; Section 3                   |
+| `laysokhour-computer` | **Decisions** — `Governance`, `Timelock`                          | Repository, CI and the contract interfaces in week 1; README; Section 4         |
 
 **Nobody writes the refusal tests for their own contracts.** Money out's four
 guards — B2′, B3, B4 and B5, which are exactly G1 to G4 — are proved by
@@ -741,50 +741,50 @@ each carrying the requirement and test identifiers it closes.
 
 # References
 
-Buddle Findlay. (n.d.). *A guide to the Unit Titles Act 2010*.
+Buddle Findlay. (n.d.). _A guide to the Unit Titles Act 2010_.
 https://www.buddlefindlay.com/media/1372/a_guide_to_the_unit_titles_act_2010.pdf
 
 Construction Contracts Act 2002 (N.Z.).
 https://www.legislation.govt.nz/act/public/2002/46/en/latest/
 
-Crockers. (n.d.). *Body corporate audits, and why Crockers goes further*.
+Crockers. (n.d.). _Body corporate audits, and why Crockers goes further_.
 https://www.crockers.co.nz/body-corporate/news/body-corporate-audits-and-why-crockers-goes-further/
 
-European Commission. (2025). *The use of the National Blockchain Infrastructure to
-support the E-Residency Initiative in Estonia* (Public Sector Tech Watch case
+European Commission. (2025). _The use of the National Blockchain Infrastructure to
+support the E-Residency Initiative in Estonia_ (Public Sector Tech Watch case
 PSTW-2142). Interoperable Europe Portal.
 https://interoperable-europe.ec.europa.eu/collection/public-sector-tech-watch/use-national-blockchain-infrastructure-support-e-residency-initiative-estonia
 
-Falk, B., Pathan, T., Rigas, A., & Tsoukalas, G. (2024). *Blockchain governance:
-An empirical analysis of user engagement on DAOs* (arXiv:2407.10945). arXiv.
+Falk, B., Pathan, T., Rigas, A., & Tsoukalas, G. (2024). _Blockchain governance:
+An empirical analysis of user engagement on DAOs_ (arXiv:2407.10945). arXiv.
 https://arxiv.org/abs/2407.10945
 
-Feichtinger, R., Fritsch, R., Vonlanthen, Y., & Wattenhofer, R. (2023). *The
-hidden shortcomings of (D)AOs: An empirical study of on-chain governance*
+Feichtinger, R., Fritsch, R., Vonlanthen, Y., & Wattenhofer, R. (2023). _The
+hidden shortcomings of (D)AOs: An empirical study of on-chain governance_
 (arXiv:2302.12125). arXiv. https://arxiv.org/abs/2302.12125
 
-Immunefi. (2022, April 22). *Hack analysis: Beanstalk governance attack, April
-2022*. Medium.
+Immunefi. (2022, April 22). _Hack analysis: Beanstalk governance attack, April
+2022_. Medium.
 https://medium.com/immunefi/hack-analysis-beanstalk-governance-attack-april-2022-f42788fc821e
 
-Lane Neave. (n.d.). *Payment claims and payment schedules under the Construction
-Contracts Act*.
+Lane Neave. (n.d.). _Payment claims and payment schedules under the Construction
+Contracts Act_.
 https://www.laneneave.co.nz/news-events/payment-claims-and-payment-schedules-under-the-construction-contracts-act/
 
-Ministry of Housing and Urban Development. (2022). *Regulatory impact statement:
+Ministry of Housing and Urban Development. (2022). _Regulatory impact statement:
 Unit Titles (Strengthening Body Corporate Governance and Other Matters) Amendment
-Bill: Policy proposals*. New Zealand Government.
+Bill: Policy proposals_. New Zealand Government.
 https://www.hud.govt.nz/assets/Uploads/Documents/Proactive-release-Regulatory-Impact-Statement-REDACTED.pdf
 
-OpenZeppelin. (n.d.). *Governance*. Retrieved July 31, 2026, from
+OpenZeppelin. (n.d.). _Governance_. Retrieved July 31, 2026, from
 https://docs.openzeppelin.com/contracts/5.x/governance
 
-Privacy & Scaling Explorations. (n.d.). *Minimal Anti-Collusion Infrastructure
-(MACI)*. Retrieved July 31, 2026, from https://maci.pse.dev/
+Privacy & Scaling Explorations. (n.d.). _Minimal Anti-Collusion Infrastructure
+(MACI)_. Retrieved July 31, 2026, from https://maci.pse.dev/
 
 Semenzin, S., Rozas, D., & Hassan, S. (2022). Blockchain-based application at a
-governmental level: Disruption or illusion? The case of Estonia. *Policy and
-Society, 41*(3), 386–401. https://doi.org/10.1093/polsoc/puac014
+governmental level: Disruption or illusion? The case of Estonia. _Policy and
+Society, 41_(3), 386–401. https://doi.org/10.1093/polsoc/puac014
 
 Unit Titles Act 2010 (N.Z.).
 https://www.legislation.govt.nz/act/public/2010/22/en/latest/
@@ -792,10 +792,10 @@ https://www.legislation.govt.nz/act/public/2010/22/en/latest/
 Unit Titles Regulations 2011 (N.Z.).
 https://www.legislation.govt.nz/secondary-legislation/pco-drafted/2011/122/en/latest/
 
-Unit Titles Services. (n.d.-a). *Body corporate meetings*. New Zealand
+Unit Titles Services. (n.d.-a). _Body corporate meetings_. New Zealand
 Government. https://www.unittitles.govt.nz/body-corporate-how-it-works/body-corporate-meetings/
 
-Unit Titles Services. (n.d.-b). *How the body corporate makes decisions*. New
+Unit Titles Services. (n.d.-b). _How the body corporate makes decisions_. New
 Zealand Government. https://www.unittitles.govt.nz/body-corporate-how-it-works/decision-making/
 
 **Verification status.** MHUD (2022), Falk et al. (2024), Feichtinger et al.
@@ -832,17 +832,17 @@ one — so either run that search or soften the claim before submission.
 Proving the report can be built from this document, without letting the rubric
 dictate its structure.
 
-| Report section (`overview.md` §3) | Rubric row (marks) | Source here |
-| --- | --- | --- |
-| 1. Title page | — | [§16](#16-team-timeline-and-open-questions) |
-| 2. Introduction — problem, motivation, objectives, background, literature, blockchain justification | Introduction (5) | §[§1](#1-executive-summary), 2, 3, 4, 5 |
-| 3. System design — architecture, blockchain architecture, data flow, use cases, smart contract design, UI, justification | System Design (20) | [§6](#6-solution-overview) for orientation; the design itself is `sad.md` §[§2](#2-problem-statement-and-motivation)–4 |
-| 4. Prototype implementation — technologies, algorithms, contracts, screenshots | Prototype (20) | [§12](#12-implementation-plan), screenshots from week 5 |
-| 5. Functional and non-functional requirements | Requirements (20) | [`spec.md` §8](spec.md#8-requirements), evidence from [`spec.md` §7](spec.md#7-the-eight-refusals--each-one-is-a-test) |
-| 6. Testing and evaluation | Testing (20) | [`spec.md` §7](spec.md#7-the-eight-refusals--each-one-is-a-test), limitations from [§5.4](#54-what-the-blockchain-does-not-fix--stated-plainly), [§15](#15-risks-scope-and-future-work) and `sad.md` §7.1 |
-| 7. Conclusion — achievements, objectives met, future work | Conclusion (5) | [§3](#3-objectives) revisited; [§15.3](#153-future-work) |
-| 8. References | Reference & Presentation (10) | References above |
-| 9. Appendix | — | This appendix; full source in the GitHub repo |
+| Report section (`overview.md` §3)                                                                                        | Rubric row (marks)            | Source here                                                                                                                                                                                               |
+| ------------------------------------------------------------------------------------------------------------------------ | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Title page                                                                                                            | —                             | [§16](#16-team-timeline-and-open-questions)                                                                                                                                                               |
+| 2. Introduction — problem, motivation, objectives, background, literature, blockchain justification                      | Introduction (5)              | §[§1](#1-executive-summary), 2, 3, 4, 5                                                                                                                                                                   |
+| 3. System design — architecture, blockchain architecture, data flow, use cases, smart contract design, UI, justification | System Design (20)            | [§6](#6-solution-overview) for orientation; the design itself is `sad.md` §[§2](#2-problem-statement-and-motivation)–4                                                                                    |
+| 4. Prototype implementation — technologies, algorithms, contracts, screenshots                                           | Prototype (20)                | [§12](#12-implementation-plan), screenshots from week 5                                                                                                                                                   |
+| 5. Functional and non-functional requirements                                                                            | Requirements (20)             | [`spec.md` §8](spec.md#8-requirements), evidence from [`spec.md` §7](spec.md#7-the-eight-refusals--each-one-is-a-test)                                                                                    |
+| 6. Testing and evaluation                                                                                                | Testing (20)                  | [`spec.md` §7](spec.md#7-the-eight-refusals--each-one-is-a-test), limitations from [§5.4](#54-what-the-blockchain-does-not-fix--stated-plainly), [§15](#15-risks-scope-and-future-work) and `sad.md` §7.1 |
+| 7. Conclusion — achievements, objectives met, future work                                                                | Conclusion (5)                | [§3](#3-objectives) revisited; [§15.3](#153-future-work)                                                                                                                                                  |
+| 8. References                                                                                                            | Reference & Presentation (10) | References above                                                                                                                                                                                          |
+| 9. Appendix                                                                                                              | —                             | This appendix; full source in the GitHub repo                                                                                                                                                             |
 
 **Design elements** — the brief requires at least three. The SAD supplies five,
 each with what it is, why it was chosen, how it helps, its trade-offs and the
