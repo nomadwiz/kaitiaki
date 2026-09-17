@@ -49,7 +49,7 @@ Two fixes were on the table for the original majority case:
 
 Neither. Voting weight follows unit ownership — one unit, one vote — with no
 raised threshold and no cap. The weakness is stated openly in the architecture's
-limits section instead (`sad.md` §7.1).
+limits section instead ([`sad.md` §7.1](../../sad.md#71-what-the-architecture-does-not-prevent)).
 
 ## Consequences
 

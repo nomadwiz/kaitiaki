@@ -3,10 +3,10 @@
 **COMP842 Assignment 1 · Applied Blockchain and Cryptocurrency**
 Status: agreed group direction. This document is the project's source of truth for
 the problem, the design and the decisions — **except requirements and build scope,
-which are owned by [`spec.md` §8](spec.md#8-requirements), and the Introduction draft in
-`@work/doc/introduction-draft.md`.** Those files are not summaries of this one;
-where they cover something, they are authoritative and this document points at
-them rather than restating.
+which are owned by [`sad.md` §6.2](sad.md#62-requirements) and condensed for
+building in [`spec.md` §8](spec.md#8-requirements).** Those files are not
+summaries of this one; where they cover something, they are authoritative and
+this document points at them rather than restating.
 
 Nothing is described in two places. Two descriptions of the same thing drift.
 
@@ -402,7 +402,7 @@ register. No participant inside the building can alter the electorate.
 # 7–11. System design — superseded by the architecture description
 
 **The design content of sections 7 to 11 has been cut.** It is now held in
-`sad.md`, which supersedes it in full. It was removed rather than left in
+[`sad.md`](sad.md), which supersedes it in full. It was removed rather than left in
 place because two descriptions of one design drift apart, and this one already
 had: it still described a fee-retention contract and an owner objection window,
 neither of which the architecture has.
@@ -416,7 +416,7 @@ The report's System Design section is cut from the SAD, not from here.
 | The contract decomposition and where authority stops               | [`functional-view.md`](decisions/views/functional-view.md), [`decisions/adr/001-narrow-release-interface.md`](decisions/adr/001-narrow-release-interface.md)                                                                         |
 | What is on the chain, what is hashed, and who it exposes           | [`information-view.md`](decisions/views/information-view.md)                                                                                                                                                                         |
 | The loop, and the eight places it refuses                          | [`behavioural-view.md`](decisions/views/behavioural-view.md)                                                                                                                                                                         |
-| The design decisions and their trade-offs                          | [`adr/index.md`](decisions/adr/index.md), and the records in `@work/decision/`                                                                                                                                                       |
+| The design decisions and their trade-offs                          | [`decisions/adr/index.md`](decisions/adr/index.md), and the records beside it                                                                                                                                                       |
 | The parameter values, and the basis for each                       | [`spec.md` §5](spec.md#5-parameters--statutory-not-chosen)                                                                                                                                                                           |
 
 **Why the objection window and fee retention are gone**, rather than deferred:
@@ -470,7 +470,7 @@ the architecture supplies evidence rather than sanctions — and
 **The objection window no longer exists.** The firm's attestation releases
 payment directly, with nothing in between. See
 [`decisions/adr/011-payment-on-attestation.md`](decisions/adr/011-payment-on-attestation.md). The attestation trust boundary is
-unsolved and is named as such in `sad.md` §7.1.
+unsolved and is named as such in [`sad.md` §7.1](sad.md#71-what-the-architecture-does-not-prevent).
 
 ## 11.5 Arrears are public
 
@@ -589,7 +589,7 @@ implementation — the network is designed and described, not stood up.
 | Scope creep beyond the loop                                                           | High                                                                 | Every requirement is built or designed-only in [`spec.md` §8](spec.md#8-requirements); there is no middle category for work to drift into                                                         |
 | "It's just a database" objection                                                      | High                                                                 | Met head-on in [§5.1](#51-the-condition-the-argument-rests-on) with validator diversity as a stated requirement                                                                                   |
 | Independent validators do not participate, leaving the set skewed to management firms | High — [§5.1](#51-the-condition-the-argument-rests-on) fails with it | Motivations argued in [`deployment-view.md`](decisions/views/deployment-view.md); minimum-composition rule enforced by the operator; named as an adoption dependency rather than a solved problem |
-| Attestation trust boundary attacked as unsolved                                       | Medium                                                               | It _is_ unsolved; named in `sad.md` §7.1 and [`decisions/adr/012-no-built-in-accountability.md`](decisions/adr/012-no-built-in-accountability.md) rather than hidden                              |
+| Attestation trust boundary attacked as unsolved                                       | Medium                                                               | It _is_ unsolved; named in [`sad.md` §7.1](sad.md#71-what-the-architecture-does-not-prevent) and [`decisions/adr/012-no-built-in-accountability.md`](decisions/adr/012-no-built-in-accountability.md) rather than hidden                              |
 | Arrears publication attacked as disproportionate                                      | Medium                                                               | Trade-off and mitigation in [`decisions/adr/005-arrears-published-per-unit.md`](decisions/adr/005-arrears-published-per-unit.md), with the aggregate alternative recorded                         |
 | Testnet instability before the demo                                                   | Medium                                                               | Local-chain fallback; capture screenshots early                                                                                                                                                   |
 
@@ -631,7 +631,7 @@ of time.
 
 **The schedule's real risk is the report, not the code.** Prototype
 Implementation carries 20 marks; the remaining 80 are written. System Design is
-cut from `sad.md` and should be drafted in week 2 rather than treated as
+cut from [`sad.md`](sad.md) and should be drafted in week 2 rather than treated as
 week-6 work.
 
 ## 16.2 The stack, and why each piece is there
@@ -723,7 +723,7 @@ each carrying the requirement and test identifiers it closes.
 
 1. ~~Confirm group size and the deadline.~~ **Closed, 30 Aug 2026.** Three
    members; due 25 October 2026, with the group working to 18 October. C8 in
-   `sad.md` §2.1 is updated, and [§16.1](#161-timeline) carries the dated plan.
+   [`sad.md` §2.1](sad.md#21-constraints--fixed-and-not-ours-to-trade) is updated, and [§16.1](#161-timeline) carries the dated plan.
 2. ~~Does the lecturer require topic approval, or is the topic the group's own
    call?~~ **Closed, 30 Aug 2026.** The lecturer has approved the topic.
 3. ~~Voting window, passing threshold, timelock delay and objection window.~~
@@ -836,10 +836,10 @@ dictate its structure.
 | ------------------------------------------------------------------------------------------------------------------------ | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1. Title page                                                                                                            | —                             | [§16](#16-team-timeline-and-open-questions)                                                                                                                                                               |
 | 2. Introduction — problem, motivation, objectives, background, literature, blockchain justification                      | Introduction (5)              | §[§1](#1-executive-summary), 2, 3, 4, 5                                                                                                                                                                   |
-| 3. System design — architecture, blockchain architecture, data flow, use cases, smart contract design, UI, justification | System Design (20)            | [§6](#6-solution-overview) for orientation; the design itself is `sad.md` §[§2](#2-problem-statement-and-motivation)–4                                                                                    |
+| 3. System design — architecture, blockchain architecture, data flow, use cases, smart contract design, UI, justification | System Design (20)            | [§6](#6-solution-overview) for orientation; the design itself is [`sad.md`](sad.md) §2–§4                                                                                    |
 | 4. Prototype implementation — technologies, algorithms, contracts, screenshots                                           | Prototype (20)                | [§12](#12-implementation-plan), screenshots from week 5                                                                                                                                                   |
 | 5. Functional and non-functional requirements                                                                            | Requirements (20)             | [`spec.md` §8](spec.md#8-requirements), evidence from [`spec.md` §7](spec.md#7-the-eight-refusals--each-one-is-a-test)                                                                                    |
-| 6. Testing and evaluation                                                                                                | Testing (20)                  | [`spec.md` §7](spec.md#7-the-eight-refusals--each-one-is-a-test), limitations from [§5.4](#54-what-the-blockchain-does-not-fix--stated-plainly), [§15](#15-risks-scope-and-future-work) and `sad.md` §7.1 |
+| 6. Testing and evaluation                                                                                                | Testing (20)                  | [`spec.md` §7](spec.md#7-the-eight-refusals--each-one-is-a-test), limitations from [§5.4](#54-what-the-blockchain-does-not-fix--stated-plainly), [§15](#15-risks-scope-and-future-work) and [`sad.md` §7.1](sad.md#71-what-the-architecture-does-not-prevent) |
 | 7. Conclusion — achievements, objectives met, future work                                                                | Conclusion (5)                | [§3](#3-objectives) revisited; [§15.3](#153-future-work)                                                                                                                                                  |
 | 8. References                                                                                                            | Reference & Presentation (10) | References above                                                                                                                                                                                          |
 | 9. Appendix                                                                                                              | —                             | This appendix; full source in the GitHub repo                                                                                                                                                             |
@@ -849,4 +849,4 @@ each with what it is, why it was chosen, how it helps, its trade-offs and the
 alternatives considered: the context view ([`context-view.md`](decisions/views/context-view.md)), the functional
 view and contract decomposition ([§3.2](#32-assignment-objectives)), the behavioural view and data flow
 (§3.3), the information view (§3.4), and the deployment and network view (§3.5).
-The decision records in `@work/decision/` carry the trade-offs in full.
+The decision records in `decisions/adr/` carry the trade-offs in full.

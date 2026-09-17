@@ -16,12 +16,16 @@ correctly and has clear evidence beats a large, impressive one.
 | [`docs/product.md`](docs/product.md) | The product in plain language: the problem, who has it, how money moves, why a blockchain, and the timeline | You need to know what we are building and why |
 | [`docs/spec.md`](docs/spec.md) | The technical build: the four guarantees, each contract and its checks, the parameters, events, refusal tests, requirements and stack | Before writing any code |
 | [`docs/ownership.md`](docs/ownership.md) | Who owns which contracts, who tests whose code, and how an issue goes from picked up to merged | Before picking up an issue |
+| [`docs/sad.md`](docs/sad.md) | The architecture description in full: requirements, drivers, the five views, evaluation, limits | You need the reasoning behind a rule, or you are writing the report |
+| [`docs/index.md`](docs/index.md) | The map of every document here, and where each identifier is defined | You do not know which file owns a fact |
 
-The decision records (`docs/decisions/adr/`) and the five architecture views
-(`docs/decisions/views/`) explain why the design is the way it is. Each of the
-three files above links to the ones that matter to it. Where they mention
-`sad.md` or `method/`, that is the full architecture description, which lives
-outside this repository.
+The decision records ([`docs/decisions/adr/`](docs/decisions/adr/index.md)) and
+the five architecture views ([`docs/decisions/views/`](docs/decisions/views/))
+explain why the design is the way it is. `docs/` holds everything needed to work
+on this project; nothing in it is generated, so edit the file that owns the fact.
+The derivation behind the architecture — how each driver was ranked, how the
+parameters were closed — and the report itself sit with the report drafting
+outside this repository, and nothing here depends on them.
 
 ## Rules
 

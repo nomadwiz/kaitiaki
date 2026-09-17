@@ -1,13 +1,13 @@
 # View — Deployment and network
 
-**SAD [`deployment-view.md`](deployment-view.md).** Answers **Q6** (what must the operator keep true after
+**SAD [§3.5](../../sad.md#35-deployment-and-network-view).** Answers **Q6** (what must the operator keep true after
 publication), **Q11** (what does a validator run, and what does it cost),
 **Q12** (can any single class outvote the rest).
 
 **Primary readers:** R2 network operator, R4 prospective validator.
 **Drivers that forced it:** QAS-1, QAS-3 (P1 integrity). **QAS-2 (rule
 integrity) belongs here and is deliberately unanswered** — versioning is out of
-scope ([ADR-004](../adr/004-versioning-out-of-scope.md)), and the cost of that exclusion is stated in `sad.md` §7.1 rather than
+scope ([ADR-004](../adr/004-versioning-out-of-scope.md)), and the cost of that exclusion is stated in [`sad.md` §7.1](../../sad.md#71-what-the-architecture-does-not-prevent) rather than
 left implicit. Also carries **C6**,
 the brief's mandate to justify blockchain over a centralised database.
 
@@ -18,7 +18,7 @@ view designs an argument, not a deployment.
 
 ## 1. Primary presentation
 
-`@work/diagram/figures.drawio` — page **Figure 5 — Deployment view**
+`figures.drawio` — page **Figure 5 — Deployment view**
 
 **View type.** Allocation — what runs where, and under whose control.
 
@@ -87,7 +87,7 @@ This view holds the whole blockchain-versus-database argument. The [context](con
 [behavioural](behavioural-view.md) and [information](information-view.md) views
 describe a system that would work identically on a well-run government database
 — **and that is the point**: everything those views claim is true only because
-this one holds. If the rule in `sad.md` §2.2 fails, they describe a database with extra
+this one holds. If the rule in [`sad.md` §2.2](../../sad.md#22-drivers) fails, they describe a database with extra
 steps.
 
 ---

@@ -1,6 +1,6 @@
 # View — Information
 
-**SAD [`information-view.md`](information-view.md).** Answers **Q3** (what must events carry), **Q14** (what can an owner
+**SAD [§3.4](../../sad.md#34-information-view).** Answers **Q3** (what must events carry), **Q14** (what can an owner
 check unaided), **Q16** (is arrears status public, and forever), **Q19** (what
 personal data lands on an immutable ledger).
 
@@ -12,7 +12,7 @@ personal data lands on an immutable ledger).
 
 ## 1. Primary presentation
 
-`@work/diagram/figures.drawio` — page **Figure 4 — Class view**
+`figures.drawio` — page **Figure 4 — Class view**
 
 **View type.** Information — three zones: what the public chain holds, what
 stays off it behind a hash, and what the interface chooses to show.

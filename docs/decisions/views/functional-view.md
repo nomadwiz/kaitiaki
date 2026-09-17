@@ -1,6 +1,6 @@
 # View — Functional (component-and-connector, permission structure)
 
-**SAD [`functional-view.md`](functional-view.md).** Answers **Q2** (where does authority stop), **Q8** (where is every
+**SAD [§3.2](../../sad.md#32-functional-view--the-permission-structure).** Answers **Q2** (where does authority stop), **Q8** (where is every
 path that moves money, and what constrains each one), **Q10** (which invariants
 hold by construction, which by convention), **Q18** (what the firm is exposed to).
 
@@ -14,7 +14,7 @@ the estimate for the other four.
 
 ## 1. Primary presentation
 
-`@work/diagram/figures.drawio` — page **Figure 2 — Component view**
+`figures.drawio` — page **Figure 2 — Component view**
 
 **View type.** Component-and-connector, with the authority boundary drawn
 explicitly rather than implied. Components are deployed contracts; connectors
@@ -263,7 +263,7 @@ reviewer will look for.
 
 The three primary drivers walked across this view.
 
-**P1 — Integrity.** This view's contribution is that every element in `sad.md` §2.1
+**P1 — Integrity.** This view's contribution is that every element in [`sad.md` §2.1](../../sad.md#21-constraints--fixed-and-not-ours-to-trade)
 emits a structured event on every state transition, so the record this design
 depends on is a by-product of operating rather than a reporting step. Its
 *limit* is that nothing here prevents the operator revising history; that

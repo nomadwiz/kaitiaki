@@ -1,9 +1,8 @@
 # Build specification
 
 Everything needed to build the prototype correctly, in one file. It is a
-condensed extract of the architecture description, which lives outside this
-repository; where the two disagree, the architecture description is right and
-this file needs correcting.
+condensed extract of [`sad.md`](sad.md), the architecture description; where the
+two disagree, `sad.md` is right and this file needs correcting.
 
 Identifiers (`FR`, `NFR`, `G`, `B`, `UC`) are the ones the report cites. Keep
 them.

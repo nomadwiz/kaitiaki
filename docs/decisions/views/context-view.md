@@ -1,6 +1,6 @@
 # View — Context
 
-**SAD [`context-view.md`](context-view.md).** Answers **Q13** (what does this record give an outside institution
+**SAD [§3.1](../../sad.md#31-context-view).** Answers **Q13** (what does this record give an outside institution
 that self-reported building condition does not) and **Q17** (what authority does
 the firm keep, and what did it lose).
 
@@ -17,7 +17,7 @@ removed rather than defended.
 
 ## 1. Primary presentation
 
-`@work/diagram/figures.drawio` — page **Figure 1 — Use case view** — **Figure 1**, and the first figure in the
+`figures.drawio` — page **Figure 1 — Use case view** — **Figure 1**, and the first figure in the
 report.
 
 **View type.** Use case: the actors, the system boundary, and the use cases each
@@ -84,8 +84,8 @@ loop unless marked.
 | UC6 | Management firm | Get the building's necessary work approved and done | Firm raises proposals and attests completion; it concludes nothing and moves no money |
 | UC7 | Vendor | Be paid for approved work | Vendor is admitted by vote, performs the work, and is paid directly by the treasury within the approved limit |
 | UC8 | Public caller | Make a due action happen when nobody else has | Any caller triggers a due charge, queues a passed proposal, or executes one whose conditions are met |
-| UC9 | Insurer or lender | Assess a building on evidence rather than self-report | Read the public chain: maintenance spending, arrears, and the firm's **payment history** across every building it manages. *Not its conduct — the record shows what was paid, not whether anyone was satisfied (`sad.md` §7.1)* |
-| UC10 *(designed)* | Unit owner | Have agreed maintenance happen without having to organise it | A ratified plan item becomes triggerable on its due date and proceeds unless owners record a veto — **the design's one surviving on-chain veto, and an exception explained in `sad.md` §7.1** |
+| UC9 | Insurer or lender | Assess a building on evidence rather than self-report | Read the public chain: maintenance spending, arrears, and the firm's **payment history** across every building it manages. *Not its conduct — the record shows what was paid, not whether anyone was satisfied ([`sad.md` §7.1](../../sad.md#71-what-the-architecture-does-not-prevent))* |
+| UC10 *(designed)* | Unit owner | Have agreed maintenance happen without having to organise it | A ratified plan item becomes triggerable on its due date and proceeds unless owners record a veto — **the design's one surviving on-chain veto, and an exception explained in [`sad.md` §7.1](../../sad.md#71-what-the-architecture-does-not-prevent)** |
 | UC11 | Unit owner | Get money back when a payment went to work that was not done | **Not a use case this system serves.** Recovery runs through audit and adjudication outside the chain; the system's contribution is the evidence they work from |
 
 ---
@@ -119,7 +119,7 @@ vendor, or direct money anywhere the owners have not already authorised.
 attestation releases payment ([ADR-011](../adr/011-payment-on-attestation.md)). So while the firm cannot choose the
 destination or the amount, it does choose *when* an approved payment completes,
 and its word is the only condition on completion. That is a real authority and
-`sad.md` §7.1 records it as the design's central limitation.
+[`sad.md` §7.1](../../sad.md#71-what-the-architecture-does-not-prevent) records it as the design's central limitation.
 
 **R2. Vendors cannot initiate.** ← QAS-6.
 A vendor with no ability to start anything cannot lobby the contract, only the

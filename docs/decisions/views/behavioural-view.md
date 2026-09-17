@@ -1,6 +1,6 @@
 # View — Behavioural (the loop, and where it refuses)
 
-**SAD [`behavioural-view.md`](behavioural-view.md).** Answers **Q7** (what happens to a building that starts from a bad
+**SAD [§3.3](../../sad.md#33-behavioural-view--the-loop-and-where-it-refuses).** Answers **Q7** (what happens to a building that starts from a bad
 configuration) and shows the ordering the functional view cannot carry.
 
 **Primary readers:** R1 build team, R3 contract auditor.
@@ -13,7 +13,7 @@ Designed-only behaviour is marked where it appears.
 
 ## 1. Primary presentation
 
-`@work/diagram/figures.drawio` — page **Figure 3 — Sequence view**
+`figures.drawio` — page **Figure 3 — Sequence view**
 
 **View type.** Behavioural — a sequence, because the design's guarantees depend
 on *order* as much as on structure. The functional view says the payee must be
