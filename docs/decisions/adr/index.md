@@ -1,16 +1,5 @@
 # Decision index
 
-<!-- nav -->
-> **Document** · [SAD](../sad.md) · **Decisions**
->
-> **Method** · [Index](../index.md) · [Brief](../method/00-brief.md) · [Readers](../method/01-stakeholders.md) · [Outline](../method/02-outline.md) · [Drivers](../method/03-drivers.md) · [Scope](../method/04-poc-scope.md) · [Review](../method/05-cold-review.md)
->
-> **Views** · [Context](../view/context-view.md) · [Functional](../view/functional-view.md) · [Behavioural](../view/behavioural-view.md) · [Information](../view/information-view.md) · [Deployment](../view/deployment-view.md)
-<!-- /nav -->
-
-
-
-
 A decision gets its own record when a competent engineer could reasonably have
 made the opposite call. Descriptions of how the system *is* stay in the views;
 the reasoning for why it is that way lives here, because reasoning changes far
@@ -25,7 +14,7 @@ faster than structure does.
 | 005 | Arrears are published per unit, not just as a building total | Accepted | Information view, R3 |
 | 006 | There is no elected committee | Accepted | Context view, A1 |
 | 007 | Permissioned proof of authority, not proof of stake | Accepted | Deployment view, R1 |
-| 008 | The maintenance plan cannot be edited once ratified | Accepted | Designed only; carried from [`@doc/product.md` §11.6](../../doc/product.md#11.6%20The%20maintenance%20plan%20is%20immutable%20for%20its%20term) |
+| 008 | The maintenance plan cannot be edited once ratified | Accepted | Designed only; carried from [`product.md` §11.6](../../product.md#116-the-maintenance-plan-is-immutable-for-its-term) |
 | 009 | The ledger is readable by anyone, not gated to citizens | Accepted | Deployment view, R2 — reclassified from a constraint |
 | 010 | One standard contract set, published once, instantiated per building | Accepted | Deployment view, R3 — reclassified from a constraint |
 | 011 | Payment is released by the firm's attestation, with nothing in between | Accepted | Closing the open parameters |

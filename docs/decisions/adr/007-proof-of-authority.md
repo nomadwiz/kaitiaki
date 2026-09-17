@@ -1,16 +1,5 @@
 # ADR-007 — Permissioned proof of authority, not proof of stake
 
-<!-- nav -->
-> **Document** · [SAD](../sad.md) · [Decisions](index.md)
->
-> **Method** · [Index](../index.md) · [Brief](../method/00-brief.md) · [Readers](../method/01-stakeholders.md) · [Outline](../method/02-outline.md) · [Drivers](../method/03-drivers.md) · [Scope](../method/04-poc-scope.md) · [Review](../method/05-cold-review.md)
->
-> **Views** · [Context](../view/context-view.md) · [Functional](../view/functional-view.md) · [Behavioural](../view/behavioural-view.md) · [Information](../view/information-view.md) · [Deployment](../view/deployment-view.md)
-<!-- /nav -->
-
-
-
-
 **Status.** Accepted, 28 Aug 2026.
 
 ## Context
@@ -66,4 +55,4 @@ capping weight per class, not by how the staking is arranged.
 Separately — and this one invalidated the original accountability argument
 entirely — **the penalty for cheating at consensus does not touch misuse of a
 building's funds.** They are different layers. That realisation is what led to
-the fee retention mechanism in [`@doc/product.md` §11.3](../../doc/product.md#11.3%20Accountability%20without%20a%20deposit).
+the fee retention mechanism in [`product.md` §11.3](../../product.md#113-accountability-without-a-deposit).

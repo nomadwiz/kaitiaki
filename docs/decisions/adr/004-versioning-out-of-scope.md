@@ -1,16 +1,5 @@
 # ADR-004 — New versions of the contracts are out of scope
 
-<!-- nav -->
-> **Document** · [SAD](../sad.md) · [Decisions](index.md)
->
-> **Method** · [Index](../index.md) · [Brief](../method/00-brief.md) · [Readers](../method/01-stakeholders.md) · [Outline](../method/02-outline.md) · [Drivers](../method/03-drivers.md) · [Scope](../method/04-poc-scope.md) · [Review](../method/05-cold-review.md)
->
-> **Views** · [Context](../view/context-view.md) · [Functional](../view/functional-view.md) · [Behavioural](../view/behavioural-view.md) · [Information](../view/information-view.md) · [Deployment](../view/deployment-view.md)
-<!-- /nav -->
-
-
-
-
 **Status.** Accepted, 28 Aug 2026. Recorded as a scope decision, not a design.
 
 ## Context
@@ -18,7 +7,7 @@
 Scenario QAS-2 asked: the government operator publishes an updated version of
 the standard contracts. What happens to a building already running the old one?
 
-The question matters because of what [`@doc/product.md` §5.1](../../doc/product.md#5.1%20The%20condition%20the%20argument%20rests%20on) claims — that no
+The question matters because of what [`product.md` §5.1](../../product.md#51-the-condition-the-argument-rests-on) claims — that no
 operator, including the state, can change the record or the rules underneath a
 building. If a new version could be pushed to a running building without its
 owners agreeing, that claim would be false.
@@ -48,5 +37,5 @@ its owners while it runs; it does not describe what happens when the published
 standard moves on.
 
 **Where it goes if the project continues.** Alongside the other items in
-[`@doc/product.md` §15.3](../../doc/product.md#15.3%20Future%20work) future work, as the first thing a real deployment would
+[`product.md` §15.3](../../product.md#153-future-work) future work, as the first thing a real deployment would
 have to answer.

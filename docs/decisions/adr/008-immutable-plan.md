@@ -1,17 +1,6 @@
 # ADR-008 — The maintenance plan cannot be edited once ratified
 
-<!-- nav -->
-> **Document** · [SAD](../sad.md) · [Decisions](index.md)
->
-> **Method** · [Index](../index.md) · [Brief](../method/00-brief.md) · [Readers](../method/01-stakeholders.md) · [Outline](../method/02-outline.md) · [Drivers](../method/03-drivers.md) · [Scope](../method/04-poc-scope.md) · [Review](../method/05-cold-review.md)
->
-> **Views** · [Context](../view/context-view.md) · [Functional](../view/functional-view.md) · [Behavioural](../view/behavioural-view.md) · [Information](../view/information-view.md) · [Deployment](../view/deployment-view.md)
-<!-- /nav -->
-
-
-
-
-**Status.** Accepted, 28 Aug 2026. Designed, not built ([`@work/method/04-poc-scope.md`](../method/04-poc-scope.md)).
+**Status.** Accepted, 28 Aug 2026. Designed, not built (`method/04-poc-scope.md`).
 
 ## Context
 

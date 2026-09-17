@@ -1,17 +1,7 @@
 # ADR-011 — Payment is released by the firm's attestation, with nothing in between
 
-<!-- nav -->
-> **Document** · [SAD](../sad.md) · [Decisions](index.md)
->
-> **Method** · [Index](../index.md) · [Brief](../method/00-brief.md) · [Readers](../method/01-stakeholders.md) · [Outline](../method/02-outline.md) · [Drivers](../method/03-drivers.md) · [Scope](../method/04-poc-scope.md) · [Review](../method/05-cold-review.md)
->
-> **Views** · [Context](../view/context-view.md) · [Functional](../view/functional-view.md) · [Behavioural](../view/behavioural-view.md) · [Information](../view/information-view.md) · [Deployment](../view/deployment-view.md)
-<!-- /nav -->
-
-
-
 **Status.** Accepted, 29 Aug 2026. Supersedes the objection window described in
-[`@doc/product.md` §11.4](../../doc/product.md#11.4%20Completion%20attestation%2C%20and%20the%20objection%20window).
+[`product.md` §11.4](../../product.md#114-completion-attestation-and-the-objection-window).
 
 ## Context
 

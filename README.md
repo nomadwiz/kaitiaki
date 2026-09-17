@@ -58,7 +58,7 @@ npx hardhat test mocha
 The compiler version and the EVM target are pinned rather than floating because
 the report publishes gas measurements, and a measurement is only meaningful if
 the bytecode behind it can be reproduced. The reasoning for every row is in
-`docs/decisions/product.md` §16.2.
+`docs/product.md` §16.2.
 
 ## Status
 
@@ -80,9 +80,10 @@ file.
 | --- | --- |
 | `contracts/` | Solidity sources, and the `.t.sol` tests that run against them |
 | `test/` | TypeScript tests, for the claims that are off-chain by definition |
+| `docs/product.md` | The product in plain language — the problem, the evidence, the build plan and the timeline |
 | `docs/spec.md` | The build specification: the guarantees, the contracts and their guards, the statutory parameters, the events, the refusal tests |
 | `docs/ownership.md` | Who owns which vertical, and who writes which tests |
-| `docs/decisions/` | Why the design is the way it is — thirteen decision records, five architecture views, and the project proposal |
+| `docs/decisions/` | Why the design is the way it is — thirteen decision records, and five architecture views |
 | `CLAUDE.md` | The working agreement, for people and their assistants |
 | `evidence/` | Screenshots, test listings and gas tables the report cites |
 

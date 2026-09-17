@@ -1,16 +1,5 @@
 # ADR-003 — One unit, one vote — and capture needs far fewer than a majority
 
-<!-- nav -->
-> **Document** · [SAD](../sad.md) · [Decisions](index.md)
->
-> **Method** · [Index](../index.md) · [Brief](../method/00-brief.md) · [Readers](../method/01-stakeholders.md) · [Outline](../method/02-outline.md) · [Drivers](../method/03-drivers.md) · [Scope](../method/04-poc-scope.md) · [Review](../method/05-cold-review.md)
->
-> **Views** · [Context](../view/context-view.md) · [Functional](../view/functional-view.md) · [Behavioural](../view/behavioural-view.md) · [Information](../view/information-view.md) · [Deployment](../view/deployment-view.md)
-<!-- /nav -->
-
-
-
-
 **Status.** Accepted, 28 Aug 2026. Amended 29 Aug 2026, and again 30 Aug 2026
 when the cost of the decision turned out to be larger than first recorded.
 
@@ -33,7 +22,7 @@ Three rules compose: quorum is 25%, an ordinary resolution passes on a majority
 of votes *cast*, and quorum is waived once the adjournment period has run. Put
 them together and after 21 days a payment can be approved by a majority of
 whoever bothered to vote — **which can be one owner in forty**
-([`@work/sad.md` §2.5](../sad.md#2.5%20Configured%20parameters%2C%20and%20where%20each%20value%20comes%20from)).
+([`spec.md` §5](../../spec.md#5-parameters--statutory-not-chosen)).
 
 That is not a flaw in how the statute was mapped. It is what the statutory
 scheme permits, faithfully implemented. In a physical meeting the rule is held
@@ -60,7 +49,7 @@ Two fixes were on the table for the original majority case:
 
 Neither. Voting weight follows unit ownership — one unit, one vote — with no
 raised threshold and no cap. The weakness is stated openly in the architecture's
-limits section instead ([`@work/sad.md` §7.1](../sad.md#7.1%20What%20the%20architecture%20does%20not%20prevent)).
+limits section instead (`sad.md` §7.1).
 
 ## Consequences
 
@@ -71,7 +60,7 @@ bar for capture from *just over half* to *well over half*, but it lifts the bar
 for legitimate vendor approval by exactly the same amount — in a building where
 getting even half the owners to vote is the known problem (Falk et al., 2024).
 It makes the abuse harder and the ordinary case harder, in equal measure. T4 in
-[`@work/method/03-drivers.md`](../method/03-drivers.md) records the tension:
+`method/03-drivers.md` records the tension:
 there is no threshold that gets both. Rather than split the difference and be
 bad at both, we pick one and disclose the cost.
 
@@ -106,7 +95,7 @@ that makes the scheme defensible, and it does nothing about the quorum-waiver
 path, where the attacker holds one unit rather than many.
 
 **Raise quorum, or remove the waiver.** Not available — both are statutory
-values, and [`@work/sad.md` §2.5](../sad.md#2.5%20Configured%20parameters%2C%20and%20where%20each%20value%20comes%20from)
+values, and [`spec.md` §5](../../spec.md#5-parameters--statutory-not-chosen)
 takes them from the Act rather than choosing them. Changing them would be
 designing a different legal regime, which this project has no standing to do.
 The honest response is disclosure, and future work notes that a system operating

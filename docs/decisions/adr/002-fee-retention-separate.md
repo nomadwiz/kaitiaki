@@ -1,16 +1,5 @@
 # ADR-002 — The firm's withheld fees are kept in their own contract
 
-<!-- nav -->
-> **Document** · [SAD](../sad.md) · [Decisions](index.md)
->
-> **Method** · [Index](../index.md) · [Brief](../method/00-brief.md) · [Readers](../method/01-stakeholders.md) · [Outline](../method/02-outline.md) · [Drivers](../method/03-drivers.md) · [Scope](../method/04-poc-scope.md) · [Review](../method/05-cold-review.md)
->
-> **Views** · [Context](../view/context-view.md) · [Functional](../view/functional-view.md) · [Behavioural](../view/behavioural-view.md) · [Information](../view/information-view.md) · [Deployment](../view/deployment-view.md)
-<!-- /nav -->
-
-
-
-
 **Status.** **Superseded by [ADR-012](012-no-built-in-accountability.md), 29 Aug 2026.** Kept rather than deleted:
 the reasoning below is sound on its own terms, and what overturned it was not a
 flaw in the argument but a change to the thing it was arguing about — fee
@@ -23,7 +12,7 @@ retention was removed from the design entirely.
 The way this design holds the management firm accountable is to withhold part of
 the firm's own fee for a while, release it gradually, and let owners vote to
 claim some of it back if a specific payment turns out to have been wrong
-([`@doc/product.md` §11.3](../../doc/product.md#11.3%20Accountability%20without%20a%20deposit)).
+([`product.md` §11.3](../../product.md#113-accountability-without-a-deposit)).
 
 The important detail: that withheld money is **the firm's earnings**, not the
 owners' levies. Two different pots, two different owners.

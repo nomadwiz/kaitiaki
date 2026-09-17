@@ -1,35 +1,24 @@
 # View — Deployment and network
 
-<!-- nav -->
-> **Document** · [SAD](../sad.md) · [Decisions](../decision/index.md)
->
-> **Method** · [Index](../index.md) · [Brief](../method/00-brief.md) · [Readers](../method/01-stakeholders.md) · [Outline](../method/02-outline.md) · [Drivers](../method/03-drivers.md) · [Scope](../method/04-poc-scope.md) · [Review](../method/05-cold-review.md)
->
-> **Views** · [Context](context-view.md) · [Functional](functional-view.md) · [Behavioural](behavioural-view.md) · [Information](information-view.md) · **Deployment**
-<!-- /nav -->
-
-
-
-
-**SAD [§3.5](../sad.md#3.5%20Deployment%20and%20network%20view).** Answers **Q6** (what must the operator keep true after
+**SAD [`deployment-view.md`](deployment-view.md).** Answers **Q6** (what must the operator keep true after
 publication), **Q11** (what does a validator run, and what does it cost),
 **Q12** (can any single class outvote the rest).
 
 **Primary readers:** R2 network operator, R4 prospective validator.
 **Drivers that forced it:** QAS-1, QAS-3 (P1 integrity). **QAS-2 (rule
 integrity) belongs here and is deliberately unanswered** — versioning is out of
-scope ([ADR-004](../decision/004-versioning-out-of-scope.md)), and the cost of that exclusion is stated in [§7.1](../sad.md#7.1%20What%20the%20architecture%20does%20not%20prevent) rather than
+scope ([ADR-004](../adr/004-versioning-out-of-scope.md)), and the cost of that exclusion is stated in `sad.md` §7.1 rather than
 left implicit. Also carries **C6**,
 the brief's mandate to justify blockchain over a centralised database.
 
-**Status.** The network is *described, not stood up* (`00-brief.md` [§3](../sad.md#3.%20Views)). This
+**Status.** The network is *described, not stood up* (`00-brief.md` §3). This
 view designs an argument, not a deployment.
 
 ---
 
 ## 1. Primary presentation
 
-`@work/diagram/figures.drawio` — page **[Figure 5](../diagram/figures.drawio) — Deployment view**
+`@work/diagram/figures.drawio` — page **Figure 5 — Deployment view**
 
 **View type.** Allocation — what runs where, and under whose control.
 
@@ -37,7 +26,7 @@ view designs an argument, not a deployment.
 artifacts, `«deploy»` and `«instantiate»` dependencies, and communication paths
 between nodes.
 
-**Caption.** *[Figure 5](../diagram/figures.drawio) — Deployment view: the validator set, and why this is not
+**Caption.** *Figure 5 — Deployment view: the validator set, and why this is not
 a database with extra steps.*
 
 **The convention.** Each validator node carries a stereotype saying what it is
@@ -80,7 +69,7 @@ instantiated per building — approximately 14,952 developments in New Zealand a
 at July 2021 (MHUD, 2022). Code trust is national and one-time; configuration
 trust is local.
 
-**Versioning is out of scope** ([ADR-004](../decision/004-versioning-out-of-scope.md)) and the diagram says so in red rather
+**Versioning is out of scope** ([ADR-004](../adr/004-versioning-out-of-scope.md)) and the diagram says so in red rather
 than leaving a gap for a reviewer to find.
 
 ### 2.4 Not validators, deliberately
@@ -94,10 +83,11 @@ secondary benefit of making the network public.
 
 ## 3. Context
 
-This view holds the whole blockchain-versus-database argument. §[§3.1](../sad.md#3.1%20Context%20view)–3.4
+This view holds the whole blockchain-versus-database argument. The [context](context-view.md), [functional](functional-view.md),
+[behavioural](behavioural-view.md) and [information](information-view.md) views
 describe a system that would work identically on a well-run government database
 — **and that is the point**: everything those views claim is true only because
-this one holds. If the rule in [§2.2](../sad.md#2.2%20Drivers) fails, they describe a database with extra
+this one holds. If the rule in `sad.md` §2.2 fails, they describe a database with extra
 steps.
 
 ---
@@ -105,11 +95,11 @@ steps.
 ## 4. Rationale
 
 **R1. Permissioned proof of authority, not proof of stake.** ← QAS-1, and the
-absence of a native asset. Recorded as **[ADR-007](../decision/007-proof-of-authority.md)**.
+absence of a native asset. Recorded as **[ADR-007](../adr/007-proof-of-authority.md)**.
 
 **R2. Publicly readable, not access-controlled.** ← P1, Q13. **This is a
 decision, not a constraint** — an earlier draft listed it among the givens, which
-was wrong: a given cannot also be argued for. Recorded as **[ADR-009](../decision/009-publicly-readable.md)**.
+was wrong: a given cannot also be argued for. Recorded as **[ADR-009](../adr/009-publicly-readable.md)**.
 New Zealand apartments are owned by citizens, permanent residents, overseas
 investors, companies and trusts alike, so a citizenship gate would exclude
 people who compulsorily pay levies. `[ASSUMED]` that the excluded share is large
@@ -123,12 +113,12 @@ from the verification that makes P1 real.
 
 **R3. One audited standard set, instantiated per building.** ← P1, and cost.
 Also a decision rather than a given, for the same reason. Recorded as
-**[ADR-010](../decision/010-one-standard-set.md)**.
+**[ADR-010](../adr/010-one-standard-set.md)**.
 Publishing one heavily scrutinised artefact narrows the trusted base to a single
 thing, makes genesis a configuration exercise owners can actually judge, and
 makes every building's records comparable — which is what lets a firm's payment
 history be read across the buildings it manages. **Comparability of records, not
-of conduct:** the reputation claim was withdrawn ([ADR-012](../decision/012-no-built-in-accountability.md)), and this rationale
+of conduct:** the reputation claim was withdrawn ([ADR-012](../adr/012-no-built-in-accountability.md)), and this rationale
 rests only on the records being in the same shape.
 
 **R4. Validator diversity is stated as a requirement on the operator, not as an
@@ -163,7 +153,7 @@ it is the option this design would move to if the identity-based argument were
 rejected. It avoids inventing an asset and would satisfy a reviewer who insists
 on economic security. Not adopted because validator identity here is known and
 legally accountable, which is what proof of stake exists to substitute for.
-Recorded in [ADR-007](../decision/007-proof-of-authority.md) as the retained fallback.
+Recorded in [ADR-007](../adr/007-proof-of-authority.md) as the retained fallback.
 
 **A4. A fully public permissionless chain.** *Rejected* on cost, throughput, and
 the absence of any operator accountable for a public register — but it is the
@@ -219,7 +209,7 @@ reduce to the one-third rule.
 **P2 — Authority containment.** Consensus contains nothing at the application
 layer. Stating that explicitly matters, because "it's on a blockchain" is
 routinely offered as though it answered a question about misuse of funds. It
-does not, and [§3.2](../sad.md#3.2%20Functional%20view%20%E2%80%94%20the%20permission%20structure) is where that question is answered.
+does not, and [`functional-view.md`](functional-view.md) is where that question is answered.
 
 **P3 — Participation.** One contribution, and it is worth naming: public read
 access means an owner who never votes can still verify. Verification and

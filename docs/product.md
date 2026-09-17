@@ -3,7 +3,7 @@
 **COMP842 Assignment 1 · Applied Blockchain and Cryptocurrency**
 Status: agreed group direction. This document is the project's source of truth for
 the problem, the design and the decisions — **except requirements and build scope,
-which are owned by [`@work/sad.md` §6.2](../work/sad.md#6.2%20Requirements), and the Introduction draft in
+which are owned by [`spec.md` §8](spec.md#8-requirements), and the Introduction draft in
 `@work/doc/introduction-draft.md`.** Those files are not summaries of this one;
 where they cover something, they are authoritative and this document points at
 them rather than restating.
@@ -57,13 +57,13 @@ adjudication, the courts — runs on a record no participant, including the
 operator, can revise. Small firms face no barrier to entry because nothing is
 required of them up front.
 
-*(Full reasoning: [`@work/decision/012-no-built-in-accountability.md`](../work/decision/012-no-built-in-accountability.md).)*
+*(Full reasoning: [`decisions/adr/012-no-built-in-accountability.md`](decisions/adr/012-no-built-in-accountability.md).)*
 
 **What will exist at the end:** a working prototype on a test network — membership,
 treasury, payee registry and operation-governance contracts, with a web interface
 where an owner can read a proposal, vote, watch the funds release against a
 verified milestone, and inspect the fund's whole history; plus a test suite
-demonstrating that the guarantees in [§5](#5.%20Why%20a%20blockchain%2C%20and%20not%20a%20centralised%20database) hold under adversarial conditions.
+demonstrating that the guarantees in [§5](#5-why-a-blockchain-and-not-a-centralised-database) hold under adversarial conditions.
 
 ---
 
@@ -147,7 +147,7 @@ mismanagement or, in rare cases, intentional misconduct."
 product objective is something the *system* does, and the Conclusion answers yes
 or no to each one. An assignment objective is something *this project* does.
 "State honestly what the system cannot prevent" was in the product list and is a
-thing the report does, not the system, so it has moved to [§3.2](#3.2%20Assignment%20objectives). Each product
+thing the report does, not the system, so it has moved to [§3.2](#32-assignment-objectives). Each product
 objective is now worded so it can be answered rather than merely asserted.
 
 `[DECIDED:31-08-2026]` **Objectives stay objectives; scope is not moved into the
@@ -155,7 +155,7 @@ Introduction.** Recasting the report's §1.7 as scope was considered and
 rejected: the rubric marks objectives twice — once in the Introduction and again
 in the Conclusion, which has to evaluate against them — while scope is marked in
 the Requirements criterion instead. Scope therefore stays where it is owned,
-[`@work/sad.md` §6.1](../work/sad.md#6.1%20What%20is%20built%2C%20what%20is%20described), and is written up in report Section 4. What the
+[`spec.md` §8](spec.md#8-requirements), and is written up in report Section 4. What the
 concern was really about is repetition: report §1.7 was restating §1.5 and §1.6
 a third time, so its objectives are now one line each and cross-refer instead of
 re-explaining.
@@ -179,10 +179,10 @@ re-explaining.
 
 ## 3.2 Assignment objectives
 
-1. Produce a report satisfying [`@doc/overview.md`](overview.md) within 25 pages.
+1. Produce a report satisfying `overview.md` within 25 pages.
 2. Deliver five design elements with what, why, how, trade-offs and alternatives
    considered — against a required minimum of three.
-3. Build and demonstrate a working prototype of the loop in [§12.2](#12.2%20Build%20strategy%3A%20one%20complete%20loop), and explain
+3. Build and demonstrate a working prototype of the loop in [§12.2](#122-build-strategy-one-complete-loop), and explain
    what was designed but not built, why, and how it would be completed.
 4. Cite at least five academic or professional sources, every one verified.
 5. State honestly what the system cannot prevent, in the report itself and not
@@ -271,7 +271,7 @@ One Estonian informant puts the objection bluntly:
 > its nature has no central controlled environment; but in Estonia there is always
 > a responsible body which stores these hashes or timestamps."
 
-**That objection applies to this project too, and [§5.1](#5.1%20The%20condition%20the%20argument%20rests%20on) is written to answer it.**
+**That objection applies to this project too, and [§5.1](#51-the-condition-the-argument-rests-on) is written to answer it.**
 The proposed network is permissioned, so the question of whether a
 government-operated chain is "really" a blockchain lands squarely on it. The answer
 offered is not that the label applies, but that the *property owners depend
@@ -307,7 +307,7 @@ validator set whose members' interests diverge.
 would be a database with extra steps**, and the criticism levelled at other
 government chains would be correct here too. Validator diversity is what makes the
 blockchain claim true, so the architecture treats it as a requirement rather
-than an accident ([`@work/sad.md` §3.5](../work/sad.md#3.5%20Deployment%20and%20network%20view), and NFR-level in [§6.2](#6.2%20The%20lifecycle)).
+than an accident ([`deployment-view.md`](decisions/views/deployment-view.md), and NFR-level in [§6.2](#62-the-lifecycle)).
 
 ## 5.2 What the database version cannot do
 
@@ -328,7 +328,7 @@ holder of the record for the record. That is the status quo with better software
   only possible because the network is national rather than per-building. Note
   the limit: this shows *what was paid*, not whether anyone was satisfied. The
   design makes no reputation claim — see
-  [`@work/decision/012-no-built-in-accountability.md`](../work/decision/012-no-built-in-accountability.md).
+  [`decisions/adr/012-no-built-in-accountability.md`](decisions/adr/012-no-built-in-accountability.md).
 
 ## 5.4 What the blockchain does not fix — stated plainly
 
@@ -358,7 +358,7 @@ rather than written per building.
 **There is no committee.** The management firm acts for the body corporate in
 raising and administering work; the owners hold every decision. Removing the
 committee is a simplification of today's arrangement, and its consequences are
-examined in [`@work/decision/006-no-committee.md`](../work/decision/006-no-committee.md).
+examined in [`decisions/adr/006-no-committee.md`](decisions/adr/006-no-committee.md).
 
 ## 6.2 The lifecycle
 
@@ -374,14 +374,14 @@ cannot be charged until owners **ratify** the configuration at a high threshold
 **Levy cycle.** Levies are derived from the plan and the operating budget rather
 than negotiated, and become chargeable on schedule. Payment *is* the record, so
 nothing is reconciled. Arrears accrue by rule and are publicly visible
-([`@work/decision/005-arrears-published-per-unit.md`](../work/decision/005-arrears-published-per-unit.md)).
+([`decisions/adr/005-arrears-published-per-unit.md`](decisions/adr/005-arrears-published-per-unit.md)).
 
 **Operation cycle.** The firm raises a proposal — the work, a hard cap, and a
 vendor from the registry. Owners vote. On passing, the proposal queues through a
 timelock. The vendor performs the work. The firm attests completion, **and that
 attestation releases payment** to that vendor, within that cap, from that fund.
 There is no objection window: see
-[`@work/decision/011-payment-on-attestation.md`](../work/decision/011-payment-on-attestation.md).
+[`decisions/adr/011-payment-on-attestation.md`](decisions/adr/011-payment-on-attestation.md).
 
 **Maintenance cycle.** Work already in the ratified plan becomes callable when
 due. Any party may trigger it — the contract refuses before the due date — and it
@@ -392,7 +392,7 @@ veto rather than passive neglect.
 owners may commission the annual audit the Unit Titles Act already provides for,
 and grievances against the firm are pursued afterwards exactly as they are
 against a vendor. The chain's role is evidentiary
-([`@work/decision/012-no-built-in-accountability.md`](../work/decision/012-no-built-in-accountability.md)).
+([`decisions/adr/012-no-built-in-accountability.md`](decisions/adr/012-no-built-in-accountability.md)).
 
 **Ownership churn.** A sale updates the unit's wallet binding from the land title
 register. No participant inside the building can alter the electorate.
@@ -402,7 +402,7 @@ register. No participant inside the building can alter the electorate.
 # 7–11. System design — superseded by the architecture description
 
 **The design content of sections 7 to 11 has been cut.** It is now held in
-[`@work/sad.md`](../work/sad.md), which supersedes it in full. It was removed rather than left in
+`sad.md`, which supersedes it in full. It was removed rather than left in
 place because two descriptions of one design drift apart, and this one already
 had: it still described a fee-retention contract and an owner objection window,
 neither of which the architecture has.
@@ -411,19 +411,19 @@ The report's System Design section is cut from the SAD, not from here.
 
 | What you came for | Now in |
 | --- | --- |
-| The national network, its validators, and why the ledger is public | [`@work/sad.md` §3.5](../work/sad.md#3.5%20Deployment%20and%20network%20view), [`@work/decision/007-proof-of-authority.md`](../work/decision/007-proof-of-authority.md), [`@work/decision/009-publicly-readable.md`](../work/decision/009-publicly-readable.md) |
-| The layering of a building instance, and one standard contract set | [`@work/sad.md` §3.5](../work/sad.md#3.5%20Deployment%20and%20network%20view), [`@work/decision/010-one-standard-set.md`](../work/decision/010-one-standard-set.md) |
-| The contract decomposition and where authority stops | [`@work/sad.md` §3.2](../work/sad.md#3.2%20Functional%20view%20%E2%80%94%20the%20permission%20structure), [`@work/decision/001-narrow-release-interface.md`](../work/decision/001-narrow-release-interface.md) |
-| What is on the chain, what is hashed, and who it exposes | [`@work/sad.md` §3.4](../work/sad.md#3.4%20Information%20view) |
-| The loop, and the eight places it refuses | [`@work/sad.md` §3.3](../work/sad.md#3.3%20Behavioural%20view%20%E2%80%94%20the%20loop%2C%20and%20where%20it%20refuses) |
-| The design decisions and their trade-offs | [`@work/sad.md` §8](../work/sad.md#8.%20Decisions), and the records in `@work/decision/` |
-| The parameter values, and the basis for each | [`@work/sad.md` §2.5](../work/sad.md#2.5%20Configured%20parameters%2C%20and%20where%20each%20value%20comes%20from) |
+| The national network, its validators, and why the ledger is public | [`deployment-view.md`](decisions/views/deployment-view.md), [`decisions/adr/007-proof-of-authority.md`](decisions/adr/007-proof-of-authority.md), [`decisions/adr/009-publicly-readable.md`](decisions/adr/009-publicly-readable.md) |
+| The layering of a building instance, and one standard contract set | [`deployment-view.md`](decisions/views/deployment-view.md), [`decisions/adr/010-one-standard-set.md`](decisions/adr/010-one-standard-set.md) |
+| The contract decomposition and where authority stops | [`functional-view.md`](decisions/views/functional-view.md), [`decisions/adr/001-narrow-release-interface.md`](decisions/adr/001-narrow-release-interface.md) |
+| What is on the chain, what is hashed, and who it exposes | [`information-view.md`](decisions/views/information-view.md) |
+| The loop, and the eight places it refuses | [`behavioural-view.md`](decisions/views/behavioural-view.md) |
+| The design decisions and their trade-offs | [`adr/index.md`](decisions/adr/index.md), and the records in `@work/decision/` |
+| The parameter values, and the basis for each | [`spec.md` §5](spec.md#5-parameters--statutory-not-chosen) |
 
 **Why the objection window and fee retention are gone**, rather than deferred:
-[`@work/decision/011-payment-on-attestation.md`](../work/decision/011-payment-on-attestation.md) and
-[`@work/decision/012-no-built-in-accountability.md`](../work/decision/012-no-built-in-accountability.md). The reasoning that removed
+[`decisions/adr/011-payment-on-attestation.md`](decisions/adr/011-payment-on-attestation.md) and
+[`decisions/adr/012-no-built-in-accountability.md`](decisions/adr/012-no-built-in-accountability.md). The reasoning that removed
 them, including the five mechanisms designed and rejected, is in
-[`@work/method/06-parameters.md`](../work/method/06-parameters.md).
+`method/06-parameters.md`.
 
 The headings below are kept as forwarding addresses. Work across this project
 cites these sections by number, and a citation that resolves to nothing is worse
@@ -433,27 +433,27 @@ than one that resolves to a redirection.
 
 Permissioned proof of authority with a known validator set, and the argument that
 validator diversity is what makes the blockchain claim true. Now
-[`@work/sad.md` §3.5](../work/sad.md#3.5%20Deployment%20and%20network%20view) and [`@work/decision/007-proof-of-authority.md`](../work/decision/007-proof-of-authority.md).
+[`deployment-view.md`](decisions/views/deployment-view.md) and [`decisions/adr/007-proof-of-authority.md`](decisions/adr/007-proof-of-authority.md).
 
 ## 9.1 The principle that shapes the decomposition
 
 The guarantees are properties of what each contract is permitted to call, not of
-what its code intends. Now [`@work/sad.md` §3.2](../work/sad.md#3.2%20Functional%20view%20%E2%80%94%20the%20permission%20structure) and
-[`@work/decision/001-narrow-release-interface.md`](../work/decision/001-narrow-release-interface.md).
+what its code intends. Now [`functional-view.md`](decisions/views/functional-view.md) and
+[`decisions/adr/001-narrow-release-interface.md`](decisions/adr/001-narrow-release-interface.md).
 
 ## 9.3 The guarantees
 
-The four guarantees, G1–G4. Now [`@work/sad.md` §2.4](../work/sad.md#2.4%20The%20guarantees), which also records each
+The four guarantees, G1–G4. Now [`spec.md` §2](spec.md#2-the-four-guarantees), which also records each
 one's status after the accountability redesign.
 
 ## 9.5 Events are the audit trail
 
 What each contract emits, and why the event log is the record rather than a
-by-product of it. Now [`@work/sad.md` §3.4](../work/sad.md#3.4%20Information%20view).
+by-product of it. Now [`information-view.md`](decisions/views/information-view.md).
 
 ## 11.2 Owners vote; there is no committee
 
-Now [`@work/decision/006-no-committee.md`](../work/decision/006-no-committee.md).
+Now [`decisions/adr/006-no-committee.md`](decisions/adr/006-no-committee.md).
 
 ## 11.3 Accountability without a deposit
 
@@ -461,26 +461,26 @@ Now [`@work/decision/006-no-committee.md`](../work/decision/006-no-committee.md)
 reputation, fee retention and owner claims. It was withdrawn along with four
 other candidates because each made one party's money contingent on another
 party's attention or good faith. See
-[`@work/decision/012-no-built-in-accountability.md`](../work/decision/012-no-built-in-accountability.md) for the replacement position —
+[`decisions/adr/012-no-built-in-accountability.md`](decisions/adr/012-no-built-in-accountability.md) for the replacement position —
 the architecture supplies evidence rather than sanctions — and
-[`@work/method/06-parameters.md`](../work/method/06-parameters.md) for the five mechanisms and why each failed.
+`method/06-parameters.md` for the five mechanisms and why each failed.
 
 ## 11.4 Completion attestation, and the objection window
 
 **The objection window no longer exists.** The firm's attestation releases
 payment directly, with nothing in between. See
-[`@work/decision/011-payment-on-attestation.md`](../work/decision/011-payment-on-attestation.md). The attestation trust boundary is
-unsolved and is named as such in [`@work/sad.md` §7.1](../work/sad.md#7.1%20What%20the%20architecture%20does%20not%20prevent).
+[`decisions/adr/011-payment-on-attestation.md`](decisions/adr/011-payment-on-attestation.md). The attestation trust boundary is
+unsolved and is named as such in `sad.md` §7.1.
 
 ## 11.5 Arrears are public
 
 Arrears are published per unit rather than as a building total, with the
 aggregate alternative recorded. Now
-[`@work/decision/005-arrears-published-per-unit.md`](../work/decision/005-arrears-published-per-unit.md) and [`@work/sad.md` §3.4](../work/sad.md#3.4%20Information%20view).
+[`decisions/adr/005-arrears-published-per-unit.md`](decisions/adr/005-arrears-published-per-unit.md) and [`information-view.md`](decisions/views/information-view.md).
 
 ## 11.6 The maintenance plan is immutable for its term
 
-Now [`@work/decision/008-immutable-plan.md`](../work/decision/008-immutable-plan.md).
+Now [`decisions/adr/008-immutable-plan.md`](decisions/adr/008-immutable-plan.md).
 
 ---
 
@@ -516,22 +516,22 @@ enforcement, attestation, release — differing only in how a proposal arises an
 it is authorised. The loop builds that spine, so the maintenance path remains a
 described extension rather than a separate system.
 
-**Scope detail lives in [`@work/sad.md` §6.2](../work/sad.md#6.2%20Requirements)**, which marks every
+**Scope detail lives in [`spec.md` §8](spec.md#8-requirements)**, which marks every
 requirement `Slice` (built) or `Designed` (specified, not built) and records why,
-what constrained it, and how it would be completed — as [`@doc/overview.md` §2.3](overview.md#2.3.%20Functional%20and%20Non-Functional%20Requirements)
+what constrained it, and how it would be completed — as `overview.md` §2.3
 requires.
 
 ---
 
 # 13. Requirements
 
-**The requirement set is maintained in [`@work/sad.md` §6.2](../work/sad.md#6.2%20Requirements)**, not
+**The requirement set is maintained in [`spec.md` §8](spec.md#8-requirements)**, not
 duplicated here. That file is the single source of requirement identifiers.
 
 It holds **FR1–FR42** and **NFR1–NFR15**. Six functional requirements are struck
 through, having been removed with the accountability redesign; their identifiers
 are deliberately not reused. Nine of those remaining are designed rather than
-built, and [§6.1](#6.1%20Actors) of that file names each one.
+built, and [§6.1](#61-actors) of that file names each one.
 
 Each requirement carries what it traces to (a guarantee, a use case, or a feature
 of the problem), whether it is in the built loop or designed only, and the test
@@ -552,20 +552,20 @@ identifiers at all.
 
 # 14. Testing and evaluation — superseded by the architecture description
 
-**This section has been cut.** The test set is held in [`@work/sad.md` §5](../work/sad.md#5.%20Evaluation), which
+**This section has been cut.** The test set is held in [`spec.md` §7](spec.md#7-the-eight-refusals--each-one-is-a-test), which
 supersedes it. The version here still listed *an objection sustained* among the
 scenario tests, for a mechanism the design no longer has.
 
 | What you came for | Now in |
 | --- | --- |
-| The ten tests, and what each one decides | [`@work/sad.md` §5.1](../work/sad.md#5.1%20What%20the%20prototype%20demonstrates) |
-| What cannot be tested, and why saying so matters | [`@work/sad.md` §5](../work/sad.md#5.%20Evaluation) |
-| How each requirement is evidenced | [`@work/sad.md` §6.2](../work/sad.md#6.2%20Requirements) |
+| The ten tests, and what each one decides | [`spec.md` §7](spec.md#7-the-eight-refusals--each-one-is-a-test) |
+| What cannot be tested, and why saying so matters | [`spec.md` §7](spec.md#7-the-eight-refusals--each-one-is-a-test) |
+| How each requirement is evidenced | [`spec.md` §8](spec.md#8-requirements) |
 
 ## 14.3 Adversarial tests — the headline evidence
 
 Kept as a forwarding address. One test per guarantee, each expected to revert —
-now [`@work/sad.md` §5.1](../work/sad.md#5.1%20What%20the%20prototype%20demonstrates), which carries the full set of ten and marks which of
+now [`spec.md` §7](spec.md#7-the-eight-refusals--each-one-is-a-test), which carries the full set of ten and marks which of
 them the built prototype can actually run.
 
 ---
@@ -586,11 +586,11 @@ implementation — the network is designed and described, not stood up.
 | Risk | Impact | Mitigation |
 | --- | --- | --- |
 | Team new to Solidity | High | Audited OpenZeppelin components; P1–P4 kept small; start early; week 1 budgets for the learning cost and week 7 absorbs the overrun |
-| Scope creep beyond the loop | High | Every requirement is built or designed-only in [`@work/sad.md` §6.2](../work/sad.md#6.2%20Requirements); there is no middle category for work to drift into |
-| "It's just a database" objection | High | Met head-on in [§5.1](#5.1%20The%20condition%20the%20argument%20rests%20on) with validator diversity as a stated requirement |
-| Independent validators do not participate, leaving the set skewed to management firms | High — [§5.1](#5.1%20The%20condition%20the%20argument%20rests%20on) fails with it | Motivations argued in [`@work/sad.md` §3.5](../work/sad.md#3.5%20Deployment%20and%20network%20view); minimum-composition rule enforced by the operator; named as an adoption dependency rather than a solved problem |
-| Attestation trust boundary attacked as unsolved | Medium | It *is* unsolved; named in [`@work/sad.md` §7.1](../work/sad.md#7.1%20What%20the%20architecture%20does%20not%20prevent) and [`@work/decision/012-no-built-in-accountability.md`](../work/decision/012-no-built-in-accountability.md) rather than hidden |
-| Arrears publication attacked as disproportionate | Medium | Trade-off and mitigation in [`@work/decision/005-arrears-published-per-unit.md`](../work/decision/005-arrears-published-per-unit.md), with the aggregate alternative recorded |
+| Scope creep beyond the loop | High | Every requirement is built or designed-only in [`spec.md` §8](spec.md#8-requirements); there is no middle category for work to drift into |
+| "It's just a database" objection | High | Met head-on in [§5.1](#51-the-condition-the-argument-rests-on) with validator diversity as a stated requirement |
+| Independent validators do not participate, leaving the set skewed to management firms | High — [§5.1](#51-the-condition-the-argument-rests-on) fails with it | Motivations argued in [`deployment-view.md`](decisions/views/deployment-view.md); minimum-composition rule enforced by the operator; named as an adoption dependency rather than a solved problem |
+| Attestation trust boundary attacked as unsolved | Medium | It *is* unsolved; named in `sad.md` §7.1 and [`decisions/adr/012-no-built-in-accountability.md`](decisions/adr/012-no-built-in-accountability.md) rather than hidden |
+| Arrears publication attacked as disproportionate | Medium | Trade-off and mitigation in [`decisions/adr/005-arrears-published-per-unit.md`](decisions/adr/005-arrears-published-per-unit.md), with the aggregate alternative recorded |
 | Testnet instability before the demo | Medium | Local-chain fallback; capture screenshots early |
 
 ## 15.3 Future work
@@ -600,7 +600,7 @@ current on levies without revealing which owner they are — Semaphore is the
 standard primitive, and it would give arrears privacy and ballot privacy together.
 Oracle-assisted verification of physical completion. The maintenance plan and
 permissionless triggering. A dispute path for contested claims. The full list,
-with what each would cost, is [`@work/sad.md` §7.5](../work/sad.md#7.5%20Future%20work).
+with what each would cost, is [§15.3](#153-future-work).
 
 ---
 
@@ -631,7 +631,7 @@ of time.
 
 **The schedule's real risk is the report, not the code.** Prototype
 Implementation carries 20 marks; the remaining 80 are written. System Design is
-cut from [`@work/sad.md`](../work/sad.md) and should be drafted in week 2 rather than treated as
+cut from `sad.md` and should be drafted in week 2 rather than treated as
 week-6 work.
 
 ## 16.2 The stack, and why each piece is there
@@ -641,13 +641,13 @@ comfortable with JavaScript and TypeScript and with Git, new to Solidity (C9).
 
 | Piece | Choice | Why |
 | --- | --- | --- |
-| Contracts | Solidity 0.8.36, fixed pragma; optimiser on, 200 runs; `prague` EVM target. OpenZeppelin Contracts 5.6.1 — `AccessControl`, `TimelockController`, `ERC20` | The timelock and the role machinery are the parts hardest to get right by hand, and the only parts where an audited component costs the argument nothing ([ADR-013](../work/decision/013-own-voting-contract.md)). `[DECIDED:02-09-2026]` OpenZeppelin 5.6.1 sets the floor at `^0.8.20`; 0.8.36 is the current release. The version and the EVM target are pinned, and the pragma fixed rather than floating, because [`@work/sad.md` §6.2](../work/sad.md#6.2%20Requirements) requires gas per owner per levy cycle to be measured (NFR11) and the report publishes the number — a measurement is only meaningful if the bytecode behind it can be reproduced |
-| Voting | Written for this project | [ADR-013](../work/decision/013-own-voting-contract.md) — there is no general execution path to constrain because none is written |
+| Contracts | Solidity 0.8.36, fixed pragma; optimiser on, 200 runs; `prague` EVM target. OpenZeppelin Contracts 5.6.1 — `AccessControl`, `TimelockController`, `ERC20` | The timelock and the role machinery are the parts hardest to get right by hand, and the only parts where an audited component costs the argument nothing ([ADR-013](decisions/adr/013-own-voting-contract.md)). `[DECIDED:02-09-2026]` OpenZeppelin 5.6.1 sets the floor at `^0.8.20`; 0.8.36 is the current release. The version and the EVM target are pinned, and the pragma fixed rather than floating, because [`spec.md` §8](spec.md#8-requirements) requires gas per owner per levy cycle to be measured (NFR11) and the report publishes the number — a measurement is only meaningful if the bytecode behind it can be reproduced |
+| Voting | Written for this project | [ADR-013](decisions/adr/013-own-voting-contract.md) — there is no general execution path to constrain because none is written |
 | Toolchain | Hardhat 3.15 with `@nomicfoundation/hardhat-toolbox-mocha-ethers`. Node 22.13 or newer | Keeps the JavaScript tooling the team knows for the interface and the deployment scripts, while allowing tests to be written in Solidity. Hardhat 3 refuses to start below Node 22.13, so the exact version is pinned in `.nvmrc` and three laptops and the CI runner agree |
 | Testing | **Solidity tests** (`.t.sol`, `npx hardhat test solidity`), with `forge-std` assertions and cheatcodes; built-in coverage and gas statistics | See the note below. TypeScript is kept only where a claim is off-chain by definition |
-| Settlement | A mock ERC-20 standing in for the NZD stablecoin | C13 names the real dependency; the prototype issues nothing ([`@work/sad.md` §3.1](../work/sad.md#3.1%20Context%20view)) |
-| Interface | Vite and `ethers`, reading events | The interface holds no authority ([`@work/sad.md` §3.2](../work/sad.md#3.2%20Functional%20view%20%E2%80%94%20the%20permission%20structure)), so a thin one is faithful rather than a shortcut. It exists to produce legible screenshots (C7) |
-| Public deployment | A public test network, week 5 | Not the permissioned chain the design assumes. FR42's readability claim is argued rather than demonstrated, and [`@work/sad.md` §6.2](../work/sad.md#6.2%20Requirements) already says so |
+| Settlement | A mock ERC-20 standing in for the NZD stablecoin | C13 names the real dependency; the prototype issues nothing ([`context-view.md`](decisions/views/context-view.md)) |
+| Interface | Vite and `ethers`, reading events | The interface holds no authority ([`functional-view.md`](decisions/views/functional-view.md)), so a thin one is faithful rather than a shortcut. It exists to produce legible screenshots (C7) |
+| Public deployment | A public test network, week 5 | Not the permissioned chain the design assumes. FR42's readability claim is argued rather than demonstrated, and [`spec.md` §8](spec.md#8-requirements) already says so |
 
 `[DECIDED:02-09-2026]` **Tests are written in Solidity, not TypeScript.** The
 earlier choice was TypeScript, on the reasoning that it is the one language the
@@ -705,36 +705,36 @@ Money-out refusal tests means he still verifies the guarantees himself rather
 than trusting a review to catch a subtle gap.
 
 **The build order is still serial.** `MembershipRegistry` → `Treasury` +
-`PayeeRegistry` → `Governance` + `Timelock` → `LevyLedger` ([`@work/sad.md` §6.1](../work/sad.md#6.1%20What%20is%20built%2C%20what%20is%20described)).
+`PayeeRegistry` → `Governance` + `Timelock` → `LevyLedger` ([`spec.md` §8](spec.md#8-requirements)).
 Verticals give ownership, not independence: interfaces are written before
 implementations so anyone blocked can work against a stub instead of waiting, and
 week 1 is shared whatever the vertical map says.
 
 **Report drafting starts in week 2**, in parallel with the code rather than after
-it. [§16.1](#16.1%20Timeline) already names the report as the schedule's real risk. Three authors
+it. [§16.1](#161-timeline) already names the report as the schedule's real risk. Three authors
 writing one document is the cost of this split, so the week-6 consistency pass is
 not optional — without it the seams show as different terms for the same thing
-and identifiers that drift from [`@work/sad.md` §6.2](../work/sad.md#6.2%20Requirements).
+and identifiers that drift from [`spec.md` §8](spec.md#8-requirements).
 
-**The task breakdown lives in [`@work/build/issues.md`](../work/build/issues.md)**, one issue per unit of work,
+**The task breakdown lives in `issues.md`**, one issue per unit of work,
 each carrying the requirement and test identifiers it closes.
 
 ## 16.3 Open questions
 
 1. ~~Confirm group size and the deadline.~~ **Closed, 30 Aug 2026.** Three
    members; due 25 October 2026, with the group working to 18 October. C8 in
-   [`@work/sad.md` §2.1](../work/sad.md#2.1%20Constraints%20%E2%80%94%20fixed%2C%20and%20not%20ours%20to%20trade) is updated, and [§16.1](#16.1%20Timeline) carries the dated plan.
+   `sad.md` §2.1 is updated, and [§16.1](#161-timeline) carries the dated plan.
 2. ~~Does the lecturer require topic approval, or is the topic the group's own
    call?~~ **Closed, 30 Aug 2026.** The lecturer has approved the topic.
 3. ~~Voting window, passing threshold, timelock delay and objection window.~~
-   **Closed.** All parameters are set with stated bases in [`@work/sad.md` §2.5](../work/sad.md#2.5%20Configured%20parameters%2C%20and%20where%20each%20value%20comes%20from);
+   **Closed.** All parameters are set with stated bases in [`spec.md` §5](spec.md#5-parameters--statutory-not-chosen);
    the objection window no longer exists. Derivation:
-   [`@work/method/06-parameters.md`](../work/method/06-parameters.md).
+   `method/06-parameters.md`.
 4. Which designed-only requirements to promote into the built loop if week 4
-   goes well. **Provisionally none** — [§16.1](#16.1%20Timeline) spends the seventh week on
+   goes well. **Provisionally none** — [§16.1](#161-timeline) spends the seventh week on
    contingency rather than scope, and the candidates were declined on that
    basis. Re-open it at the week-4 gate only if the test suite is complete and
-   ahead of schedule; the candidates are named in [`@work/sad.md` §6.1](../work/sad.md#6.1%20What%20is%20built%2C%20what%20is%20described), and
+   ahead of schedule; the candidates are named in [`spec.md` §8](spec.md#8-requirements), and
    FR23 (owners raising proposals, not only the firm) is the cheapest.
 
 ---
@@ -807,7 +807,7 @@ verified then.
 **The statutory sources carry a provenance caveat that must be stated.** The
 quorum, resolution thresholds, notice periods, adjournment rule, audit
 obligation and payment-schedule period used to set this design's parameters
-([`@work/sad.md` §2.5](../work/sad.md#2.5%20Configured%20parameters%2C%20and%20where%20each%20value%20comes%20from)) were taken from **secondary sources describing the
+([`spec.md` §5](spec.md#5-parameters--statutory-not-chosen)) were taken from **secondary sources describing the
 legislation** — the Crown's own guidance at unittitles.govt.nz, Buddle Findlay's
 practitioner guide, and Lane Neave on the Construction Contracts Act.
 **legislation.govt.nz refused automated access, so the primary text of Unit
@@ -821,7 +821,7 @@ source that was not opened.**
 **Fifteen sources against a required minimum of five**, of which nine are
 academic, governmental or statutory.
 
-One `[CITE]` remains: the literature-gap claim in [§4.5](#4.5%20The%20gap%20this%20project%20fills). A claimed absence in the
+One `[CITE]` remains: the literature-gap claim in [§4.5](#45-the-gap-this-project-fills). A claimed absence in the
 literature needs a deliberate, documented search behind it — not an incidental
 one — so either run that search or soften the claim before submission.
 
@@ -832,21 +832,21 @@ one — so either run that search or soften the claim before submission.
 Proving the report can be built from this document, without letting the rubric
 dictate its structure.
 
-| Report section ([`@doc/overview.md` §3](overview.md#3.%20Recommended%20Report%20Structure)) | Rubric row (marks) | Source here |
+| Report section (`overview.md` §3) | Rubric row (marks) | Source here |
 | --- | --- | --- |
-| 1. Title page | — | [§16](#16.%20Team%2C%20timeline%20and%20open%20questions) |
-| 2. Introduction — problem, motivation, objectives, background, literature, blockchain justification | Introduction (5) | §[§1](#1.%20Executive%20summary), 2, 3, 4, 5 |
-| 3. System design — architecture, blockchain architecture, data flow, use cases, smart contract design, UI, justification | System Design (20) | [§6](#6.%20Solution%20overview) for orientation; the design itself is [`@work/sad.md`](../work/sad.md) §[§2](#2.%20Problem%20statement%20and%20motivation)–4 |
-| 4. Prototype implementation — technologies, algorithms, contracts, screenshots | Prototype (20) | [§12](#12.%20Implementation%20plan), screenshots from week 5 |
-| 5. Functional and non-functional requirements | Requirements (20) | [`@work/sad.md` §6.2](../work/sad.md#6.2%20Requirements), evidence from [`@work/sad.md` §5](../work/sad.md#5.%20Evaluation) |
-| 6. Testing and evaluation | Testing (20) | [`@work/sad.md` §5](../work/sad.md#5.%20Evaluation), limitations from [§5.4](#5.4%20What%20the%20blockchain%20does%20not%20fix%20%E2%80%94%20stated%20plainly), [§15](#15.%20Risks%2C%20scope%20and%20future%20work) and [`@work/sad.md` §7.1](../work/sad.md#7.1%20What%20the%20architecture%20does%20not%20prevent) |
-| 7. Conclusion — achievements, objectives met, future work | Conclusion (5) | [§3](#3.%20Objectives) revisited; [§15.3](#15.3%20Future%20work) |
+| 1. Title page | — | [§16](#16-team-timeline-and-open-questions) |
+| 2. Introduction — problem, motivation, objectives, background, literature, blockchain justification | Introduction (5) | §[§1](#1-executive-summary), 2, 3, 4, 5 |
+| 3. System design — architecture, blockchain architecture, data flow, use cases, smart contract design, UI, justification | System Design (20) | [§6](#6-solution-overview) for orientation; the design itself is `sad.md` §[§2](#2-problem-statement-and-motivation)–4 |
+| 4. Prototype implementation — technologies, algorithms, contracts, screenshots | Prototype (20) | [§12](#12-implementation-plan), screenshots from week 5 |
+| 5. Functional and non-functional requirements | Requirements (20) | [`spec.md` §8](spec.md#8-requirements), evidence from [`spec.md` §7](spec.md#7-the-eight-refusals--each-one-is-a-test) |
+| 6. Testing and evaluation | Testing (20) | [`spec.md` §7](spec.md#7-the-eight-refusals--each-one-is-a-test), limitations from [§5.4](#54-what-the-blockchain-does-not-fix--stated-plainly), [§15](#15-risks-scope-and-future-work) and `sad.md` §7.1 |
+| 7. Conclusion — achievements, objectives met, future work | Conclusion (5) | [§3](#3-objectives) revisited; [§15.3](#153-future-work) |
 | 8. References | Reference & Presentation (10) | References above |
 | 9. Appendix | — | This appendix; full source in the GitHub repo |
 
 **Design elements** — the brief requires at least three. The SAD supplies five,
 each with what it is, why it was chosen, how it helps, its trade-offs and the
-alternatives considered: the context view ([`@work/sad.md` §3.1](../work/sad.md#3.1%20Context%20view)), the functional
-view and contract decomposition ([§3.2](#3.2%20Assignment%20objectives)), the behavioural view and data flow
+alternatives considered: the context view ([`context-view.md`](decisions/views/context-view.md)), the functional
+view and contract decomposition ([§3.2](#32-assignment-objectives)), the behavioural view and data flow
 (§3.3), the information view (§3.4), and the deployment and network view (§3.5).
 The decision records in `@work/decision/` carry the trade-offs in full.

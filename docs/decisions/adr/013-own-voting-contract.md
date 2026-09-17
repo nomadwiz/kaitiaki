@@ -1,16 +1,5 @@
 # ADR-013 — The voting contract is written for this project, not extended from a framework
 
-<!-- nav -->
-> **Document** · [SAD](../sad.md) · [Decisions](index.md)
->
-> **Method** · [Index](../index.md) · [Brief](../method/00-brief.md) · [Readers](../method/01-stakeholders.md) · [Outline](../method/02-outline.md) · [Drivers](../method/03-drivers.md) · [Scope](../method/04-poc-scope.md) · [Review](../method/05-cold-review.md)
->
-> **Views** · [Context](../view/context-view.md) · [Functional](../view/functional-view.md) · [Behavioural](../view/behavioural-view.md) · [Information](../view/information-view.md) · [Deployment](../view/deployment-view.md)
-<!-- /nav -->
-
-
-
-
 **Status.** Accepted, 1 Sep 2026. Refines [ADR-001](001-narrow-release-interface.md); supersedes nothing.
 
 ## Context
@@ -26,7 +15,7 @@ other is to write a small voting contract for this project and take only the
 timelock off the shelf.
 
 The team is three people new to Solidity, with seven weeks and eighty of one
-hundred marks resting on written work ([`@doc/product.md` §16.1](../../doc/product.md#16.1%20Timeline)).
+hundred marks resting on written work ([`product.md` §16.1](../../product.md#161-timeline)).
 
 ## Decision
 
@@ -35,7 +24,7 @@ unchanged, and use OpenZeppelin's `AccessControl` and `ERC20` as well.
 
 `Governance` holds only what the loop needs: raise a proposal of one of two
 kinds, cast a vote, count votes against the quorum and threshold in
-[`@work/sad.md` §2.5](../sad.md#2.5%20Configured%20parameters%2C%20and%20where%20each%20value%20comes%20from), queue through the timelock, execute, and attest. It stores
+[`spec.md` §5](../../spec.md#5-parameters--statutory-not-chosen), queue through the timelock, execute, and attest. It stores
 the parameters of a payment — fund, payee, amount — rather than an instruction
 to be executed.
 

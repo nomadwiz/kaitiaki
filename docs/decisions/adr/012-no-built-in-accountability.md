@@ -1,16 +1,6 @@
 # ADR-012 — Accountability is external; the architecture supplies evidence
 
-<!-- nav -->
-> **Document** · [SAD](../sad.md) · [Decisions](index.md)
->
-> **Method** · [Index](../index.md) · [Brief](../method/00-brief.md) · [Readers](../method/01-stakeholders.md) · [Outline](../method/02-outline.md) · [Drivers](../method/03-drivers.md) · [Scope](../method/04-poc-scope.md) · [Review](../method/05-cold-review.md)
->
-> **Views** · [Context](../view/context-view.md) · [Functional](../view/functional-view.md) · [Behavioural](../view/behavioural-view.md) · [Information](../view/information-view.md) · [Deployment](../view/deployment-view.md)
-<!-- /nav -->
-
-
-
-**Status.** Accepted, 29 Aug 2026. Supersedes [ADR-002](002-fee-retention-separate.md) and [`@doc/product.md` §11.3](../../doc/product.md#11.3%20Accountability%20without%20a%20deposit).
+**Status.** Accepted, 29 Aug 2026. Supersedes [ADR-002](002-fee-retention-separate.md) and [`product.md` §11.3](../../product.md#113-accountability-without-a-deposit).
 
 ## Context
 
@@ -57,7 +47,7 @@ special resolution, exactly as the Unit Titles Act already provides.
 > evidence it works from is poor. **The contribution is the evidence.**
 
 **This still requires a blockchain.** Three of the four claims in
-[`@doc/product.md` §5.3](../../doc/product.md#5.3%20What%20the%20blockchain%20adds) survive untouched: an append-only record no participant
+[`product.md` §5.3](../../product.md#53-what-the-blockchain-adds) survive untouched: an append-only record no participant
 including the operator can revise; execution by contract, so an approved proposal
 pays and a rejected one cannot; and verification by anyone, without asking the
 party holding the money.
@@ -66,7 +56,7 @@ party holding the money.
 reputation — goes with it. The record shows what was paid, to whom, for what. It
 does not show whether the work was any good, and nothing distinguishes a
 fraudulent vendor's history from an honest one's. Judging a firm is done on
-external platforms, on evidence this system did not gather. [`@doc/product.md` §1](../../doc/product.md#1.%20Executive%20summary),
+external platforms, on evidence this system did not gather. [`product.md` §1](../../product.md#1-executive-summary),
 §5.3 and §11.3 all overstate this today and must be rewritten.
 
 **Where accountability actually sits.** `[DECIDED:31-08-2026]` Outside the

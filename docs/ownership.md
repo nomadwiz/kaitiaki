@@ -44,3 +44,37 @@ need.
 
 If a change has to touch another vertical's contract, the owner of that vertical
 reviews the pull request.
+
+## How we work
+
+**The GitHub issues are the checklist.** There is no task list file in this
+repository, on purpose: a file three people tick on three branches conflicts
+constantly, and a ticked box proves only that someone believed the work was
+finished. An issue closes because a reviewed pull request merged.
+
+To pick up work:
+
+```
+gh issue list --assignee @me                 # what is mine
+gh issue view <n>                            # the task and its acceptance criteria
+git checkout -b <n>-short-description        # one branch per issue
+```
+
+- Tick an acceptance criterion on the issue only once its test passes
+- Open a pull request whose title names the issue and whose description says
+  `Closes #<n>`. It needs one approving review before merge
+- Keep the requirement and test identifiers the issue names (`FR31`, `G1`, `B3`)
+  in commit messages and pull request descriptions. The report cites them, so
+  never renumber or invent one
+
+## Definition of done
+
+An issue is done when:
+
+1. its tests pass in CI,
+2. one other member has approved the pull request, and
+3. any evidence the report needs — a screenshot, a test listing, a gas table — is
+   committed under `evidence/`.
+
+Capture evidence as you go. Screenshots taken in the last week tend to be
+unreadable, and a figure nobody can explain earns no marks.

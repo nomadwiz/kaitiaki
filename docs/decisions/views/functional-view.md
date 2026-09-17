@@ -1,17 +1,6 @@
 # View — Functional (component-and-connector, permission structure)
 
-<!-- nav -->
-> **Document** · [SAD](../sad.md) · [Decisions](../decision/index.md)
->
-> **Method** · [Index](../index.md) · [Brief](../method/00-brief.md) · [Readers](../method/01-stakeholders.md) · [Outline](../method/02-outline.md) · [Drivers](../method/03-drivers.md) · [Scope](../method/04-poc-scope.md) · [Review](../method/05-cold-review.md)
->
-> **Views** · [Context](context-view.md) · **Functional** · [Behavioural](behavioural-view.md) · [Information](information-view.md) · [Deployment](deployment-view.md)
-<!-- /nav -->
-
-
-
-
-**SAD [§3.2](../sad.md#3.2%20Functional%20view%20%E2%80%94%20the%20permission%20structure).** Answers **Q2** (where does authority stop), **Q8** (where is every
+**SAD [`functional-view.md`](functional-view.md).** Answers **Q2** (where does authority stop), **Q8** (where is every
 path that moves money, and what constrains each one), **Q10** (which invariants
 hold by construction, which by convention), **Q18** (what the firm is exposed to).
 
@@ -25,7 +14,7 @@ the estimate for the other four.
 
 ## 1. Primary presentation
 
-`@work/diagram/figures.drawio` — page **[Figure 2](../diagram/figures.drawio) — Component view**
+`@work/diagram/figures.drawio` — page **Figure 2 — Component view**
 
 **View type.** Component-and-connector, with the authority boundary drawn
 explicitly rather than implied. Components are deployed contracts; connectors
@@ -37,7 +26,7 @@ the building instance. The guard on each dependency is written as a UML
 constraint in braces, which is how the diagram says *who may call what, and what
 refuses* in standard notation rather than in a private one.
 
-**Caption.** *[Figure 2](../diagram/figures.drawio) — Component view: the permission structure of one
+**Caption.** *Figure 2 — Component view: the permission structure of one
 building instance. Answers: where is every path that moves money, and what
 constrains each one?*
 
@@ -103,15 +92,15 @@ transition that moves no value.
 ## 3. Context
 
 This view is the **inside of the "building instance" box** in the context view
-([§3.1](../sad.md#3.1%20Context%20view)). It says nothing about where these contracts run, who validates the
-chain, or whether the operator can revise history — that is [§3.5](../sad.md#3.5%20Deployment%20and%20network%20view), and P1 is
+([`context-view.md`](context-view.md)). It says nothing about where these contracts run, who validates the
+chain, or whether the operator can revise history — that is [`deployment-view.md`](deployment-view.md), and P1 is
 addressed there, not here. It also draws no ordering: the sequence in which
-these calls legitimately occur is [§3.3](../sad.md#3.3%20Behavioural%20view%20%E2%80%94%20the%20loop%2C%20and%20where%20it%20refuses)'s job, and the two must be read together
+these calls legitimately occur is [`behavioural-view.md`](behavioural-view.md)'s job, and the two must be read together
 before the design is understood.
 
 Scope of this view is **one instance**. Multiply by 14,952 developments (MHUD,
 2022) and the questions that arise — divergent versions, a defect in the
-published standard — are [§3.5](../sad.md#3.5%20Deployment%20and%20network%20view)'s, not this view's.
+published standard — are [`deployment-view.md`](deployment-view.md)'s, not this view's.
 
 ---
 
@@ -125,7 +114,7 @@ This is the load-bearing move of the whole design. A conventional governance
 contract executes whatever calldata a passed proposal carries; under that
 design G3 (cap) and G4 (fund separation) cannot hold, because a proposal could
 carry any call at all. Restricting authority *at the boundary* means proposal
-text is never trusted to restrain anything. Recorded as **[ADR-001](../decision/001-narrow-release-interface.md)**.
+text is never trusted to restrain anything. Recorded as **[ADR-001](../adr/001-narrow-release-interface.md)**.
 
 **R2. `Timelock` is the sole holder of `RELEASER_ROLE`.** ← QAS-5 (P2).
 Makes G1 checkable by reading access-control state rather than by reasoning
@@ -136,7 +125,7 @@ one-line query with a one-element answer.
 ← QAS-6, QAS-8 (P2), and deliberately against P3.
 The asymmetry is the architecture's answer to key compromise: an attacker
 holding the firm's key can raise proposals all day and reach no new address.
-[`@doc/product.md` §9.3](../../doc/product.md#9.3%20The%20guarantees) states it as *"work may be approved passively; a payee
+[`product.md` §9.3](../../product.md#93-the-guarantees) states it as *"work may be approved passively; a payee
 never is"*, and QAS-8 is what tests it.
 
 **R4. Triggers are permissionless and refuse before their due date.** ← QAS-10
@@ -149,17 +138,17 @@ unplanned proposal correctly stalls.
 
 **R5. `MaintenancePlan` has no mutator** *(designed — the contract is not built,
 so the absence of an edit function is an argument, not a test)*. ← T5,
-[`@doc/product.md` §11.6](../../doc/product.md#11.6%20The%20maintenance%20plan%20is%20immutable%20for%20its%20term).
+[`product.md` §11.6](../../product.md#116-the-maintenance-plan-is-immutable-for-its-term).
 Every attack on a mutable plan needs an amendment path to exist. Removing the
 path removes the class by construction, which is stronger than any threshold.
 The cost — a plan wrong at ratification stays wrong — is accepted knowingly.
 
 **R6. There is no accountability mechanism inside the contract set.** ← Q18,
-[ADR-012](../decision/012-no-built-in-accountability.md).
+[ADR-012](../adr/012-no-built-in-accountability.md).
 An earlier design withheld a share of the firm's fee in a separate contract. It
 was removed: withholding a firm's earnings against a condition the owners control
 makes its pay contingent on their diligence, which is the same defect that sank
-four other mechanisms ([ADR-012](../decision/012-no-built-in-accountability.md)). The firm is paid in full as earned, and
+four other mechanisms ([ADR-012](../adr/012-no-built-in-accountability.md)). The firm is paid in full as earned, and
 grievances against it are pursued off-chain exactly as they are against a vendor.
 **The contract set's contribution to accountability is the record, not a
 sanction.**
@@ -208,14 +197,14 @@ internal checks missed."*
 **A4. Treasury as an owner-controlled multisig.**
 *Rejected.* Simple, well understood, no governance contract needed. It
 reinstates a small group holding the money — the exact structure
-[`@doc/product.md` §2.1](../../doc/product.md#2.1%20The%20problem) identifies as the problem. Rejecting it is the design
+[`product.md` §2.1](../../product.md#21-the-problem) identifies as the problem. Rejecting it is the design
 being consistent with its own premise.
 
 **A5. Any in-contract accountability mechanism — a bond, a retention, a claim.**
 *All rejected, and this is the view's most consequential set of alternatives.*
 Five were designed in full and each was refused for the same reason: every one
 made some party's money contingent on another party's attention or good faith.
-The full record is [ADR-012](../decision/012-no-built-in-accountability.md). What remains is a contract set that controls
+The full record is [ADR-012](../adr/012-no-built-in-accountability.md). What remains is a contract set that controls
 authorisation and emits evidence, and holds nothing back from anyone.
 
 **A6. Roles assigned to the management firm through a role-admin hierarchy.**
@@ -232,11 +221,11 @@ not merely an honest one.
 
 - **P2, strongly.** QAS-5 reverts; QAS-6 has no path; QAS-8 bounds the loss with
   a total key compromise to *zero at any new address*. All three are testable
-  and all three tests exist in [§5](../sad.md#5.%20Evaluation) of the SAD.
+  and all three tests exist in [`spec.md` §7](../../spec.md#7-the-eight-refusals--each-one-is-a-test).
 - **P3, partially.** R4's permissionless triggers are what let QAS-10 pass at
   zero turnout — *demonstrated for levy charges, designed for plan items*.
-- **P1, only indirectly** — every state transition emits an event ([§3.4](../sad.md#3.4%20Information%20view)), but
-  record integrity itself is [§3.5](../sad.md#3.5%20Deployment%20and%20network%20view)'s business.
+- **P1, only indirectly** — every state transition emits an event ([`information-view.md`](information-view.md)), but
+  record integrity itself is [`deployment-view.md`](deployment-view.md)'s business.
 
 **What it costs, and to which driver.**
 
@@ -250,7 +239,7 @@ not merely an honest one.
   guard in the catalogue above. The permission structure constrains *the firm*;
   it does not constrain *the owners*, and by design it cannot.
 - **It costs build time against C8 and C9.** The designed system is seven
-  contracts; **six are built** and one — `MaintenancePlan` — is designed only ([§6](../sad.md#6.%20Realisation%20and%20requirements) of the SAD, and [`@work/method/04-poc-scope.md`](../method/04-poc-scope.md)). The
+  contracts; **six are built** and one — `MaintenancePlan` — is designed only ([`spec.md` §8](../../spec.md#8-requirements), and `method/04-poc-scope.md`). The
   build order falls out of this view: `MembershipRegistry` → `Treasury` +
   `PayeeRegistry` → `Governance` + `Timelock` → `LevyLedger`. Even trimmed, six
   contracts is a lot for a team new to Solidity in six weeks; the mitigation is
@@ -274,14 +263,14 @@ reviewer will look for.
 
 The three primary drivers walked across this view.
 
-**P1 — Integrity.** This view's contribution is that every element in [§2.1](../sad.md#2.1%20Constraints%20%E2%80%94%20fixed%2C%20and%20not%20ours%20to%20trade)
+**P1 — Integrity.** This view's contribution is that every element in `sad.md` §2.1
 emits a structured event on every state transition, so the record this design
 depends on is a by-product of operating rather than a reporting step. Its
 *limit* is that nothing here prevents the operator revising history; that
-argument lives in [§3.5](../sad.md#3.5%20Deployment%20and%20network%20view) and rests on validator diversity. **Rule integrity
+argument lives in [`deployment-view.md`](deployment-view.md) and rests on validator diversity. **Rule integrity
 (QAS-2) is unaddressed by this view and unaddressed anywhere in the project so
 far** — the catalogue above says what each contract does, and nothing says what
-happens when the operator publishes v2. Carried to [§3.5](../sad.md#3.5%20Deployment%20and%20network%20view) as [ADR-004](../decision/004-versioning-out-of-scope.md).
+happens when the operator publishes v2. Carried to [`deployment-view.md`](deployment-view.md) as [ADR-004](../adr/004-versioning-out-of-scope.md).
 
 **P2 — Authority containment.** The view *is* this perspective; this view's own
 Rationale and Evaluation parts are its walk. The one-line summary an auditor can check: **the set of addresses

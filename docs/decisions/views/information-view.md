@@ -1,18 +1,6 @@
 # View — Information
 
-<!-- nav -->
-> **Document** · [SAD](../sad.md) · [Decisions](../decision/index.md)
->
-> **Method** · [Index](../index.md) · [Brief](../method/00-brief.md) · [Readers](../method/01-stakeholders.md) · [Outline](../method/02-outline.md) · [Drivers](../method/03-drivers.md) · [Scope](../method/04-poc-scope.md) · [Review](../method/05-cold-review.md)
->
-> **Views** · [Context](context-view.md) · [Functional](functional-view.md) · [Behavioural](behavioural-view.md) · **Information** · [Deployment](deployment-view.md)
-<!-- /nav -->
-
-
-
-
-
-**SAD [§3.4](../sad.md#3.4%20Information%20view).** Answers **Q3** (what must events carry), **Q14** (what can an owner
+**SAD [`information-view.md`](information-view.md).** Answers **Q3** (what must events carry), **Q14** (what can an owner
 check unaided), **Q16** (is arrears status public, and forever), **Q19** (what
 personal data lands on an immutable ledger).
 
@@ -24,7 +12,7 @@ personal data lands on an immutable ledger).
 
 ## 1. Primary presentation
 
-`@work/diagram/figures.drawio` — page **[Figure 4](../diagram/figures.drawio) — Class view**
+`@work/diagram/figures.drawio` — page **Figure 4 — Class view**
 
 **View type.** Information — three zones: what the public chain holds, what
 stays off it behind a hash, and what the interface chooses to show.
@@ -34,7 +22,7 @@ associations with multiplicities, enumerations, and one package per zone.
 `«commit»` dependencies carry the hash from an on-chain class to the off-chain
 document it commits.
 
-**Caption.** *[Figure 4](../diagram/figures.drawio) — Class view: what goes on the public chain, what is
+**Caption.** *Figure 4 — Class view: what goes on the public chain, what is
 only committed by hash, and who that exposes.*
 
 **The convention.** A class stereotyped `«PII»` holds or exposes information
@@ -75,7 +63,7 @@ glossed in blockchain write-ups.
 
 `ChargeIssued`, `LevyPaid`, `ProposalCreated`, `VoteCast`, `ProposalQueued`,
 `PayeeAdmitted`, `WorkAttested`, `PaymentReleased`. **Eight, not nine** —
-`ObjectionRaised` went with the objection window ([ADR-011](../decision/011-payment-on-attestation.md)).
+`ObjectionRaised` went with the objection window ([ADR-011](../adr/011-payment-on-attestation.md)).
 
 **The requirement they must satisfy (Q3).** The fund balance and every state
 transition must be derivable from the event log alone — no contract storage
@@ -93,12 +81,12 @@ proposal id would force a reader back into contract storage to learn the amount
 
 ## 3. Context
 
-This view says *what* is recorded. [§3.2](../sad.md#3.2%20Functional%20view%20%E2%80%94%20the%20permission%20structure) says which contract records it, [§3.3](../sad.md#3.3%20Behavioural%20view%20%E2%80%94%20the%20loop%2C%20and%20where%20it%20refuses)
+This view says *what* is recorded. [`functional-view.md`](functional-view.md) says which contract records it, [`behavioural-view.md`](behavioural-view.md)
 says in what order. The three together are the description of the system; alone,
 each is misleading.
 
 Out of this view's scope: whether the chain itself can be revised — that is
-[§3.5](../sad.md#3.5%20Deployment%20and%20network%20view) — and whether anyone reads what is published, which no architecture can
+[`deployment-view.md`](deployment-view.md) — and whether anyone reads what is published, which no architecture can
 settle.
 
 ---
@@ -116,7 +104,7 @@ world-readable and expensive, and would add nothing a hash does not — the
 dispute is about whether the roof was fixed, not about whether the photograph
 changed.
 
-**R3. Arrears status is on the chain and is public.** ← S1, [`@doc/product.md` §11.5](../../doc/product.md#11.5%20Arrears%20are%20public). Recorded as **[ADR-005](../decision/005-arrears-published-per-unit.md)**, because a competent engineer would reasonably
+**R3. Arrears status is on the chain and is public.** ← S1, [`product.md` §11.5](../../product.md#115-arrears-are-public). Recorded as **[ADR-005](../adr/005-arrears-published-per-unit.md)**, because a competent engineer would reasonably
 have chosen aggregate-only publication.
 
 **R4. The interface shows status, not amounts or history, and stops surfacing a
@@ -128,7 +116,7 @@ diagram says so with the `«PII»` stereotype on the classes concerned.
 
 **R5. Votes are attributable, not secret.** ← P1, against S1.
 Ballot privacy would need a scheme such as MACI or Semaphore, which is out of
-scope ([`@doc/product.md` §15.3](../../doc/product.md#15.3%20Future%20work)). The consequence — that how a named owner voted
+scope ([`product.md` §15.3](../../product.md#153-future-work)). The consequence — that how a named owner voted
 on their neighbour's proposal is permanently public in a forty-person building —
 is a real social cost and is not currently stated anywhere in the project. It
 should be.
@@ -142,7 +130,7 @@ should be.
 fund's health visible. Rejected because it removes the social pressure that is
 the only enforcement a small building actually has, and because suspending a
 defaulter's vote discloses the default anyway — so the privacy gain is smaller
-than it looks. Full record in [ADR-005](../decision/005-arrears-published-per-unit.md).
+than it looks. Full record in [ADR-005](../adr/005-arrears-published-per-unit.md).
 
 **A2. Store evidence documents on-chain.** *Rejected.* Removes the dependency on
 a party keeping the file. Rejected on permanence, cost, and because it puts
@@ -179,7 +167,7 @@ private documents private while still tying them to the record.
 - **R5's social cost is unstated in the current proposal.** Public per-vote
   attribution in a forty-owner building is a chilling effect on dissent —
   which is uncomfortable, because those votes are the only owner-held control
-  left in the design ([ADR-011](../decision/011-payment-on-attestation.md)).
+  left in the design ([ADR-011](../adr/011-payment-on-attestation.md)).
 - **It costs build effort in an unobvious place.** Getting events
   reconstruction-complete is more work than emitting notifications, and it is
   the thing most likely to be discovered late — after the interface is written
@@ -201,7 +189,7 @@ reconstruction requirement.
 grants authority. The one relevant point is that `PayeeRecord` binds a payment
 address to a company identifier, which is what lets a firm's **payment history**
 be read across buildings — a record of what was paid, not of how well it went — and what makes shedding a bad record harder, though not
-impossible ([`@doc/product.md` §11.3](../../doc/product.md#11.3%20Accountability%20without%20a%20deposit)).
+impossible ([`product.md` §11.3](../../product.md#113-accountability-without-a-deposit)).
 
 **P3 — Participation.** Two contributions and both are negative, which is worth
 saying out loud rather than reaching for a positive. Permanent public vote

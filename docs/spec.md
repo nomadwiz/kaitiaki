@@ -36,6 +36,8 @@ Every design decision serves these. They are properties of what the treasury
 | **G3** | No spending beyond approval — every proposal carries a hard limit | `amount <= proposal.limit` in `Treasury.release` |
 | **G4** | No fund re-purposing — operating money cannot be spent on long-term maintenance, or the reverse | Two segregated balances; `fund == proposal.fund` in `Treasury.release` |
 
+**See:** [ADR-001](decisions/adr/001-narrow-release-interface.md), [functional view](decisions/views/functional-view.md).
+
 ## 3. The two funds
 
 A levy receipt is split across two balances that never mix.
@@ -82,6 +84,8 @@ Use OpenZeppelin's `TimelockController` unchanged. **Write `Governance`
 yourselves** — do not extend OpenZeppelin's `Governor`, because its purpose is
 the general execution path this design removes.
 
+**See:** [functional view](decisions/views/functional-view.md), [ADR-001](decisions/adr/001-narrow-release-interface.md), [ADR-013](decisions/adr/013-own-voting-contract.md).
+
 ## 5. Parameters — statutory, not chosen
 
 Six of the seven come from the scheme these buildings already operate under.
@@ -103,6 +107,8 @@ after 21 days a payment can be approved by a majority of whoever voted, even if
 that is one owner in forty. This is faithful to the statute and is discussed in
 the report as a finding. **It is not a bug — do not "fix" it.**
 
+**See:** [ADR-003](decisions/adr/003-one-unit-one-vote.md), [ADR-011](decisions/adr/011-payment-on-attestation.md), [ADR-012](decisions/adr/012-no-built-in-accountability.md).
+
 ## 6. Events — eight, and they must be sufficient alone
 
 `ChargeIssued`, `LevyPaid`, `ProposalCreated`, `VoteCast`, `ProposalQueued`,
@@ -112,6 +118,8 @@ Every state change emits one. Replaying the log alone — no storage reads, no
 off-chain data — must yield every fund balance and every transition. So an event
 carries enough to *reconstruct*, not merely to notify: `PaymentReleased` must
 carry amount and fund, not only a proposal identifier.
+
+**See:** [information view](decisions/views/information-view.md), [ADR-005](decisions/adr/005-arrears-published-per-unit.md), [ADR-009](decisions/adr/009-publicly-readable.md).
 
 ## 7. The eight refusals — each one is a test
 
@@ -153,6 +161,8 @@ Two adversarial tests carry the strongest claims. **QAS-8:** drive the full
 attacker path holding the firm's key — funds reachable at any new address must
 be zero. **QAS-4:** replay events on an independent node — the derived balance
 must equal the on-chain balance exactly.
+
+**See:** [behavioural view](decisions/views/behavioural-view.md).
 
 ## 8. Requirements
 
@@ -213,6 +223,8 @@ Non-functional requirements with a measure attached:
 The nine `D` requirements are what the report explains as designed and not
 built. Building one of them makes that explanation wrong.
 
+**See:** [context view](decisions/views/context-view.md), [ADR-004](decisions/adr/004-versioning-out-of-scope.md), [ADR-008](decisions/adr/008-immutable-plan.md).
+
 ## 9. Stack
 
 | Piece | Choice |
@@ -236,6 +248,8 @@ network, and nothing here needs a newer opcode. Both compiler profiles carry the
 same optimiser settings, so gas measured in a test is gas of the deployed
 contract.
 
+**See:** [ADR-013](decisions/adr/013-own-voting-contract.md), [ADR-007](decisions/adr/007-proof-of-authority.md), [deployment view](decisions/views/deployment-view.md).
+
 ## 10. What is deliberately absent
 
 Say so on the issue rather than building it.
@@ -249,3 +263,5 @@ Say so on the issue rather than building it.
   disclosure
 - No versioning or upgrade path
 - No token beyond the mock settlement asset
+
+**See:** [ADR-006](decisions/adr/006-no-committee.md), [ADR-012](decisions/adr/012-no-built-in-accountability.md), [ADR-011](decisions/adr/011-payment-on-attestation.md), [ADR-004](decisions/adr/004-versioning-out-of-scope.md).

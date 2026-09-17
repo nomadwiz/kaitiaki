@@ -1,31 +1,19 @@
 # View — Behavioural (the loop, and where it refuses)
 
-<!-- nav -->
-> **Document** · [SAD](../sad.md) · [Decisions](../decision/index.md)
->
-> **Method** · [Index](../index.md) · [Brief](../method/00-brief.md) · [Readers](../method/01-stakeholders.md) · [Outline](../method/02-outline.md) · [Drivers](../method/03-drivers.md) · [Scope](../method/04-poc-scope.md) · [Review](../method/05-cold-review.md)
->
-> **Views** · [Context](context-view.md) · [Functional](functional-view.md) · **Behavioural** · [Information](information-view.md) · [Deployment](deployment-view.md)
-<!-- /nav -->
-
-
-
-
-
-**SAD [§3.3](../sad.md#3.3%20Behavioural%20view%20%E2%80%94%20the%20loop%2C%20and%20where%20it%20refuses).** Answers **Q7** (what happens to a building that starts from a bad
+**SAD [`behavioural-view.md`](behavioural-view.md).** Answers **Q7** (what happens to a building that starts from a bad
 configuration) and shows the ordering the functional view cannot carry.
 
 **Primary readers:** R1 build team, R3 contract auditor.
 **Drivers that forced it:** QAS-10, QAS-11 (P3 participation); the refusal
 branches of QAS-5, QAS-6, QAS-8 (P2).
-**Scope:** the built prototype only, per [`@work/method/04-poc-scope.md`](../method/04-poc-scope.md).
+**Scope:** the built prototype only, per `method/04-poc-scope.md`.
 Designed-only behaviour is marked where it appears.
 
 ---
 
 ## 1. Primary presentation
 
-`@work/diagram/figures.drawio` — page **[Figure 3](../diagram/figures.drawio) — Sequence view**
+`@work/diagram/figures.drawio` — page **Figure 3 — Sequence view**
 
 **View type.** Behavioural — a sequence, because the design's guarantees depend
 on *order* as much as on structure. The functional view says the payee must be
@@ -39,7 +27,7 @@ interaction is abandoned, which is exactly what a reverting transaction does.
 The guard in each fragment is the revert condition, stated in UML guard
 notation.
 
-**Caption.** *[Figure 3](../diagram/figures.drawio) — Sequence view: one sum of money from levy to
+**Caption.** *Figure 3 — Sequence view: one sum of money from levy to
 vendor, and every point where the system refuses.*
 
 **The convention that carries the argument.** Every refusal on the diagram is
@@ -64,7 +52,7 @@ section from being a separate act of faith.
 **Four phases, not five.** An earlier design placed a 20-working-day objection
 window between attestation and payment. It was removed: owners could not block a
 payment that had to be released regardless, so the window delayed an outcome it
-could not change ([ADR-011](../decision/011-payment-on-attestation.md)). Phases 4 and 5 collapsed into one.
+could not change ([ADR-011](../adr/011-payment-on-attestation.md)). Phases 4 and 5 collapsed into one.
 
 ### 2.2 The refusals
 
@@ -92,16 +80,16 @@ in a queued proposal, which reads badly to anyone inspecting the record.
 
 | Absent | Reason |
 | --- | --- |
-| The scheduled-work path (a plan item falling due) | `MaintenancePlan` is designed, not built (`04-poc-scope.md` [§3](../sad.md#3.%20Views)) |
-| Genesis ratification | Configuration is set at deployment in the prototype; see [§3](../sad.md#3.%20Views) below |
-| Claims against retained fees | **Withdrawn from the design**, not deferred — no fee is retained and no claim can be voted ([ADR-012](../decision/012-no-built-in-accountability.md)) |
+| The scheduled-work path (a plan item falling due) | `MaintenancePlan` is designed, not built (`04-poc-scope.md` §3) |
+| Genesis ratification | Configuration is set at deployment in the prototype; see §3 below |
+| Claims against retained fees | **Withdrawn from the design**, not deferred — no fee is retained and no claim can be voted ([ADR-012](../adr/012-no-built-in-accountability.md)) |
 | Ownership changing hands mid-loop | Needs the land title integration, which is designed only |
 
 ---
 
 ## 3. Context
 
-This view animates the structure in [§3.2](../sad.md#3.2%20Functional%20view%20%E2%80%94%20the%20permission%20structure). Every message here is one of the
+This view animates the structure in [`functional-view.md`](functional-view.md). Every message here is one of the
 arrows there, and every refusal is one of the guards in that view's element
 catalogue — the two must be read together, and neither is complete alone.
 
@@ -133,7 +121,7 @@ approve something already claimed as complete, which turns the vote into a
 receipt.
 
 **R3. Attestation releases payment directly — nothing sits between them.** ←
-QAS-11, [ADR-011](../decision/011-payment-on-attestation.md), and the Construction Contracts Act 2002.
+QAS-11, [ADR-011](../adr/011-payment-on-attestation.md), and the Construction Contracts Act 2002.
 Three designs were tried in this gap: an owner objection window, owner completion
 approval, and a plain delay. All three were removed. The objection window could
 not change an outcome, because the money had to release regardless; completion
@@ -144,7 +132,7 @@ cannot alter what happens is theatre.
 argue later": a contractor who has done the work is paid, and disputes are
 resolved afterwards through adjudication rather than by withholding. A design
 that let owners freeze a contractor's payment on suspicion would be *less*
-aligned with the law of this domain, not more. **The cost is stated in [§6](../sad.md#6.%20Realisation%20and%20requirements) and it
+aligned with the law of this domain, not more. **The cost is stated in [`spec.md` §8](../../spec.md#8-requirements) and it
 is not small: a false attestation succeeds, immediately, with nothing in the
 way.**
 
@@ -153,7 +141,7 @@ Queueing and executing can be called by anyone, because nothing on-chain wakes
 itself up. If only the firm could execute, the firm could stall a payment it
 disliked by simply not calling — a veto nobody voted to give it.
 
-**R4a. Owners hold no control after the work vote.** ← [ADR-011](../decision/011-payment-on-attestation.md), and against P3's
+**R4a. Owners hold no control after the work vote.** ← [ADR-011](../adr/011-payment-on-attestation.md), and against P3's
 instinct.
 This is worth stating positively rather than as an absence: **owners control what
 may be authorised and who may be paid; nobody controls whether approved work gets
@@ -235,7 +223,7 @@ whoever calls it is arbitrary.
 | The loop completes with no owner acting after the votes | **Demonstrated** |
 | A scheduled plan item executes at zero turnout | **Designed only** — needs `MaintenancePlan` |
 | A false attestation releases payment | **Demonstrated** — and expected to *succeed*, as the honest statement of the limit |
-| A bad genesis configuration is caught by ratification | **Designed only** — see [§3](../sad.md#3.%20Views) |
+| A bad genesis configuration is caught by ratification | **Designed only** — see §3 |
 
 ---
 
