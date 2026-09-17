@@ -36,3 +36,14 @@ technologies, frameworks and tools used.
 The green suite itself is a canary for the toolchain, not a demonstration of
 system functionality — there are no contracts yet. It belongs in an appendix,
 not as a numbered figure.
+
+### Issue #45 — MockNZD, the mock settlement token
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `45-mocknzd-tests.txt` | The six `MockNZDTest` tests pass alongside the toolchain canaries: 18 decimals; minting succeeds on the Hardhat network and on Sepolia; on 256 randomly chosen other chains it is refused with `MintOutsideTestChain`; and the token has no voting, delegation, role or owner function (NFR15) | `npx hardhat test` |
+
+This proves the governance half of NFR15 only. The other half, that the token
+confers no consensus weight, is a property of the network rather than of any
+contract: validators are appointed under proof of authority (ADR-007). The
+report cites ADR-007 for that half, not this test.
