@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.36;
+
+/// @notice The narrow read surface `MembershipRegistry` (Money in) exposes to
+/// the rest of the system. Governance eligibility and levy attribution both
+/// read through this interface rather than through storage, so any of the
+/// six contracts can be built against a stub while the real registry is
+/// still in progress. See docs/decisions/views/functional-view.md §2.1.
+interface IMembershipQuery {
+    /// @notice Whether `wallet` is the bound owner of `unitId`.
+    function isOwner(uint256 unitId, address wallet) external view returns (bool);
+
+    /// @notice The unit ids currently bound to `wallet`.
+    function unitsOf(address wallet) external view returns (uint256[] memory);
+}
