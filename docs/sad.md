@@ -232,10 +232,12 @@ Seven parameters governed this design and none had a value. All are now set, and
 buildings already operate under, not numbers this project invented. The
 derivation is in `method/06-parameters.md`.
 
+**How that provenance was established, stated because it limits the claim.** legislation.govt.nz refused automated access, so the primary text of the Unit Titles Act 2010 and its Regulations was **not read directly.** Every figure below comes from secondary sources describing the legislation — the Crown's guidance at unittitles.govt.nz, Buddle Findlay's practitioner guide, and Lane Neave on the Construction Contracts Act. They agree with one another on every figure used and two are government-published, but the basis column below attributes each value to the statutory scheme as those sources describe it, not to a section number this project verified. The note under [`product.md`'s references](product.md#references) records the same limit and the rule it follows: a parameter's provenance never rests on a source that was not opened.
+
 | Parameter | Value | Basis |
 | --- | --- | --- |
-| Quorum | 25% of eligible voters, minimum 2 — **10 of 40** at the reference building | Unit Titles Act 2010, s95 |
-| Passing threshold | **Ordinary:** more than 50% of votes cast. **Special (75%):** genesis ratification, plan re-ratification, waiving the audit | Ordinary and special resolution under the same Act |
+| Quorum | 25% of eligible voters, minimum 2 — **10 of 40** at the reference building | The statutory quorum for a body corporate general meeting, per the Crown's guidance at unittitles.govt.nz |
+| Passing threshold | **Ordinary:** more than 50% of votes cast. **Special (75%):** genesis ratification, plan re-ratification, waiving the audit | Ordinary and special resolution under the Unit Titles Act 2010, as that guidance describes it |
 | Voting window | **14 days**; failing quorum it extends **7 days**, after which quorum is waived | Notice period and adjournment rule, Unit Titles Regulations 2011 |
 | Timelock | **7 days** between a proposal passing and the treasury being able to pay | The statutory adjournment period, adopted for coherence |
 | Completion to payment | **None.** Payment releases on the firm's attestation | Construction Contracts Act 2002 — a contractor who has done the work is paid, and disputes run afterwards |
