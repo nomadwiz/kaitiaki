@@ -47,3 +47,25 @@ This proves the governance half of NFR15 only. The other half, that the token
 confers no consensus weight, is a property of the network rather than of any
 contract: validators are appointed under proof of authority (ADR-007). The
 report cites ADR-007 for that half, not this test.
+
+### Issue #43 — coverage, gas statistics, linting and CI
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `43-coverage.txt` | Coverage built into Hardhat 3 (no plugin needed): 100% on `MockNZD`, 0% on the untested stubs — expected, since the stubs exist only for other verticals to build and test against, not to be tested here | `npm run test:coverage` |
+| `43-gas-stats.txt` | Gas usage statistics built into Hardhat 3 for every function call in a test run, proving NFR11 is measurable now rather than retro-fitted in week 4 | `npm run test:gas` |
+| `43-lint.txt` | solhint configured (`solhint:recommended` plus the pinned 0.8.36 compiler-version rule) running clean: 0 errors across every contract, only advisory warnings | `npm run lint` |
+| `.github/workflows/ci.yml` (not evidence text — the file itself) | The workflow that runs lint, format check, build, Solidity tests with coverage, and the TypeScript suite on every pull request | Open a pull request and see the checks run |
+
+**Not yet captured.** A screenshot of the green GitHub Actions run — needs an
+actual pull request open against `main` first.
+
+**Branch protection on main is not done by this issue's code.** It is a
+repository setting only a repo admin can change (verified: this account has
+`push` but not `admin` on `nomadwiz/kaitiaki`), not something a pull request
+can carry. Whoever holds admin needs to turn it on directly in GitHub settings.
+
+Introducing prettier for the first time reformatted three pre-existing files
+(`MockNZD.sol`, `MockNZD.t.sol`, `Toolchain.t.sol`) to the configured line
+width — whitespace only, no behaviour change, verified by the full test suite
+passing unchanged before and after.

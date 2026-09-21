@@ -19,10 +19,7 @@ contract MockNZD is ERC20 {
 
     /// Anyone may mint, but only on the Hardhat network or Sepolia.
     function mint(address to, uint256 amount) external {
-        if (
-            block.chainid != HARDHAT_CHAIN_ID &&
-            block.chainid != SEPOLIA_CHAIN_ID
-        ) {
+        if (block.chainid != HARDHAT_CHAIN_ID && block.chainid != SEPOLIA_CHAIN_ID) {
             revert MintOutsideTestChain(block.chainid);
         }
         _mint(to, amount);

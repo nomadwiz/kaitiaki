@@ -1,0 +1,128 @@
+﻿# Lint for kaitiaki, captured for issue #43
+# Reproduce: npm run lint
+# Captured: 2026-09-21 02:29 UTC
+
+
+> kaitiaki@0.1.0 lint
+> solhint "contracts/**/*.sol"
+
+
+contracts\Toolchain.t.sol
+   4:1  warning  Import in contracts\Toolchain.t.sol doesn't exist in: forge-std/Test.sol  import-path-check
+  16:1  warning  Missing @author tag in contract 'ToolchainTest'                           use-natspec
+  18:5  warning  Missing @notice tag in function 'test_RunnerExecutes'                     use-natspec
+  18:5  warning  Function name must be in mixedCase                                        func-name-mixedcase
+  19:9  warning  GC: String exceeds 32 bytes                                               gas-small-strings
+  24:5  warning  Missing @notice tag in function 'test_CheatcodesAreAvailable'             use-natspec
+  24:5  warning  Function name must be in mixedCase                                        func-name-mixedcase
+  32:5  warning  Missing @notice tag in function 'test_ExpectRevertIsAvailable'            use-natspec
+  32:5  warning  Function name must be in mixedCase                                        func-name-mixedcase
+  39:5  warning  Missing @notice tag in function 'alwaysReverts'                           use-natspec
+
+contracts\MockNZD.t.sol
+   4:1   warning  Import in contracts\MockNZD.t.sol doesn't exist in: forge-std/Test.sol                                     import-path-check
+   9:1   warning  Missing @title tag in contract 'MockNZDTest'                                                               use-natspec
+   9:1   warning  Missing @author tag in contract 'MockNZDTest'                                                              use-natspec
+  13:5   warning  Missing @notice tag in function 'setUp'                                                                    use-natspec
+  21:5   warning  Missing @notice tag in function 'test_NameSymbolAndDecimals'                                               use-natspec
+  21:5   warning  Function name must be in mixedCase                                                                         func-name-mixedcase
+  27:5   warning  Missing @notice tag in function 'test_MintOnHardhatNetwork'                                                use-natspec
+  27:5   warning  Function name must be in mixedCase                                                                         func-name-mixedcase
+  34:5   warning  Missing @notice tag in function 'test_MintOnSepolia'                                                       use-natspec
+  34:5   warning  Function name must be in mixedCase                                                                         func-name-mixedcase
+  40:5   warning  Missing @notice tag in function 'test_AnyAddressMayMint'                                                   use-natspec
+  40:5   warning  Function name must be in mixedCase                                                                         func-name-mixedcase
+  47:5   warning  Missing @notice tag in function 'testFuzz_MintRefusedOffTestChains'                                        use-natspec
+  47:5   warning  Missing @param tag in function 'testFuzz_MintRefusedOffTestChains'                                         use-natspec
+  47:5   warning  Mismatch in @param names for function 'testFuzz_MintRefusedOffTestChains'. Expected: [chainId], Found: []  use-natspec
+  47:5   warning  Function name must be in mixedCase                                                                         func-name-mixedcase
+  63:5   warning  Missing @notice tag in function 'test_NoGovernanceSurface'                                                 use-natspec
+  63:5   warning  Function name must be in mixedCase                                                                         func-name-mixedcase
+  79:23  warning  Avoid to use low level calls                                                                               avoid-low-level-calls
+
+contracts\MockNZD.sol
+  11:1  warning  Missing @author tag in contract 'MockNZD'                                                          use-natspec
+  12:5  warning  Missing @notice tag in variable 'HARDHAT_CHAIN_ID'                                                 use-natspec
+  13:5  warning  Missing @notice tag in variable 'SEPOLIA_CHAIN_ID'                                                 use-natspec
+  18:5  warning  Explicitly mark visibility in function (Set ignoreConstructors to true if using solidity >=0.7.0)  func-visibility
+  21:5  warning  Missing @notice tag in function 'mint'                                                             use-natspec
+  21:5  warning  Missing @param tag in function 'mint'                                                              use-natspec
+  21:5  warning  Mismatch in @param names for function 'mint'. Expected: [to, amount], Found: []                    use-natspec
+
+contracts\stubs\TreasuryStub.sol
+  13:1  warning  Missing @title tag in contract 'TreasuryStub'                                                            use-natspec
+  13:1  warning  Missing @author tag in contract 'TreasuryStub'                                                           use-natspec
+  14:5  warning  Missing @notice tag in event 'Released'                                                                  use-natspec
+  14:5  warning  Missing @param tag in event 'Released'                                                                   use-natspec
+  14:5  warning  Mismatch in @param names for event 'Released'. Expected: [fund, payee, amount, proposalId], Found: []    use-natspec
+  16:5  warning  Missing @notice tag in function 'release'                                                                use-natspec
+  16:5  warning  Missing @param tag in function 'release'                                                                 use-natspec
+  16:5  warning  Mismatch in @param names for function 'release'. Expected: [fund, payee, amount, proposalId], Found: []  use-natspec
+
+contracts\stubs\TimelockStub.sol
+  8:1  warning  Code contains empty blocks                      no-empty-blocks
+  8:1  warning  Missing @title tag in contract 'TimelockStub'   use-natspec
+  8:1  warning  Missing @author tag in contract 'TimelockStub'  use-natspec
+
+contracts\stubs\PayeeRegistryStub.sol
+  11:1  warning  Missing @title tag in contract 'PayeeRegistryStub'                                  use-natspec
+  11:1  warning  Missing @author tag in contract 'PayeeRegistryStub'                                 use-natspec
+  12:5  warning  Missing @notice tag in variable 'registered'                                        use-natspec
+  14:5  warning  Missing @notice tag in function 'admit'                                             use-natspec
+  14:5  warning  Missing @param tag in function 'admit'                                              use-natspec
+  14:5  warning  Mismatch in @param names for function 'admit'. Expected: [payee], Found: []         use-natspec
+  18:5  warning  Missing @notice tag in function 'isRegistered'                                      use-natspec
+  18:5  warning  Missing @param tag in function 'isRegistered'                                       use-natspec
+  18:5  warning  Mismatch in @param names for function 'isRegistered'. Expected: [payee], Found: []  use-natspec
+
+contracts\stubs\MembershipRegistryStub.sol
+  12:1  warning  Missing @title tag in contract 'MembershipRegistryStub'                                  use-natspec
+  12:1  warning  Missing @author tag in contract 'MembershipRegistryStub'                                 use-natspec
+  13:5  warning  Missing @notice tag in variable 'ownerOfUnit'                                            use-natspec
+  16:5  warning  Missing @notice tag in function 'bindUnit'                                               use-natspec
+  16:5  warning  Missing @param tag in function 'bindUnit'                                                use-natspec
+  16:5  warning  Mismatch in @param names for function 'bindUnit'. Expected: [unitId, wallet], Found: []  use-natspec
+  21:5  warning  Missing @notice tag in function 'isOwner'                                                use-natspec
+  21:5  warning  Missing @param tag in function 'isOwner'                                                 use-natspec
+  21:5  warning  Mismatch in @param names for function 'isOwner'. Expected: [unitId, wallet], Found: []   use-natspec
+  25:5  warning  Missing @notice tag in function 'unitsOf'                                                use-natspec
+  25:5  warning  Missing @param tag in function 'unitsOf'                                                 use-natspec
+  25:5  warning  Mismatch in @param names for function 'unitsOf'. Expected: [wallet], Found: []           use-natspec
+
+contracts\stubs\LevyLedgerStub.sol
+  8:1  warning  Code contains empty blocks                        no-empty-blocks
+  8:1  warning  Missing @title tag in contract 'LevyLedgerStub'   use-natspec
+  8:1  warning  Missing @author tag in contract 'LevyLedgerStub'  use-natspec
+
+contracts\stubs\GovernanceStub.sol
+  8:1  warning  Code contains empty blocks                        no-empty-blocks
+  8:1  warning  Missing @title tag in contract 'GovernanceStub'   use-natspec
+  8:1  warning  Missing @author tag in contract 'GovernanceStub'  use-natspec
+
+contracts\interfaces\IRelease.sol
+  18:1  warning  Missing @title tag in contract 'IRelease'                                                                use-natspec
+  18:1  warning  Missing @author tag in contract 'IRelease'                                                               use-natspec
+  19:5  warning  Missing @notice tag in function 'release'                                                                use-natspec
+  19:5  warning  Missing @param tag in function 'release'                                                                 use-natspec
+  19:5  warning  Mismatch in @param names for function 'release'. Expected: [fund, payee, amount, proposalId], Found: []  use-natspec
+
+contracts\interfaces\IPayeeQuery.sol
+   8:1  warning  Missing @title tag in contract 'IPayeeQuery'                                        use-natspec
+   8:1  warning  Missing @author tag in contract 'IPayeeQuery'                                       use-natspec
+  11:5  warning  Missing @param tag in function 'isRegistered'                                       use-natspec
+  11:5  warning  Mismatch in @param names for function 'isRegistered'. Expected: [payee], Found: []  use-natspec
+
+contracts\interfaces\IMembershipQuery.sol
+   9:1  warning  Missing @title tag in contract 'IMembershipQuery'                                       use-natspec
+   9:1  warning  Missing @author tag in contract 'IMembershipQuery'                                      use-natspec
+  11:5  warning  Missing @param tag in function 'isOwner'                                                use-natspec
+  11:5  warning  Mismatch in @param names for function 'isOwner'. Expected: [unitId, wallet], Found: []  use-natspec
+  14:5  warning  Missing @param tag in function 'unitsOf'                                                use-natspec
+  14:5  warning  Mismatch in @param names for function 'unitsOf'. Expected: [wallet], Found: []          use-natspec
+
+✖ 89 problems (0 errors, 89 warnings)
+
+# (solhint's own promotional banner, printed on every run, trimmed here — not
+# part of the lint result)
+
+

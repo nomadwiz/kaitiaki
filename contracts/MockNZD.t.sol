@@ -50,12 +50,7 @@ contract MockNZDTest is Test {
         vm.assume(chainId != token.SEPOLIA_CHAIN_ID());
 
         vm.chainId(chainId);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                MockNZD.MintOutsideTestChain.selector,
-                chainId
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(MockNZD.MintOutsideTestChain.selector, chainId));
         token.mint(holder, 1e18);
     }
 
@@ -66,28 +61,15 @@ contract MockNZDTest is Test {
     /// property of any contract: validators are appointed under proof of
     /// authority (ADR-007).
     function test_NoGovernanceSurface() public {
-        _assertAbsent(
-            abi.encodeWithSignature("getVotes(address)", holder),
-            "getVotes"
-        );
+        _assertAbsent(abi.encodeWithSignature("getVotes(address)", holder), "getVotes");
         _assertAbsent(
             abi.encodeWithSignature("getPastVotes(address,uint256)", holder, 0),
             "getPastVotes"
         );
+        _assertAbsent(abi.encodeWithSignature("delegates(address)", holder), "delegates");
+        _assertAbsent(abi.encodeWithSignature("delegate(address)", holder), "delegate");
         _assertAbsent(
-            abi.encodeWithSignature("delegates(address)", holder),
-            "delegates"
-        );
-        _assertAbsent(
-            abi.encodeWithSignature("delegate(address)", holder),
-            "delegate"
-        );
-        _assertAbsent(
-            abi.encodeWithSignature(
-                "hasRole(bytes32,address)",
-                bytes32(0),
-                holder
-            ),
+            abi.encodeWithSignature("hasRole(bytes32,address)", bytes32(0), holder),
             "hasRole"
         );
         _assertAbsent(abi.encodeWithSignature("owner()"), "owner");
