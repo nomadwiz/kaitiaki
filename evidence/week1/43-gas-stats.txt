@@ -1,0 +1,54 @@
+﻿# Solidity gas usage statistics for kaitiaki, captured for issue #43
+# Reproduce: npm run test:gas
+# Captured: 2026-09-21 02:29 UTC
+
+
+> kaitiaki@0.1.0 test:gas
+> hardhat test solidity --gas-stats
+
+
+Compiled 12 Solidity files with solc 0.8.36 (evm target: prague)
+
+Running Solidity tests
+
+  contracts/Toolchain.t.sol:ToolchainTest
+    ✔ test_RunnerExecutes()
+    ✔ test_ExpectRevertIsAvailable()
+    ✔ test_CheatcodesAreAvailable()
+
+  contracts/MockNZD.t.sol:MockNZDTest
+    ✔ test_NoGovernanceSurface()
+    ✔ test_NameSymbolAndDecimals()
+    ✔ test_MintOnSepolia()
+    ✔ test_MintOnHardhatNetwork()
+    ✔ test_AnyAddressMayMint()
+    ✔ testFuzz_MintRefusedOffTestChains(uint256) (runs: 256)
+
+
+  9 passing
+╔══════════════════════════════════════════════════════════════════════╗
+║                         Gas Usage Statistics                         ║
+╚══════════════════════════════════════════════════════════════════════╝
+╔══════════════════════════════════════════════════════════════════════╗
+║ contracts/MockNZD.sol:MockNZD                                        ║
+╟──────────────────┬────────┬─────────┬────────┬────────┬──────────────╢
+║ Function name    │ Min    │ Average │ Median │ Max    │ #calls       ║
+╟──────────────────┼────────┼─────────┼────────┼────────┼──────────────╢
+║ balanceOf        │ 2537   │ 2537    │ 2537   │ 2537   │ 3            ║
+║ decimals         │ 265    │ 265     │ 265    │ 265    │ 1            ║
+║ HARDHAT_CHAIN_ID │ 282    │ 282     │ 282    │ 282    │ 3            ║
+║ mint             │ 68574  │ 68586   │ 68586  │ 68599  │ 3            ║
+║ name             │ 3086   │ 3086    │ 3086   │ 3086   │ 1            ║
+║ SEPOLIA_CHAIN_ID │ 238    │ 238     │ 238    │ 238    │ 2            ║
+║ symbol           │ 3107   │ 3107    │ 3107   │ 3107   │ 1            ║
+║ totalSupply      │ 2325   │ 2325    │ 2325   │ 2325   │ 1            ║
+╟──────────────────┼────────┼─────────┼────────┼────────┼──────────────╢
+║ Deployment       │ Min    │ Average │ Median │ Max    │ #deployments ║
+╟──────────────────┼────────┼─────────┼────────┼────────┼──────────────╢
+║                  │ 528465 │ 528465  │ 528465 │ 528465 │ 1            ║
+╟──────────────────┼────────┼─────────┴────────┴────────┴──────────────╢
+║ Bytecode size    │ 1956   │                                          ║
+╚══════════════════╧════════╧══════════════════════════════════════════╝
+
+
+

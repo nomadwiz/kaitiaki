@@ -13,7 +13,13 @@
     "test": "hardhat test",
     "test:solidity": "hardhat test solidity",
     "test:mocha": "hardhat test mocha",
-    "typecheck": "tsc --noEmit"
+    "test:coverage": "hardhat test solidity --coverage",
+    "test:gas": "hardhat test solidity --gas-stats",
+    "typecheck": "tsc --noEmit",
+    "lint": "solhint \"contracts/**/*.sol\"",
+    "lint:fix": "solhint \"contracts/**/*.sol\" --fix",
+    "format": "prettier --write \"contracts/**/*.sol\"",
+    "format:check": "prettier --check \"contracts/**/*.sol\""
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox-mocha-ethers": "^3.0.7",
@@ -25,6 +31,9 @@
     "forge-std": "git+https://github.com/foundry-rs/forge-std.git#v1.16.2",
     "hardhat": "^3.15.0",
     "mocha": "^11.0.0",
+    "prettier": "^3.9.8",
+    "prettier-plugin-solidity": "^2.4.1",
+    "solhint": "^6.2.4",
     "typescript": "~6.0.3"
   },
   "dependencies": {
