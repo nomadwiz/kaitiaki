@@ -1,5 +1,8 @@
+# npm run test:coverage
 
-Compiled 15 Solidity files with solc 0.8.36 (evm target: prague)
+
+
+Compiled 14 Solidity files with solc 0.8.36 (evm target: prague)
 
 Running Solidity tests
 
@@ -47,7 +50,6 @@ Running Solidity tests
 
 
   34 passing
-Saved html report to C:\Users\SOKHOUR\OneDrive\Documents\Master_AUT\03_Courses\S2_COMP842_AppliedBlockchainsAndCryptocurrencies\Assignments\A01_BlockchainProject\Kaitiaki\code\coverage\html
 ╔═════════════════════════════════════════════════════════════════════════════════════╗
 ║                                   Coverage Report                                   ║
 ╚═════════════════════════════════════════════════════════════════════════════════════╝
@@ -62,7 +64,7 @@ Saved html report to C:\Users\SOKHOUR\OneDrive\Documents\Master_AUT\03_Courses\S
 ║ contracts\stubs\PayeeRegistryStub.sol      │ 100.00 │ 100.00      │ -               ║
 ║ contracts\stubs\TreasuryStub.sol           │ 0.00   │ 0.00        │ 17              ║
 ╟────────────────────────────────────────────┼────────┼─────────────┼─────────────────╢
-║ Total                                      │ 98.18  │ 98.36       │                 ║
+║ Total                                      │ 98.55  │ 98.36       │                 ║
 ╚════════════════════════════════════════════╧════════╧═════════════╧═════════════════╝
 
 

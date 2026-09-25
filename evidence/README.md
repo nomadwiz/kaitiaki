@@ -81,3 +81,12 @@ passing unchanged before and after.
 The unregistered-vendor case proves the guard exists. The refusal test B2
 itself is #61, written by another member (`ownership.md`), and is the one the
 report cites.
+
+### Issue #54 — Governance: castVote and eligibility
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `54-governance-castvote-tests.txt` | The 10 `GovernanceVoteTest` tests pass alongside the existing suites, with 100% line and branch coverage of `Governance.sol`: a bound owner votes and an unbound wallet is refused with `NotBoundOwner` (FR2); weight is the number of units held (FR19); a unit votes once per proposal, including after it changes hands, and a second vote with nothing new is refused with `AlreadyVoted` (ADR-003); `VoteCast` carries the wallet, direction, weight and unit ids | `npm run test:coverage` |
+
+The unbound-wallet case proves the guard exists. The refusal test B8 itself is
+#67, which the report cites.
