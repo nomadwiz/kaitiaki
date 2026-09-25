@@ -78,6 +78,12 @@ passing unchanged before and after.
 | --- | --- | --- |
 | `47-treasury-tests.txt` | Treasury tests pass, including the configured ledger, settlement-token custody, and 80/20 fund split | `npm run test:coverage` |
 
+### Issue #48 — Treasury release guards
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `47-treasury-tests.txt` | Treasury release tests pass for releaser authorization, proposal existence, payee registration, proposal limits, fund matching, sufficient balances, settlement-token payment, and `PaymentReleased` event emission | `npm run test:coverage` |
+
 ## week4
 
 ### Issue #53 — Governance: propose, for both proposal kinds

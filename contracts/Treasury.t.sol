@@ -5,14 +5,17 @@ import {Test} from "forge-std/Test.sol";
 import {Fund} from "./interfaces/IRelease.sol";
 import {Treasury} from "./Treasury.sol";
 import {MockNZD} from "./MockNZD.sol";
+import {PayeeRegistryStub} from "./stubs/PayeeRegistryStub.sol";
 
 contract TreasuryTest is Test {
     event Deposited(uint256 amount, uint256 operatingAmount, uint256 maintenanceAmount);
 
     Treasury internal treasury;
     MockNZD internal settlementAsset;
+    PayeeRegistryStub internal payeeRegistry;
     address internal ledger = makeAddr("ledger");
     address internal stranger = makeAddr("stranger");
+    address internal payee = makeAddr("payee");
 
     function setUp() public {
         treasury = new Treasury(8000);
@@ -20,6 +23,7 @@ contract TreasuryTest is Test {
         settlementAsset = new MockNZD();
         treasury.setSettlementAsset(address(settlementAsset));
         settlementAsset.mint(ledger, 2_000e18 + 1);
+        payeeRegistry = new PayeeRegistryStub();
     }
 
     function test_DepositSplitsReceiptAcrossBothFunds() public {
@@ -56,7 +60,7 @@ contract TreasuryTest is Test {
         Treasury configured = new Treasury(8000);
         configured.grantRole(configured.DEPOSITOR_ROLE(), ledger);
 
-        vm.expectRevert(abi.encodeWithSelector(Treasury.SettlementTransferFailed.selector, 1e18));
+        vm.expectRevert(abi.encodeWithSelector(Treasury.DepositTransferFailed.selector, 1e18));
         vm.prank(ledger);
         configured.deposit(1e18);
     }
@@ -107,5 +111,108 @@ contract TreasuryTest is Test {
     function test_BoundaryRatiosAreAccepted() public {
         assertEq(new Treasury(0).operatingRatioBps(), 0);
         assertEq(new Treasury(10_000).operatingRatioBps(), 10_000);
+    }
+
+    function test_ReleaseRequiresReleaserRole() public {
+        _configureProposal(Fund.Operating, 1_000e18);
+
+        vm.expectRevert(abi.encodeWithSelector(Treasury.UnauthorizedReleaser.selector, stranger));
+        vm.prank(stranger);
+        treasury.release(Fund.Operating, payee, 1e18, 1);
+    }
+
+    function test_ReleaseRejectsUnknownProposal() public {
+        vm.expectRevert(abi.encodeWithSelector(Treasury.UnknownProposal.selector, 1));
+        treasury.release(Fund.Operating, payee, 1e18, 1);
+    }
+
+    function test_ReleaseRejectsUnregisteredPayee() public {
+        _configureProposal(Fund.Operating, 1_000e18);
+        _deposit(1_000e18);
+
+        vm.expectRevert(abi.encodeWithSelector(Treasury.PayeeNotRegistered.selector, payee));
+        treasury.release(Fund.Operating, payee, 1e18, 1);
+    }
+
+    function test_ReleaseRejectsAmountOverProposalLimit() public {
+        _configureProposal(Fund.Operating, 1_000e18);
+        payeeRegistry.admit(payee);
+        _deposit(1_000e18);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(Treasury.AmountExceedsLimit.selector, 1, 1_001e18, 1_000e18)
+        );
+        treasury.release(Fund.Operating, payee, 1_001e18, 1);
+    }
+
+    function test_ReleaseRejectsWrongFund() public {
+        _configureProposal(Fund.LongTermMaintenance, 1_000e18);
+        payeeRegistry.admit(payee);
+        _deposit(1_000e18);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Treasury.FundMismatch.selector,
+                Fund.LongTermMaintenance,
+                Fund.Operating
+            )
+        );
+        treasury.release(Fund.Operating, payee, 1e18, 1);
+    }
+
+    function test_ReleaseRejectsInsufficientBalance() public {
+        _configureProposal(Fund.Operating, 1_000e18);
+        payeeRegistry.admit(payee);
+        _deposit(1_000e18);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Treasury.InsufficientBalance.selector,
+                Fund.Operating,
+                801e18,
+                800e18
+            )
+        );
+        treasury.release(Fund.Operating, payee, 801e18, 1);
+    }
+
+    function test_ReleasePaysSettlementAssetAndUpdatesBalance() public {
+        _configureProposal(Fund.Operating, 1_000e18);
+        payeeRegistry.admit(payee);
+        _deposit(1_000e18);
+
+        treasury.release(Fund.Operating, payee, 500e18, 1);
+
+        assertEq(settlementAsset.balanceOf(payee), 500e18);
+        assertEq(treasury.balanceOf(Fund.Operating), 300e18);
+    }
+
+    function test_ReleaseEmitsPaymentDetails() public {
+        _configureProposal(Fund.Operating, 1_000e18);
+        payeeRegistry.admit(payee);
+        _deposit(1_000e18);
+
+        vm.expectEmit(address(treasury));
+        emit PaymentReleased(Fund.Operating, payee, 500e18, 1);
+        treasury.release(Fund.Operating, payee, 500e18, 1);
+    }
+
+    event PaymentReleased(
+        Fund indexed fund,
+        address indexed payee,
+        uint256 amount,
+        uint256 proposalId
+    );
+
+    function _configureProposal(Fund fund, uint256 limit) internal {
+        treasury.setPayeeRegistry(address(payeeRegistry));
+        treasury.setProposal(1, fund, limit);
+    }
+
+    function _deposit(uint256 amount) internal {
+        vm.startPrank(ledger);
+        settlementAsset.approve(address(treasury), amount);
+        treasury.deposit(amount);
+        vm.stopPrank();
     }
 }
