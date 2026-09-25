@@ -1,5 +1,8 @@
+# npm run test:coverage
 
-Compiled 14 Solidity files with solc 0.8.36 (evm target: prague)
+
+
+Compiled 13 Solidity files with solc 0.8.36 (evm target: prague)
 
 Running Solidity tests
 
@@ -34,7 +37,6 @@ Running Solidity tests
 
 
   23 passing
-Saved html report to C:\Users\SOKHOUR\OneDrive\Documents\Master_AUT\03_Courses\S2_COMP842_AppliedBlockchainsAndCryptocurrencies\Assignments\A01_BlockchainProject\Kaitiaki\code\coverage\html
 ╔═════════════════════════════════════════════════════════════════════════════════════╗
 ║                                   Coverage Report                                   ║
 ╚═════════════════════════════════════════════════════════════════════════════════════╝

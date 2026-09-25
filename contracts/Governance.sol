@@ -50,8 +50,9 @@ contract Governance {
 
     mapping(uint256 proposalId => Proposal) private _proposals;
 
-    /// @notice Carries every stored field, so a proposal can be rebuilt from
-    /// the log alone without a storage read (CLAUDE.md rule 6, QAS-4).
+    /// @notice Carries every stored field except `createdAt`, which is the
+    /// block timestamp of this log, so a proposal can be rebuilt from the log
+    /// alone without a storage read (CLAUDE.md rule 6, QAS-4).
     event ProposalCreated(
         uint256 indexed proposalId,
         ProposalKind kind,
