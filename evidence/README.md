@@ -77,3 +77,15 @@ passing unchanged before and after.
 | File | What it shows | Reproduce with |
 | --- | --- | --- |
 | `47-treasury-tests.txt` | Treasury tests pass, including the configured ledger, settlement-token custody, and 80/20 fund split | `npm run test:coverage` |
+
+## week4
+
+### Issue #53 — Governance: propose, for both proposal kinds
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `53-governance-propose-tests.txt` | The 14 `GovernanceProposeTest` tests pass alongside the existing suites, with 100% line and branch coverage of `Governance.sol`: the firm proposes both kinds (FR16, FR17); any other caller is refused with `NotFirm`, fuzzed over 256 callers per function; a work proposal naming an unregistered vendor is refused at creation with `PayeeNotRegistered` (FR18, G2); `ProposalCreated` carries the proposal's fields | `npm run test:coverage` |
+
+The unregistered-vendor case proves the guard exists. The refusal test B2
+itself is #61, written by another member (`ownership.md`), and is the one the
+report cites.
