@@ -3,6 +3,7 @@ pragma solidity 0.8.36;
 
 import {Fund} from "./interfaces/IRelease.sol";
 import {IPayeeQuery} from "./interfaces/IPayeeQuery.sol";
+import {IMembershipQuery} from "./interfaces/IMembershipQuery.sol";
 
 /// @notice Proposals, voting, quorum, queueing and attestation for one
 /// building (docs/spec.md §4). Written for this project rather than extending
@@ -13,8 +14,8 @@ import {IPayeeQuery} from "./interfaces/IPayeeQuery.sol";
 /// One function name, `propose`, overloaded for the two kinds — the name the
 /// spec, the views and the figures use throughout.
 ///
-/// This revision is issue #53: raising proposals. Voting (#54), the window and
-/// quorum (#55), the timelock (#56) and attestation (#57) follow.
+/// Built so far: raising proposals (#53) and voting on them (#54). The window
+/// and quorum (#55), the timelock (#56) and attestation (#57) follow.
 contract Governance {
     /// @notice The two kinds of proposal in the built loop. `Admit` puts a
     /// vendor on the approved list (FR16); `Work` spends against it (FR17).
@@ -36,6 +37,12 @@ contract Governance {
         string description;
     }
 
+    /// @notice Votes cast so far, weighted by unit (FR19).
+    struct Tally {
+        uint256 forVotes;
+        uint256 againstVotes;
+    }
+
     /// @notice The management firm's key: the only address that may propose.
     /// Fixed at deployment — there is no admin to rotate it, so a stolen key
     /// is bounded by the guards downstream rather than by revocation (QAS-8).
@@ -44,11 +51,20 @@ contract Governance {
     /// @notice The approved-vendor list, read at proposal time (G2).
     IPayeeQuery public immutable payees;
 
+    /// @notice The unit register. Voting eligibility is read from here, never
+    /// from anything the voter supplies (FR2, B8).
+    IMembershipQuery public immutable members;
+
     /// @notice The number of proposals raised. Ids run from 1, so 0 never
     /// names a real proposal.
     uint256 public proposalCount;
 
     mapping(uint256 proposalId => Proposal) private _proposals;
+    mapping(uint256 proposalId => Tally) private _tallies;
+
+    /// @notice Whether a unit has voted on a proposal. Kept per unit, not per
+    /// wallet, so a unit that changes hands mid-vote still votes only once.
+    mapping(uint256 proposalId => mapping(uint256 unitId => bool)) public unitHasVoted;
 
     /// @notice Carries every stored field, so a proposal can be rebuilt from
     /// the log alone without a storage read (CLAUDE.md rule 6, QAS-4).
@@ -62,18 +78,36 @@ contract Governance {
         string description
     );
 
+    /// @notice Names the units that voted, so which units have voted — not
+    /// only the totals — can be rebuilt from the log alone (rule 6).
+    event VoteCast(
+        uint256 indexed proposalId,
+        address indexed voter,
+        bool inFavour,
+        uint256 weight,
+        uint256[] unitIds
+    );
+
     error FirmIsZero();
     error PayeeRegistryIsZero();
+    error MembershipRegistryIsZero();
     error VendorIsZero();
     error NotFirm(address caller);
     /// B2: a work proposal names a vendor the owners have not admitted.
     error PayeeNotRegistered(address payee);
+    error UnknownProposal(uint256 proposalId);
+    /// B8: the caller is not the bound owner of any unit.
+    error NotBoundOwner(address caller);
+    /// Every unit the caller owns has already voted on this proposal.
+    error AlreadyVoted(uint256 proposalId, address voter);
 
-    constructor(address firm_, IPayeeQuery payees_) {
+    constructor(address firm_, IPayeeQuery payees_, IMembershipQuery members_) {
         if (firm_ == address(0)) revert FirmIsZero();
         if (address(payees_) == address(0)) revert PayeeRegistryIsZero();
+        if (address(members_) == address(0)) revert MembershipRegistryIsZero();
         firm = firm_;
         payees = payees_;
+        members = members_;
     }
 
     modifier onlyFirm() {
@@ -102,6 +136,42 @@ contract Governance {
     ) external onlyFirm returns (uint256 proposalId) {
         if (!payees.isRegistered(vendor)) revert PayeeNotRegistered(vendor);
         proposalId = _store(ProposalKind.Work, vendor, fund, limit, quoteHash, description);
+    }
+
+    /// @notice FR2, FR19. Vote on `proposalId` with every unit the caller
+    /// owns that has not yet voted on it — one unit, one vote (ADR-003).
+    /// Eligibility is checked unit by unit against the register (B8).
+    /// @return weight The number of units this call voted with.
+    function castVote(uint256 proposalId, bool inFavour) external returns (uint256 weight) {
+        if (_proposals[proposalId].createdAt == 0) revert UnknownProposal(proposalId);
+
+        uint256[] memory held = members.unitsOf(msg.sender);
+        uint256[] memory voted = new uint256[](held.length);
+        bool ownsAny;
+        for (uint256 i = 0; i < held.length; ++i) {
+            uint256 unitId = held[i];
+            if (!members.isOwner(unitId, msg.sender)) continue;
+            ownsAny = true;
+            if (unitHasVoted[proposalId][unitId]) continue;
+            unitHasVoted[proposalId][unitId] = true;
+            voted[weight++] = unitId;
+        }
+        if (!ownsAny) revert NotBoundOwner(msg.sender);
+        if (weight == 0) revert AlreadyVoted(proposalId, msg.sender);
+
+        uint256[] memory unitIds = new uint256[](weight);
+        for (uint256 i = 0; i < weight; ++i) unitIds[i] = voted[i];
+
+        Tally storage tally = _tallies[proposalId];
+        if (inFavour) tally.forVotes += weight;
+        else tally.againstVotes += weight;
+
+        emit VoteCast(proposalId, msg.sender, inFavour, weight, unitIds);
+    }
+
+    /// @notice Votes cast on `proposalId` so far, by unit.
+    function tallyOf(uint256 proposalId) external view returns (Tally memory) {
+        return _tallies[proposalId];
     }
 
     /// @notice The stored proposal. Reverts on nothing: an unknown id returns

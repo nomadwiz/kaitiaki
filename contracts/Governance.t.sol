@@ -5,7 +5,9 @@ import {Test} from "forge-std/Test.sol";
 import {Governance} from "./Governance.sol";
 import {Fund} from "./interfaces/IRelease.sol";
 import {IPayeeQuery} from "./interfaces/IPayeeQuery.sol";
+import {IMembershipQuery} from "./interfaces/IMembershipQuery.sol";
 import {PayeeRegistryStub} from "./stubs/PayeeRegistryStub.sol";
+import {MembershipRegistryStub} from "./stubs/MembershipRegistryStub.sol";
 
 /// @notice Issue #53. Raising proposals: FR16, FR17, FR18. The refusal test B2
 /// itself is issue #61 and is written by another member (docs/ownership.md);
@@ -13,6 +15,7 @@ import {PayeeRegistryStub} from "./stubs/PayeeRegistryStub.sol";
 contract GovernanceProposeTest is Test {
     Governance internal governance;
     PayeeRegistryStub internal payees;
+    MembershipRegistryStub internal members;
 
     address internal firm = makeAddr("firm");
     address internal vendor = makeAddr("vendor");
@@ -32,7 +35,8 @@ contract GovernanceProposeTest is Test {
 
     function setUp() public {
         payees = new PayeeRegistryStub();
-        governance = new Governance(firm, payees);
+        members = new MembershipRegistryStub();
+        governance = new Governance(firm, payees, members);
     }
 
     // --- Deployment ----------------------------------------------------------
@@ -40,17 +44,23 @@ contract GovernanceProposeTest is Test {
     function test_ConstructorRecordsFirmAndRegistry() public view {
         assertEq(governance.firm(), firm);
         assertEq(address(governance.payees()), address(payees));
+        assertEq(address(governance.members()), address(members));
         assertEq(governance.proposalCount(), 0);
     }
 
     function test_ConstructorRefusesZeroFirm() public {
         vm.expectRevert(Governance.FirmIsZero.selector);
-        new Governance(address(0), payees);
+        new Governance(address(0), payees, members);
     }
 
     function test_ConstructorRefusesZeroRegistry() public {
         vm.expectRevert(Governance.PayeeRegistryIsZero.selector);
-        new Governance(firm, IPayeeQuery(address(0)));
+        new Governance(firm, IPayeeQuery(address(0)), members);
+    }
+
+    function test_ConstructorRefusesZeroMembershipRegistry() public {
+        vm.expectRevert(Governance.MembershipRegistryIsZero.selector);
+        new Governance(firm, payees, IMembershipQuery(address(0)));
     }
 
     // --- FR16: the firm may propose admitting a vendor -----------------------
