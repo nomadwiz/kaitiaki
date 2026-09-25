@@ -1,0 +1,55 @@
+
+Compiled 14 Solidity files with solc 0.8.36 (evm target: prague)
+
+Running Solidity tests
+
+  contracts/Toolchain.t.sol:ToolchainTest
+    ✔ test_RunnerExecutes()
+    ✔ test_ExpectRevertIsAvailable()
+    ✔ test_CheatcodesAreAvailable()
+
+  contracts/Governance.t.sol:GovernanceProposeTest
+    ✔ test_UnknownIdIsZeroed()
+    ✔ test_ProposeWorkRefusesUnregisteredVendor()
+    ✔ test_ProposeWorkEmitsProposalCreated()
+    ✔ test_ProposeAdmitRefusesZeroVendor()
+    ✔ test_ProposeAdmitEmitsProposalCreated()
+    ✔ test_ProposeAdmitDoesNotRegisterVendor()
+    ✔ test_IdsIncreaseFromOne()
+    ✔ test_FirmProposesWork()
+    ✔ test_FirmProposesAdmit()
+    ✔ test_ConstructorRefusesZeroRegistry()
+    ✔ test_ConstructorRefusesZeroFirm()
+    ✔ test_ConstructorRecordsFirmAndRegistry()
+    ✔ testFuzz_ProposeWorkRefusesNonFirm(address) (runs: 256)
+    ✔ testFuzz_ProposeAdmitRefusesNonFirm(address) (runs: 256)
+
+  contracts/MockNZD.t.sol:MockNZDTest
+    ✔ test_NoGovernanceSurface()
+    ✔ test_NameSymbolAndDecimals()
+    ✔ test_MintOnSepolia()
+    ✔ test_MintOnHardhatNetwork()
+    ✔ test_AnyAddressMayMint()
+    ✔ testFuzz_MintRefusedOffTestChains(uint256) (runs: 256)
+
+
+  23 passing
+Saved html report to C:\Users\SOKHOUR\OneDrive\Documents\Master_AUT\03_Courses\S2_COMP842_AppliedBlockchainsAndCryptocurrencies\Assignments\A01_BlockchainProject\Kaitiaki\code\coverage\html
+╔═════════════════════════════════════════════════════════════════════════════════════╗
+║                                   Coverage Report                                   ║
+╚═════════════════════════════════════════════════════════════════════════════════════╝
+╔═════════════════════════════════════════════════════════════════════════════════════╗
+║ File Coverage                                                                       ║
+╟────────────────────────────────────────────┬────────┬─────────────┬─────────────────╢
+║ File Path                                  │ Line % │ Statement % │ Uncovered Lines ║
+╟────────────────────────────────────────────┼────────┼─────────────┼─────────────────╢
+║ contracts\Governance.sol                   │ 100.00 │ 100.00      │ -               ║
+║ contracts\MockNZD.sol                      │ 100.00 │ 100.00      │ -               ║
+║ contracts\stubs\MembershipRegistryStub.sol │ 0.00   │ 0.00        │ 17-18, 22, 26   ║
+║ contracts\stubs\PayeeRegistryStub.sol      │ 100.00 │ 100.00      │ -               ║
+║ contracts\stubs\TreasuryStub.sol           │ 0.00   │ 0.00        │ 17              ║
+╟────────────────────────────────────────────┼────────┼─────────────┼─────────────────╢
+║ Total                                      │ 84.85  │ 83.33       │                 ║
+╚════════════════════════════════════════════╧════════╧═════════════╧═════════════════╝
+
+
