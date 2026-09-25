@@ -10,6 +10,9 @@ import {IPayeeQuery} from "./interfaces/IPayeeQuery.sol";
 /// design removes (ADR-013). A proposal carries terms — a payee, a limit, a
 /// fund — and never a target address or calldata (ADR-001).
 ///
+/// One function name, `propose`, overloaded for the two kinds — the name the
+/// spec, the views and the figures use throughout.
+///
 /// This revision is issue #53: raising proposals. Voting (#54), the window and
 /// quorum (#55), the timelock (#56) and attestation (#57) follow.
 contract Governance {
@@ -81,7 +84,7 @@ contract Governance {
     /// @notice FR16. Propose admitting `vendor` to the approved list. The
     /// vendor is admitted only if the owners vote for it and the proposal
     /// executes; raising it changes nothing.
-    function proposeAdmit(address vendor) external onlyFirm returns (uint256 proposalId) {
+    function propose(address vendor) external onlyFirm returns (uint256 proposalId) {
         if (vendor == address(0)) revert VendorIsZero();
         proposalId = _store(ProposalKind.Admit, vendor, Fund.Operating, 0, bytes32(0), "");
     }
@@ -90,7 +93,7 @@ contract Governance {
     /// `limit`. Refused at creation if the vendor is not on the approved list
     /// (B2); the treasury checks again at payment time (B2′).
     /// @param quoteHash Commits the vendor's quote, which stays off the chain.
-    function proposeWork(
+    function propose(
         string calldata description,
         uint256 limit,
         Fund fund,

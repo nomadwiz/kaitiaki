@@ -57,7 +57,7 @@ contract GovernanceProposeTest is Test {
 
     function test_FirmProposesAdmit() public {
         vm.prank(firm);
-        uint256 id = governance.proposeAdmit(vendor);
+        uint256 id = governance.propose(vendor);
 
         assertEq(id, 1);
         Governance.Proposal memory p = governance.proposal(id);
@@ -70,7 +70,7 @@ contract GovernanceProposeTest is Test {
     /// Raising an admit proposal admits nobody; only an executed vote does.
     function test_ProposeAdmitDoesNotRegisterVendor() public {
         vm.prank(firm);
-        governance.proposeAdmit(vendor);
+        governance.propose(vendor);
         assertFalse(payees.isRegistered(vendor));
     }
 
@@ -78,20 +78,20 @@ contract GovernanceProposeTest is Test {
         vm.expectEmit(address(governance));
         emit ProposalCreated(1, Governance.ProposalKind.Admit, vendor, 0, Fund.Operating, 0, "");
         vm.prank(firm);
-        governance.proposeAdmit(vendor);
+        governance.propose(vendor);
     }
 
     function test_ProposeAdmitRefusesZeroVendor() public {
         vm.prank(firm);
         vm.expectRevert(Governance.VendorIsZero.selector);
-        governance.proposeAdmit(address(0));
+        governance.propose(address(0));
     }
 
     function testFuzz_ProposeAdmitRefusesNonFirm(address caller) public {
         vm.assume(caller != firm);
         vm.prank(caller);
         vm.expectRevert(abi.encodeWithSelector(Governance.NotFirm.selector, caller));
-        governance.proposeAdmit(vendor);
+        governance.propose(vendor);
     }
 
     // --- FR17: the firm may propose work against an approved vendor ----------
@@ -100,7 +100,7 @@ contract GovernanceProposeTest is Test {
         payees.admit(vendor);
 
         vm.prank(firm);
-        uint256 id = governance.proposeWork(
+        uint256 id = governance.propose(
             "Repaint stairwell",
             4_500e18,
             Fund.LongTermMaintenance,
@@ -133,7 +133,7 @@ contract GovernanceProposeTest is Test {
             "Repaint stairwell"
         );
         vm.prank(firm);
-        governance.proposeWork("Repaint stairwell", 4_500e18, Fund.Operating, vendor, QUOTE_HASH);
+        governance.propose("Repaint stairwell", 4_500e18, Fund.Operating, vendor, QUOTE_HASH);
     }
 
     function testFuzz_ProposeWorkRefusesNonFirm(address caller) public {
@@ -142,7 +142,7 @@ contract GovernanceProposeTest is Test {
 
         vm.prank(caller);
         vm.expectRevert(abi.encodeWithSelector(Governance.NotFirm.selector, caller));
-        governance.proposeWork("Repaint stairwell", 1e18, Fund.Operating, vendor, QUOTE_HASH);
+        governance.propose("Repaint stairwell", 1e18, Fund.Operating, vendor, QUOTE_HASH);
     }
 
     // --- FR18: an unapproved vendor is refused at creation -------------------
@@ -150,7 +150,7 @@ contract GovernanceProposeTest is Test {
     function test_ProposeWorkRefusesUnregisteredVendor() public {
         vm.prank(firm);
         vm.expectRevert(abi.encodeWithSelector(Governance.PayeeNotRegistered.selector, stranger));
-        governance.proposeWork("Repaint stairwell", 1e18, Fund.Operating, stranger, QUOTE_HASH);
+        governance.propose("Repaint stairwell", 1e18, Fund.Operating, stranger, QUOTE_HASH);
         assertEq(governance.proposalCount(), 0);
     }
 
@@ -160,9 +160,9 @@ contract GovernanceProposeTest is Test {
         payees.admit(vendor);
 
         vm.startPrank(firm);
-        assertEq(governance.proposeAdmit(stranger), 1);
-        assertEq(governance.proposeWork("Roof", 1e18, Fund.Operating, vendor, QUOTE_HASH), 2);
-        assertEq(governance.proposeAdmit(stranger), 3);
+        assertEq(governance.propose(stranger), 1);
+        assertEq(governance.propose("Roof", 1e18, Fund.Operating, vendor, QUOTE_HASH), 2);
+        assertEq(governance.propose(stranger), 3);
         vm.stopPrank();
 
         assertEq(governance.proposalCount(), 3);
