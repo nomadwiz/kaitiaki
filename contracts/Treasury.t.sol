@@ -5,20 +5,25 @@ import {Test} from "forge-std/Test.sol";
 import {Fund} from "./interfaces/IRelease.sol";
 import {Treasury} from "./Treasury.sol";
 import {MockNZD} from "./MockNZD.sol";
+import {GovernanceStub} from "./stubs/GovernanceStub.sol";
 import {PayeeRegistryStub} from "./stubs/PayeeRegistryStub.sol";
 
 contract TreasuryTest is Test {
     event Deposited(uint256 amount, uint256 operatingAmount, uint256 maintenanceAmount);
 
     Treasury internal treasury;
+    GovernanceStub internal governance;
     MockNZD internal settlementAsset;
     PayeeRegistryStub internal payeeRegistry;
     address internal ledger = makeAddr("ledger");
     address internal stranger = makeAddr("stranger");
+    address internal timelock = makeAddr("timelock");
     address internal payee = makeAddr("payee");
 
     function setUp() public {
-        treasury = new Treasury(8000);
+        governance = new GovernanceStub();
+        treasury = new Treasury(8000, address(governance));
+        treasury.grantRole(treasury.RELEASER_ROLE(), timelock);
         treasury.grantRole(treasury.DEPOSITOR_ROLE(), ledger);
         settlementAsset = new MockNZD();
         treasury.setSettlementAsset(address(settlementAsset));
@@ -45,11 +50,11 @@ contract TreasuryTest is Test {
 
     function test_RejectsOutOfRangeSplit() public {
         vm.expectRevert(abi.encodeWithSelector(Treasury.InvalidFundSplit.selector, 10_001));
-        new Treasury(10_001);
+        new Treasury(10_001, address(governance));
     }
 
     function test_DepositorRoleCanBeGrantedAfterDeployment() public {
-        Treasury configured = new Treasury(8000);
+        Treasury configured = new Treasury(8000, address(governance));
 
         configured.grantRole(configured.DEPOSITOR_ROLE(), ledger);
 
@@ -57,10 +62,10 @@ contract TreasuryTest is Test {
     }
 
     function test_DepositRejectsMissingSettlementAsset() public {
-        Treasury configured = new Treasury(8000);
+        Treasury configured = new Treasury(8000, address(governance));
         configured.grantRole(configured.DEPOSITOR_ROLE(), ledger);
 
-        vm.expectRevert(abi.encodeWithSelector(Treasury.DepositTransferFailed.selector, 1e18));
+        vm.expectRevert(abi.encodeWithSelector(Treasury.SettlementTransferFailed.selector, 1e18));
         vm.prank(ledger);
         configured.deposit(1e18);
     }
@@ -71,7 +76,7 @@ contract TreasuryTest is Test {
         ratioBps = bound(ratioBps, 0, 10_000);
         amount = bound(amount, 0, type(uint128).max);
 
-        Treasury configured = new Treasury(ratioBps);
+        Treasury configured = new Treasury(ratioBps, address(governance));
         configured.grantRole(configured.DEPOSITOR_ROLE(), ledger);
         configured.setSettlementAsset(address(settlementAsset));
         settlementAsset.mint(ledger, amount);
@@ -109,8 +114,8 @@ contract TreasuryTest is Test {
     }
 
     function test_BoundaryRatiosAreAccepted() public {
-        assertEq(new Treasury(0).operatingRatioBps(), 0);
-        assertEq(new Treasury(10_000).operatingRatioBps(), 10_000);
+        assertEq(new Treasury(0, address(governance)).operatingRatioBps(), 0);
+        assertEq(new Treasury(10_000, address(governance)).operatingRatioBps(), 10_000);
     }
 
     function test_ReleaseRequiresReleaserRole() public {
@@ -122,7 +127,9 @@ contract TreasuryTest is Test {
     }
 
     function test_ReleaseRejectsUnknownProposal() public {
+        treasury.setPayeeRegistry(address(payeeRegistry));
         vm.expectRevert(abi.encodeWithSelector(Treasury.UnknownProposal.selector, 1));
+        vm.prank(timelock);
         treasury.release(Fund.Operating, payee, 1e18, 1);
     }
 
@@ -131,6 +138,15 @@ contract TreasuryTest is Test {
         _deposit(1_000e18);
 
         vm.expectRevert(abi.encodeWithSelector(Treasury.PayeeNotRegistered.selector, payee));
+        vm.prank(timelock);
+        treasury.release(Fund.Operating, payee, 1e18, 1);
+    }
+
+    function test_ReleaseRejectsUnsetPayeeRegistry() public {
+        governance.setProposal(1, Fund.Operating, 1_000e18);
+
+        vm.expectRevert(Treasury.PayeeRegistryNotSet.selector);
+        vm.prank(timelock);
         treasury.release(Fund.Operating, payee, 1e18, 1);
     }
 
@@ -142,6 +158,7 @@ contract TreasuryTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(Treasury.AmountExceedsLimit.selector, 1, 1_001e18, 1_000e18)
         );
+        vm.prank(timelock);
         treasury.release(Fund.Operating, payee, 1_001e18, 1);
     }
 
@@ -157,6 +174,7 @@ contract TreasuryTest is Test {
                 Fund.Operating
             )
         );
+        vm.prank(timelock);
         treasury.release(Fund.Operating, payee, 1e18, 1);
     }
 
@@ -173,6 +191,7 @@ contract TreasuryTest is Test {
                 800e18
             )
         );
+        vm.prank(timelock);
         treasury.release(Fund.Operating, payee, 801e18, 1);
     }
 
@@ -181,10 +200,36 @@ contract TreasuryTest is Test {
         payeeRegistry.admit(payee);
         _deposit(1_000e18);
 
+        vm.prank(timelock);
         treasury.release(Fund.Operating, payee, 500e18, 1);
 
         assertEq(settlementAsset.balanceOf(payee), 500e18);
         assertEq(treasury.balanceOf(Fund.Operating), 300e18);
+    }
+
+    function test_ReleaseAtLimitLeavesOtherFundUntouched() public {
+        _configureProposal(Fund.Operating, 800e18);
+        payeeRegistry.admit(payee);
+        _deposit(1_000e18);
+
+        vm.prank(timelock);
+        treasury.release(Fund.Operating, payee, 800e18, 1);
+
+        assertEq(settlementAsset.balanceOf(payee), 800e18);
+        assertEq(treasury.balanceOf(Fund.Operating), 0);
+        assertEq(treasury.balanceOf(Fund.LongTermMaintenance), 200e18);
+    }
+
+    function test_ReleaseRejectsUnsetSettlementAsset() public {
+        Treasury configured = new Treasury(8000, address(governance));
+        configured.grantRole(configured.RELEASER_ROLE(), timelock);
+        configured.setPayeeRegistry(address(payeeRegistry));
+        governance.setProposal(1, Fund.Operating, 1e18);
+        payeeRegistry.admit(payee);
+
+        vm.expectRevert(Treasury.SettlementAssetNotSet.selector);
+        vm.prank(timelock);
+        configured.release(Fund.Operating, payee, 1e18, 1);
     }
 
     function test_ReleaseEmitsPaymentDetails() public {
@@ -194,6 +239,7 @@ contract TreasuryTest is Test {
 
         vm.expectEmit(address(treasury));
         emit PaymentReleased(Fund.Operating, payee, 500e18, 1);
+        vm.prank(timelock);
         treasury.release(Fund.Operating, payee, 500e18, 1);
     }
 
@@ -206,7 +252,7 @@ contract TreasuryTest is Test {
 
     function _configureProposal(Fund fund, uint256 limit) internal {
         treasury.setPayeeRegistry(address(payeeRegistry));
-        treasury.setProposal(1, fund, limit);
+        governance.setProposal(1, fund, limit);
     }
 
     function _deposit(uint256 amount) internal {

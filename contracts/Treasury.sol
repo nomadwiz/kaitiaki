@@ -4,7 +4,8 @@ pragma solidity 0.8.36;
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import {Fund} from "./interfaces/IRelease.sol";
+import {Fund, IRelease} from "./interfaces/IRelease.sol";
+import {IProposalQuery} from "./interfaces/IProposalQuery.sol";
 import {IPayeeQuery} from "./interfaces/IPayeeQuery.sol";
 
 /// @title The building's treasury: custody of levy receipts in two segregated funds.
@@ -12,34 +13,31 @@ import {IPayeeQuery} from "./interfaces/IPayeeQuery.sol";
 /// by `operatingRatioBps` between the operating fund and the long-term maintenance fund,
 /// and the two balances never mix. The ratio is per-building configuration ratified by
 /// owners at genesis (product §6.2, ADR-010), not one of spec §5's statutory parameters.
-contract Treasury is AccessControl {
+contract Treasury is AccessControl, IRelease {
     bytes32 public constant DEPOSITOR_ROLE = keccak256("DEPOSITOR_ROLE");
     bytes32 public constant RELEASER_ROLE = keccak256("RELEASER_ROLE");
 
     uint256 public immutable operatingRatioBps;
+    address public immutable governance;
     address public payeeRegistry;
     address public settlementAsset;
 
-    struct Proposal {
-        Fund fund;
-        uint256 limit;
-        bool exists;
-    }
-
     mapping(Fund => uint256) private _balances;
-    mapping(uint256 proposalId => Proposal) public proposals;
 
     error UnauthorizedLevyLedger(address caller);
     error InvalidFundSplit(uint256 ratioBps);
     error InvalidAddress(address badAddress);
-    error DepositTransferFailed(uint256 amount);
+    error SettlementTransferFailed(uint256 amount);
     error UnauthorizedReleaser(address caller);
+    error GovernanceNotConfigured();
+    error PayeeRegistryNotSet();
     error PayeeNotRegistered(address payee);
     error AmountExceedsLimit(uint256 proposalId, uint256 amount, uint256 limit);
     error FundMismatch(Fund expectedFund, Fund actualFund);
     error UnknownProposal(uint256 proposalId);
     error InsufficientBalance(Fund fund, uint256 amount, uint256 balance);
-    error SettlementTransferFailed(address payee, uint256 amount);
+    error SettlementAssetNotSet();
+    error PaymentTransferFailed(address payee, uint256 amount);
 
     event Deposited(uint256 amount, uint256 operatingAmount, uint256 maintenanceAmount);
     event PaymentReleased(
@@ -49,28 +47,16 @@ contract Treasury is AccessControl {
         uint256 proposalId
     );
 
-    constructor(uint256 _operatingRatioBps) {
+    constructor(uint256 _operatingRatioBps, address _governance) {
         if (_operatingRatioBps > 10_000) {
             revert InvalidFundSplit(_operatingRatioBps);
         }
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(RELEASER_ROLE, msg.sender);
-        operatingRatioBps = _operatingRatioBps;
-    }
-
-    function setReleaser(address _releaser) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (_releaser == address(0)) {
-            revert InvalidAddress(_releaser);
+        if (_governance == address(0)) {
+            revert GovernanceNotConfigured();
         }
-        _grantRole(RELEASER_ROLE, _releaser);
-    }
-
-    function setProposal(
-        uint256 proposalId,
-        Fund fund,
-        uint256 limit
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        proposals[proposalId] = Proposal({fund: fund, limit: limit, exists: true});
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        governance = _governance;
+        operatingRatioBps = _operatingRatioBps;
     }
 
     function setPayeeRegistry(address _payeeRegistry) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -97,7 +83,7 @@ contract Treasury is AccessControl {
             settlementAsset == address(0) ||
             !IERC20(settlementAsset).transferFrom(msg.sender, address(this), amount)
         ) {
-            revert DepositTransferFailed(amount);
+            revert SettlementTransferFailed(amount);
         }
 
         // Operating gets its share rounded down; maintenance takes the remainder, so
@@ -111,37 +97,46 @@ contract Treasury is AccessControl {
         emit Deposited(amount, operatingAmount, maintenanceAmount);
     }
 
-    function release(Fund fund, address payee, uint256 amount, uint256 proposalId) external {
+    function release(
+        Fund fund,
+        address payee,
+        uint256 amount,
+        uint256 proposalId
+    ) external override {
         if (!hasRole(RELEASER_ROLE, msg.sender)) {
             revert UnauthorizedReleaser(msg.sender);
         }
 
-        Proposal storage proposal = proposals[proposalId];
-        if (!proposal.exists) {
+        if (payeeRegistry == address(0)) {
+            revert PayeeRegistryNotSet();
+        }
+        (bool exists, Fund proposalFund, uint256 proposalLimit) = IProposalQuery(governance)
+            .approvedSpend(proposalId);
+        if (!exists) {
             revert UnknownProposal(proposalId);
         }
-        if (payeeRegistry == address(0) || !IPayeeQuery(payeeRegistry).isRegistered(payee)) {
+        if (!IPayeeQuery(payeeRegistry).isRegistered(payee)) {
             revert PayeeNotRegistered(payee);
         }
-        if (amount > proposal.limit) {
-            revert AmountExceedsLimit(proposalId, amount, proposal.limit);
+        if (amount > proposalLimit) {
+            revert AmountExceedsLimit(proposalId, amount, proposalLimit);
         }
-        if (fund != proposal.fund) {
-            revert FundMismatch(proposal.fund, fund);
+        if (fund != proposalFund) {
+            revert FundMismatch(proposalFund, fund);
         }
 
+        if (settlementAsset == address(0)) {
+            revert SettlementAssetNotSet();
+        }
         uint256 balance = _balances[fund];
         if (balance < amount) {
             revert InsufficientBalance(fund, amount, balance);
         }
-        if (settlementAsset == address(0)) {
-            revert InvalidAddress(settlementAsset);
-        }
+        _balances[fund] = balance - amount;
         if (!IERC20(settlementAsset).transfer(payee, amount)) {
-            revert SettlementTransferFailed(payee, amount);
+            revert PaymentTransferFailed(payee, amount);
         }
 
-        _balances[fund] = balance - amount;
         emit PaymentReleased(fund, payee, amount, proposalId);
     }
 
