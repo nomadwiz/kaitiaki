@@ -70,6 +70,14 @@ Introducing prettier for the first time reformatted three pre-existing files
 width — whitespace only, no behaviour change, verified by the full test suite
 passing unchanged before and after.
 
+## week2
+
+### Issue #47 — Treasury deposit split
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `47-treasury-tests.txt` | Treasury tests pass, including the configured ledger, settlement-token custody, and 80/20 fund split | `npm run test:coverage` |
+
 ## week4
 
 ### Issue #53 — Governance: propose, for both proposal kinds
