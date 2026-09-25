@@ -74,6 +74,9 @@ contract GovernanceProposeTest is Test {
         assertEq(uint8(p.kind), uint8(Governance.ProposalKind.Admit));
         assertEq(p.payee, vendor);
         assertEq(p.limit, 0);
+        assertEq(uint8(p.fund), uint8(Fund.Operating));
+        assertEq(p.quoteHash, bytes32(0));
+        assertEq(p.description, "");
         assertEq(p.createdAt, block.timestamp);
     }
 
