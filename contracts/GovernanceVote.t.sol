@@ -129,6 +129,30 @@ contract GovernanceVoteTest is Test {
         assertEq(governance.tallyOf(proposalId).forVotes, 3);
     }
 
+    /// A unit listed twice by the register still carries one vote.
+    function test_DuplicateUnitEntryCountsOnce() public {
+        members.bindUnit(3, bob); // unitsOf(bob) is now [3, 3]
+
+        vm.prank(bob);
+        assertEq(governance.castVote(proposalId, true), 1);
+        assertEq(governance.tallyOf(proposalId).forVotes, 1);
+    }
+
+    /// The vote belongs to the unit: one wallet may appear in the log voting
+    /// both ways, with different units (review of #89).
+    function test_WalletMayVoteBothWaysWithDifferentUnits() public {
+        vm.prank(alice);
+        governance.castVote(proposalId, true); // units 1, 2
+
+        members.bindUnit(4, alice);
+        vm.prank(alice);
+        governance.castVote(proposalId, false); // unit 4
+
+        Governance.Tally memory t = governance.tallyOf(proposalId);
+        assertEq(t.forVotes, 2);
+        assertEq(t.againstVotes, 1);
+    }
+
     function test_VotesAreSeparatePerProposal() public {
         payees.admit(vendor);
         vm.prank(firm);

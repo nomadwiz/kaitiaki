@@ -79,8 +79,12 @@ contract Governance {
         string description
     );
 
-    /// @notice Names the units that voted, so which units have voted — not
-    /// only the totals — can be rebuilt from the log alone (rule 6).
+    /// @notice One event per `castVote` call, naming the units that voted in
+    /// it, so which units have voted — not only the totals — can be rebuilt
+    /// from the log alone (rule 6). The vote belongs to the unit, not the
+    /// wallet: a wallet that gains a unit after voting may call again, and its
+    /// second event may go the other way. A tally or vote record built from
+    /// the log must key on `unitIds`, not on `voter`.
     event VoteCast(
         uint256 indexed proposalId,
         address indexed voter,
@@ -140,7 +144,9 @@ contract Governance {
     }
 
     /// @notice FR2, FR19. Vote on `proposalId` with every unit the caller
-    /// owns that has not yet voted on it — one unit, one vote (ADR-003).
+    /// owns that has not yet voted on it — one vote per unit per proposal
+    /// (ADR-003). Each call votes all such units the same way; a later call
+    /// votes only units acquired since, in whichever direction it names.
     /// Eligibility is checked unit by unit against the register (B8).
     /// @return weight The number of units this call voted with.
     function castVote(uint256 proposalId, bool inFavour) external returns (uint256 weight) {
