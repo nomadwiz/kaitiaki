@@ -1,5 +1,5 @@
 
-Compiled 14 Solidity files with solc 0.8.36 (evm target: prague)
+Compiled 1 Solidity file with solc 0.8.36 (evm target: prague)
 
 Running Solidity tests
 
@@ -17,14 +17,6 @@ Running Solidity tests
     ✔ testFuzz_MintRefusedOffTestChains(uint256) (runs: 256)
 
   contracts/Treasury.t.sol:TreasuryTest
-    ✔ test_ReleaseRequiresReleaserRole()
-    ✔ test_ReleaseRejectsWrongFund()
-    ✔ test_ReleaseRejectsUnregisteredPayee()
-    ✔ test_ReleaseRejectsUnknownProposal()
-    ✔ test_ReleaseRejectsInsufficientBalance()
-    ✔ test_ReleaseRejectsAmountOverProposalLimit()
-    ✔ test_ReleasePaysSettlementAssetAndUpdatesBalance()
-    ✔ test_ReleaseEmitsPaymentDetails()
     ✔ test_RejectsOutOfRangeSplit()
     ✔ test_ReceiptsAccumulateAcrossACycle()
     ✔ test_DepositorRoleCanBeGrantedAfterDeployment()
@@ -36,23 +28,23 @@ Running Solidity tests
     ✔ testFuzz_SplitConservesEveryReceipt(uint256,uint256) (runs: 256)
 
 
-  26 passing
+  18 passing
 Saved html report to /Users/tutd/Library/CloudStorage/OneDrive-AUTUniversity/04_S2 2026/COMP842 Applied Blockchains and Cryptocurrencies/gorup_work/kaitiaki/coverage/html
-╔═════════════════════════════════════════════════════════════════════════════════════════════════╗
-║                                         Coverage Report                                         ║
-╚═════════════════════════════════════════════════════════════════════════════════════════════════╝
-╔═════════════════════════════════════════════════════════════════════════════════════════════════╗
-║ File Coverage                                                                                   ║
-╟────────────────────────────────────────────┬────────┬─────────────┬─────────────────────────────╢
-║ File Path                                  │ Line % │ Statement % │ Uncovered Lines             ║
-╟────────────────────────────────────────────┼────────┼─────────────┼─────────────────────────────╢
-║ contracts/MockNZD.sol                      │ 100.00 │ 100.00      │ -                           ║
-║ contracts/stubs/MembershipRegistryStub.sol │ 0.00   │ 0.00        │ 17-18, 22, 26               ║
-║ contracts/stubs/PayeeRegistryStub.sol      │ 100.00 │ 100.00      │ -                           ║
-║ contracts/stubs/TreasuryStub.sol           │ 0.00   │ 0.00        │ 17                          ║
-║ contracts/Treasury.sol                     │ 85.42  │ 79.66       │ 62-63, 65, 78, 85, 138, 141 ║
-╟────────────────────────────────────────────┼────────┼─────────────┼─────────────────────────────╢
-║ Total                                      │ 79.31  │ 75.71       │                             ║
-╚════════════════════════════════════════════╧════════╧═════════════╧═════════════════════════════╝
+╔═════════════════════════════════════════════════════════════════════════════════════╗
+║                                   Coverage Report                                   ║
+╚═════════════════════════════════════════════════════════════════════════════════════╝
+╔═════════════════════════════════════════════════════════════════════════════════════╗
+║ File Coverage                                                                       ║
+╟────────────────────────────────────────────┬────────┬─────────────┬─────────────────╢
+║ File Path                                  │ Line % │ Statement % │ Uncovered Lines ║
+╟────────────────────────────────────────────┼────────┼─────────────┼─────────────────╢
+║ contracts/MockNZD.sol                      │ 66.67  │ 50.00       │ 23              ║
+║ contracts/stubs/MembershipRegistryStub.sol │ 0.00   │ 0.00        │ 17-18, 22, 26   ║
+║ contracts/stubs/PayeeRegistryStub.sol      │ 0.00   │ 0.00        │ 15, 19          ║
+║ contracts/stubs/TreasuryStub.sol           │ 0.00   │ 0.00        │ 17              ║
+║ contracts/Treasury.sol                     │ 95.00  │ 90.48       │ 39              ║
+╟────────────────────────────────────────────┼────────┼─────────────┼─────────────────╢
+║ Total                                      │ 70.00  │ 65.63       │                 ║
+╚════════════════════════════════════════════╧════════╧═════════════╧═════════════════╝
 
 

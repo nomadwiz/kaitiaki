@@ -19,24 +19,24 @@ contract Treasury is AccessControl, IRelease {
 
     uint256 public immutable operatingRatioBps;
     address public immutable governance;
-    address public payeeRegistry;
-    address public settlementAsset;
+    address public immutable payeeRegistry;
+    address public immutable settlementAsset;
 
     mapping(Fund => uint256) private _balances;
 
     error UnauthorizedLevyLedger(address caller);
     error InvalidFundSplit(uint256 ratioBps);
-    error InvalidAddress(address badAddress);
+    error PayeeRegistryAddressIsZero();
+    error SettlementAssetAddressIsZero();
     error SettlementTransferFailed(uint256 amount);
     error UnauthorizedReleaser(address caller);
     error GovernanceNotConfigured();
-    error PayeeRegistryNotSet();
     error PayeeNotRegistered(address payee);
+    error PayeeMismatch(address expectedPayee, address actualPayee);
     error AmountExceedsLimit(uint256 proposalId, uint256 amount, uint256 limit);
     error FundMismatch(Fund expectedFund, Fund actualFund);
     error UnknownProposal(uint256 proposalId);
     error InsufficientBalance(Fund fund, uint256 amount, uint256 balance);
-    error SettlementAssetNotSet();
     error PaymentTransferFailed(address payee, uint256 amount);
 
     event Deposited(uint256 amount, uint256 operatingAmount, uint256 maintenanceAmount);
@@ -47,30 +47,29 @@ contract Treasury is AccessControl, IRelease {
         uint256 proposalId
     );
 
-    constructor(uint256 _operatingRatioBps, address _governance) {
+    constructor(
+        uint256 _operatingRatioBps,
+        address _governance,
+        address _payeeRegistry,
+        address _settlementAsset
+    ) {
         if (_operatingRatioBps > 10_000) {
             revert InvalidFundSplit(_operatingRatioBps);
         }
         if (_governance == address(0)) {
             revert GovernanceNotConfigured();
         }
+        if (_payeeRegistry == address(0)) {
+            revert PayeeRegistryAddressIsZero();
+        }
+        if (_settlementAsset == address(0)) {
+            revert SettlementAssetAddressIsZero();
+        }
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         governance = _governance;
-        operatingRatioBps = _operatingRatioBps;
-    }
-
-    function setPayeeRegistry(address _payeeRegistry) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (_payeeRegistry == address(0)) {
-            revert InvalidAddress(_payeeRegistry);
-        }
         payeeRegistry = _payeeRegistry;
-    }
-
-    function setSettlementAsset(address _settlementAsset) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (_settlementAsset == address(0)) {
-            revert InvalidAddress(_settlementAsset);
-        }
         settlementAsset = _settlementAsset;
+        operatingRatioBps = _operatingRatioBps;
     }
 
     /// @notice Pulls the levy settlement asset from the authorised LevyLedger
@@ -107,16 +106,20 @@ contract Treasury is AccessControl, IRelease {
             revert UnauthorizedReleaser(msg.sender);
         }
 
-        if (payeeRegistry == address(0)) {
-            revert PayeeRegistryNotSet();
-        }
-        (bool exists, Fund proposalFund, uint256 proposalLimit) = IProposalQuery(governance)
-            .approvedSpend(proposalId);
+        (
+            bool exists,
+            Fund proposalFund,
+            uint256 proposalLimit,
+            address proposalPayee
+        ) = IProposalQuery(governance).approvedSpend(proposalId);
         if (!exists) {
             revert UnknownProposal(proposalId);
         }
         if (!IPayeeQuery(payeeRegistry).isRegistered(payee)) {
             revert PayeeNotRegistered(payee);
+        }
+        if (payee != proposalPayee) {
+            revert PayeeMismatch(proposalPayee, payee);
         }
         if (amount > proposalLimit) {
             revert AmountExceedsLimit(proposalId, amount, proposalLimit);
@@ -125,9 +128,6 @@ contract Treasury is AccessControl, IRelease {
             revert FundMismatch(proposalFund, fund);
         }
 
-        if (settlementAsset == address(0)) {
-            revert SettlementAssetNotSet();
-        }
         uint256 balance = _balances[fund];
         if (balance < amount) {
             revert InsufficientBalance(fund, amount, balance);
