@@ -26,14 +26,13 @@ contract Treasury is AccessControlEnumerable, IRelease {
 
     error UnauthorizedLevyLedger(address caller);
     error InvalidFundSplit(uint256 ratioBps);
+    error PayeeRegistryAddressIsZero();
+    error SettlementAssetAddressIsZero();
     error SettlementTransferFailed(uint256 amount);
     error UnauthorizedReleaser(address caller);
     error GovernanceNotConfigured();
-    error TimelockNotConfigured();
-    error DepositorNotConfigured();
-    error PayeeRegistryNotConfigured();
-    error SettlementAssetNotConfigured();
     error PayeeNotRegistered(address payee);
+    error PayeeMismatch(address expectedPayee, address actualPayee);
     error AmountExceedsLimit(uint256 proposalId, uint256 amount, uint256 limit);
     error FundMismatch(Fund expectedFund, Fund actualFund);
     error UnknownProposal(uint256 proposalId);
@@ -51,8 +50,6 @@ contract Treasury is AccessControlEnumerable, IRelease {
     constructor(
         uint256 _operatingRatioBps,
         address _governance,
-        address _timelock,
-        address _depositor,
         address _payeeRegistry,
         address _settlementAsset
     ) {
@@ -62,18 +59,17 @@ contract Treasury is AccessControlEnumerable, IRelease {
         if (_governance == address(0)) {
             revert GovernanceNotConfigured();
         }
-        if (_timelock == address(0)) revert TimelockNotConfigured();
-        if (_depositor == address(0)) revert DepositorNotConfigured();
-        if (_payeeRegistry == address(0)) revert PayeeRegistryNotConfigured();
-        if (_settlementAsset == address(0)) revert SettlementAssetNotConfigured();
+        if (_payeeRegistry == address(0)) {
+            revert PayeeRegistryAddressIsZero();
+        }
+        if (_settlementAsset == address(0)) {
+            revert SettlementAssetAddressIsZero();
+        }
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(RELEASER_ROLE, _timelock);
-        _grantRole(DEPOSITOR_ROLE, _depositor);
         governance = _governance;
         payeeRegistry = _payeeRegistry;
         settlementAsset = _settlementAsset;
         operatingRatioBps = _operatingRatioBps;
-        renounceRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     /// @notice Pulls the levy settlement asset from the authorised LevyLedger
@@ -107,13 +103,20 @@ contract Treasury is AccessControlEnumerable, IRelease {
             revert UnauthorizedReleaser(msg.sender);
         }
 
-        (bool exists, Fund proposalFund, uint256 proposalLimit) = IProposalQuery(governance)
-            .approvedSpend(proposalId);
+        (
+            bool exists,
+            Fund proposalFund,
+            uint256 proposalLimit,
+            address proposalPayee
+        ) = IProposalQuery(governance).approvedSpend(proposalId);
         if (!exists) {
             revert UnknownProposal(proposalId);
         }
         if (!IPayeeQuery(payeeRegistry).isRegistered(payee)) {
             revert PayeeNotRegistered(payee);
+        }
+        if (payee != proposalPayee) {
+            revert PayeeMismatch(proposalPayee, payee);
         }
         if (amount > proposalLimit) {
             revert AmountExceedsLimit(proposalId, amount, proposalLimit);

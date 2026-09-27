@@ -115,11 +115,12 @@ contract Governance {
     /// Unknown proposal ids return `exists == false`.
     function approvedSpend(
         uint256 proposalId
-    ) external view returns (bool exists, Fund fund, uint256 limit) {
+    ) external view returns (bool exists, Fund fund, uint256 limit, address payee) {
         Proposal storage stored = _proposals[proposalId];
         exists = stored.createdAt != 0 && stored.kind == ProposalKind.Work;
         fund = stored.fund;
         limit = stored.limit;
+        payee = stored.payee;
     }
 
     function _store(

@@ -82,7 +82,7 @@ passing unchanged before and after.
 
 | File | What it shows | Reproduce with |
 | --- | --- | --- |
-| `48-treasury-release-tests.txt` | Treasury release tests pass for Governance-backed proposal reads, constructor-assigned releaser authorization, payee and settlement-asset configuration, proposal limits including the exact-limit boundary, fund matching, sufficient balances, opposite-fund isolation, settlement-token payment, checks-effects-interactions ordering, and `PaymentReleased` event emission | `npm run test:coverage` |
+| `48-treasury-release-tests.txt` | Treasury release tests pass for Governance-backed proposal reads, constructor-bound registry and settlement asset, timelock-only releaser authorization, proposal payee matching, proposal limits including the exact-limit boundary, fund matching, sufficient balances, opposite-fund isolation, settlement-token payment, and `PaymentReleased` event emission | `npm run test:coverage` |
 
 ### Issue #49 — Treasury role administration
 
