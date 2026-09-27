@@ -31,6 +31,8 @@ contract Treasury is AccessControlEnumerable, IRelease {
     error SettlementTransferFailed(uint256 amount);
     error UnauthorizedReleaser(address caller);
     error GovernanceNotConfigured();
+    error TimelockNotConfigured();
+    error DepositorNotConfigured();
     error PayeeNotRegistered(address payee);
     error PayeeMismatch(address expectedPayee, address actualPayee);
     error AmountExceedsLimit(uint256 proposalId, uint256 amount, uint256 limit);
@@ -50,6 +52,8 @@ contract Treasury is AccessControlEnumerable, IRelease {
     constructor(
         uint256 _operatingRatioBps,
         address _governance,
+        address _timelock,
+        address _depositor,
         address _payeeRegistry,
         address _settlementAsset
     ) {
@@ -59,6 +63,12 @@ contract Treasury is AccessControlEnumerable, IRelease {
         if (_governance == address(0)) {
             revert GovernanceNotConfigured();
         }
+        if (_timelock == address(0)) {
+            revert TimelockNotConfigured();
+        }
+        if (_depositor == address(0)) {
+            revert DepositorNotConfigured();
+        }
         if (_payeeRegistry == address(0)) {
             revert PayeeRegistryAddressIsZero();
         }
@@ -66,6 +76,9 @@ contract Treasury is AccessControlEnumerable, IRelease {
             revert SettlementAssetAddressIsZero();
         }
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(RELEASER_ROLE, _timelock);
+        _grantRole(DEPOSITOR_ROLE, _depositor);
+        renounceRole(DEFAULT_ADMIN_ROLE, msg.sender);
         governance = _governance;
         payeeRegistry = _payeeRegistry;
         settlementAsset = _settlementAsset;

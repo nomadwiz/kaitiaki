@@ -37,29 +37,32 @@ Running Solidity tests
     ✔ testFuzz_MintRefusedOffTestChains(uint256) (runs: 256)
 
   contracts/Treasury.t.sol:TreasuryTest
+    ✔ test_TreasuryReadsTermsFromGovernance()
     ✔ test_RoleAdministrationIsRenouncedAtDeployment()
     ✔ test_ReleaseRequiresReleaserRole()
     ✔ test_ReleaseRejectsWrongFund()
     ✔ test_ReleaseRejectsUnregisteredPayee()
     ✔ test_ReleaseRejectsUnknownProposal()
+    ✔ test_ReleaseRejectsSettlementTransferFailure()
     ✔ test_ReleaseRejectsInsufficientBalance()
-    ✔ test_ReleaseRejectsFailedSettlementTransfer()
     ✔ test_ReleaseRejectsAmountOverProposalLimit()
     ✔ test_ReleasePaysSettlementAssetAndUpdatesBalance()
     ✔ test_ReleaseEmitsPaymentDetails()
     ✔ test_ReleaseAtLimitLeavesOtherFundUntouched()
-    ✔ test_RejectsUnsetConstructorDependencies()
+    ✔ test_RejectsZeroGovernance()
     ✔ test_RejectsOutOfRangeSplit()
     ✔ test_ReceiptsAccumulateAcrossACycle()
     ✔ test_DepositSplitsReceiptAcrossBothFunds()
-    ✔ test_DepositRejectsFailedSettlementTransfer()
+    ✔ test_DepositRejectsSettlementTransferFailure()
     ✔ test_DepositOnlyByLevyLedger()
     ✔ test_DepositEmitsTheSplit()
+    ✔ test_ConstructorRejectsZeroConfigurationAddresses()
     ✔ test_BoundaryRatiosAreAccepted()
+    ✔ test_AdminCannotRelease()
     ✔ testFuzz_SplitConservesEveryReceipt(uint256,uint256) (runs: 256)
 
 
-  45 passing
+  48 passing
 Saved html report to /Users/tutd/Library/CloudStorage/OneDrive-AUTUniversity/04_S2 2026/COMP842 Applied Blockchains and Cryptocurrencies/gorup_work/kaitiaki/coverage/html
 ╔═════════════════════════════════════════════════════════════════════════════════════╗
 ║                                   Coverage Report                                   ║
@@ -77,7 +80,6 @@ Saved html report to /Users/tutd/Library/CloudStorage/OneDrive-AUTUniversity/04_
 ║ contracts/stubs/GovernanceStub.sol         │ 100.00 │ 100.00      │ -               ║
 ║ contracts/Treasury.sol                     │ 100.00 │ 100.00      │ -               ║
 ╟────────────────────────────────────────────┼────────┼─────────────┼─────────────────╢
-║ Total                                      │ 94.12  │ 94.79       │                 ║
+║ Total                                      │ 94.90  │ 95.24       │                 ║
 ╚════════════════════════════════════════════╧════════╧═════════════╧═════════════════╝
-
 

@@ -27,14 +27,7 @@ contract TreasuryTest is Test {
         governance = new GovernanceStub();
         settlementAsset = new MockNZD();
         payeeRegistry = new PayeeRegistryStub();
-        treasury = new Treasury(
-            8000,
-            address(governance),
-            address(payeeRegistry),
-            address(settlementAsset)
-        );
-        treasury.grantRole(treasury.RELEASER_ROLE(), timelock);
-        treasury.grantRole(treasury.DEPOSITOR_ROLE(), ledger);
+        treasury = _newTreasury(8000);
         settlementAsset.mint(ledger, 2_000e18 + 1);
     }
 
@@ -69,33 +62,69 @@ contract TreasuryTest is Test {
 
     function test_RejectsOutOfRangeSplit() public {
         vm.expectRevert(abi.encodeWithSelector(Treasury.InvalidFundSplit.selector, 10_001));
-        new Treasury(10_001, address(governance), address(payeeRegistry), address(settlementAsset));
+        _newTreasury(10_001);
     }
 
     function test_RejectsZeroGovernance() public {
         vm.expectRevert(Treasury.GovernanceNotConfigured.selector);
-        new Treasury(8000, address(0), address(payeeRegistry), address(settlementAsset));
+        new Treasury(
+            8000,
+            address(0),
+            timelock,
+            ledger,
+            address(payeeRegistry),
+            address(settlementAsset)
+        );
     }
 
     function test_ConstructorRejectsZeroConfigurationAddresses() public {
-        vm.expectRevert(Treasury.PayeeRegistryAddressIsZero.selector);
-        new Treasury(8000, address(governance), address(0), address(settlementAsset));
-
-        vm.expectRevert(Treasury.SettlementAssetAddressIsZero.selector);
-        new Treasury(8000, address(governance), address(payeeRegistry), address(0));
-    }
-
-    function test_DepositorRoleCanBeGrantedAfterDeployment() public {
-        Treasury configured = new Treasury(
+        vm.expectRevert(Treasury.TimelockNotConfigured.selector);
+        new Treasury(
             8000,
             address(governance),
+            address(0),
+            ledger,
             address(payeeRegistry),
             address(settlementAsset)
         );
 
-        configured.grantRole(configured.DEPOSITOR_ROLE(), ledger);
+        vm.expectRevert(Treasury.DepositorNotConfigured.selector);
+        new Treasury(
+            8000,
+            address(governance),
+            timelock,
+            address(0),
+            address(payeeRegistry),
+            address(settlementAsset)
+        );
 
-        assertTrue(configured.hasRole(configured.DEPOSITOR_ROLE(), ledger));
+        vm.expectRevert(Treasury.PayeeRegistryAddressIsZero.selector);
+        new Treasury(
+            8000,
+            address(governance),
+            timelock,
+            ledger,
+            address(0),
+            address(settlementAsset)
+        );
+
+        vm.expectRevert(Treasury.SettlementAssetAddressIsZero.selector);
+        new Treasury(
+            8000,
+            address(governance),
+            timelock,
+            ledger,
+            address(payeeRegistry),
+            address(0)
+        );
+    }
+
+    function test_RoleAdministrationIsRenouncedAtDeployment() public {
+        assertEq(treasury.getRoleMemberCount(treasury.DEFAULT_ADMIN_ROLE()), 0);
+        assertEq(treasury.getRoleMemberCount(treasury.RELEASER_ROLE()), 1);
+        assertEq(treasury.getRoleMember(treasury.RELEASER_ROLE(), 0), timelock);
+        assertEq(treasury.getRoleMemberCount(treasury.DEPOSITOR_ROLE()), 1);
+        assertEq(treasury.getRoleMember(treasury.DEPOSITOR_ROLE(), 0), ledger);
     }
 
     /// FR8 as a property: every receipt is fully allocated, and operating gets
@@ -104,13 +133,7 @@ contract TreasuryTest is Test {
         ratioBps = bound(ratioBps, 0, 10_000);
         amount = bound(amount, 0, type(uint128).max);
 
-        Treasury configured = new Treasury(
-            ratioBps,
-            address(governance),
-            address(payeeRegistry),
-            address(settlementAsset)
-        );
-        configured.grantRole(configured.DEPOSITOR_ROLE(), ledger);
+        Treasury configured = _newTreasury(ratioBps);
         settlementAsset.mint(ledger, amount);
 
         vm.startPrank(ledger);
@@ -146,20 +169,8 @@ contract TreasuryTest is Test {
     }
 
     function test_BoundaryRatiosAreAccepted() public {
-        assertEq(
-            new Treasury(0, address(governance), address(payeeRegistry), address(settlementAsset))
-                .operatingRatioBps(),
-            0
-        );
-        assertEq(
-            new Treasury(
-                10_000,
-                address(governance),
-                address(payeeRegistry),
-                address(settlementAsset)
-            ).operatingRatioBps(),
-            10_000
-        );
+        assertEq(_newTreasury(0).operatingRatioBps(), 0);
+        assertEq(_newTreasury(10_000).operatingRatioBps(), 10_000);
     }
 
     function test_ReleaseRequiresReleaserRole() public {
@@ -273,17 +284,16 @@ contract TreasuryTest is Test {
         Treasury configured = new Treasury(
             8000,
             address(realGovernance),
+            timelock,
+            ledger,
             address(payeeRegistry),
             address(settlementAsset)
         );
-        configured.grantRole(configured.RELEASER_ROLE(), timelock);
         payeeRegistry.admit(payee);
         payeeRegistry.admit(otherPayee);
         settlementAsset.mint(ledger, 1_000e18);
         vm.prank(ledger);
         settlementAsset.approve(address(configured), 1_000e18);
-        vm.prank(ledger);
-        configured.grantRole(configured.DEPOSITOR_ROLE(), ledger);
         vm.prank(ledger);
         configured.deposit(1_000e18);
 
