@@ -1,0 +1,83 @@
+npm notice run kaitiaki@0.1.0 test:coverage
+npm notice run hardhat test solidity --coverage
+
+Compiled 17 Solidity files with solc 0.8.36 (evm target: prague)
+
+Running Solidity tests
+
+  contracts/Toolchain.t.sol:ToolchainTest
+    ✔ test_RunnerExecutes()
+    ✔ test_ExpectRevertIsAvailable()
+    ✔ test_CheatcodesAreAvailable()
+
+  contracts/Governance.t.sol:GovernanceProposeTest
+    ✔ test_UnknownIdIsZeroed()
+    ✔ test_ProposeWorkRefusesUnregisteredVendor()
+    ✔ test_ProposeWorkEmitsProposalCreated()
+    ✔ test_ProposeAdmitRefusesZeroVendor()
+    ✔ test_ProposeAdmitEmitsProposalCreated()
+    ✔ test_ProposeAdmitDoesNotRegisterVendor()
+    ✔ test_IdsIncreaseFromOne()
+    ✔ test_FirmProposesWork()
+    ✔ test_FirmProposesAdmit()
+    ✔ test_ConstructorRefusesZeroRegistry()
+    ✔ test_ConstructorRefusesZeroFirm()
+    ✔ test_ConstructorRecordsFirmAndRegistry()
+    ✔ test_ApprovedSpendReturnsWorkTerms()
+    ✔ test_ApprovedSpendRejectsAdmitAndUnknownIds()
+    ✔ testFuzz_ProposeWorkRefusesNonFirm(address) (runs: 256)
+    ✔ testFuzz_ProposeAdmitRefusesNonFirm(address) (runs: 256)
+
+  contracts/MockNZD.t.sol:MockNZDTest
+    ✔ test_NoGovernanceSurface()
+    ✔ test_NameSymbolAndDecimals()
+    ✔ test_MintOnSepolia()
+    ✔ test_MintOnHardhatNetwork()
+    ✔ test_AnyAddressMayMint()
+    ✔ testFuzz_MintRefusedOffTestChains(uint256) (runs: 256)
+
+  contracts/Treasury.t.sol:TreasuryTest
+    ✔ test_RoleAdministrationIsRenouncedAtDeployment()
+    ✔ test_ReleaseRequiresReleaserRole()
+    ✔ test_ReleaseRejectsWrongFund()
+    ✔ test_ReleaseRejectsUnregisteredPayee()
+    ✔ test_ReleaseRejectsUnknownProposal()
+    ✔ test_ReleaseRejectsInsufficientBalance()
+    ✔ test_ReleaseRejectsFailedSettlementTransfer()
+    ✔ test_ReleaseRejectsAmountOverProposalLimit()
+    ✔ test_ReleasePaysSettlementAssetAndUpdatesBalance()
+    ✔ test_ReleaseEmitsPaymentDetails()
+    ✔ test_ReleaseAtLimitLeavesOtherFundUntouched()
+    ✔ test_RejectsUnsetConstructorDependencies()
+    ✔ test_RejectsOutOfRangeSplit()
+    ✔ test_ReceiptsAccumulateAcrossACycle()
+    ✔ test_DepositSplitsReceiptAcrossBothFunds()
+    ✔ test_DepositRejectsFailedSettlementTransfer()
+    ✔ test_DepositOnlyByLevyLedger()
+    ✔ test_DepositEmitsTheSplit()
+    ✔ test_BoundaryRatiosAreAccepted()
+    ✔ testFuzz_SplitConservesEveryReceipt(uint256,uint256) (runs: 256)
+
+
+  45 passing
+Saved html report to /Users/tutd/Library/CloudStorage/OneDrive-AUTUniversity/04_S2 2026/COMP842 Applied Blockchains and Cryptocurrencies/gorup_work/kaitiaki/coverage/html
+╔═════════════════════════════════════════════════════════════════════════════════════╗
+║                                   Coverage Report                                   ║
+╚═════════════════════════════════════════════════════════════════════════════════════╝
+╔═════════════════════════════════════════════════════════════════════════════════════╗
+║ File Coverage                                                                       ║
+╟────────────────────────────────────────────┬────────┬─────────────┬─────────────────╢
+║ File Path                                  │ Line % │ Statement % │ Uncovered Lines ║
+╟────────────────────────────────────────────┼────────┼─────────────┼─────────────────╢
+║ contracts/Governance.sol                   │ 100.00 │ 100.00      │ -               ║
+║ contracts/MockNZD.sol                      │ 100.00 │ 100.00      │ -               ║
+║ contracts/stubs/MembershipRegistryStub.sol │ 0.00   │ 0.00        │ 17-18, 22, 26   ║
+║ contracts/stubs/PayeeRegistryStub.sol      │ 100.00 │ 100.00      │ -               ║
+║ contracts/stubs/TreasuryStub.sol           │ 0.00   │ 0.00        │ 17              ║
+║ contracts/stubs/GovernanceStub.sol         │ 100.00 │ 100.00      │ -               ║
+║ contracts/Treasury.sol                     │ 100.00 │ 100.00      │ -               ║
+╟────────────────────────────────────────────┼────────┼─────────────┼─────────────────╢
+║ Total                                      │ 94.12  │ 94.79       │                 ║
+╚════════════════════════════════════════════╧════════╧═════════════╧═════════════════╝
+
+

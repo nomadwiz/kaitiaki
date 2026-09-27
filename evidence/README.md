@@ -84,6 +84,12 @@ passing unchanged before and after.
 | --- | --- | --- |
 | `48-treasury-release-tests.txt` | Treasury release tests pass for Governance-backed proposal reads, constructor-assigned releaser authorization, payee and settlement-asset configuration, proposal limits including the exact-limit boundary, fund matching, sufficient balances, opposite-fund isolation, settlement-token payment, checks-effects-interactions ordering, and `PaymentReleased` event emission | `npm run test:coverage` |
 
+### Issue #49 — Treasury role administration
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `49-treasury-role-administration-tests.txt` | Treasury configures the timelock and LevyLedger roles at deployment, exposes exactly one releaser, and renounces the deployer's admin role so release permissions cannot be re-granted | `npm run test:coverage` |
+
 ## week4
 
 ### Issue #53 — Governance: propose, for both proposal kinds

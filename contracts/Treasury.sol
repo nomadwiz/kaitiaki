@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.36;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {AccessControlEnumerable} from "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {Fund, IRelease} from "./interfaces/IRelease.sol";
@@ -13,30 +13,31 @@ import {IPayeeQuery} from "./interfaces/IPayeeQuery.sol";
 /// by `operatingRatioBps` between the operating fund and the long-term maintenance fund,
 /// and the two balances never mix. The ratio is per-building configuration ratified by
 /// owners at genesis (product §6.2, ADR-010), not one of spec §5's statutory parameters.
-contract Treasury is AccessControl, IRelease {
+contract Treasury is AccessControlEnumerable, IRelease {
     bytes32 public constant DEPOSITOR_ROLE = keccak256("DEPOSITOR_ROLE");
     bytes32 public constant RELEASER_ROLE = keccak256("RELEASER_ROLE");
 
     uint256 public immutable operatingRatioBps;
     address public immutable governance;
-    address public payeeRegistry;
-    address public settlementAsset;
+    address public immutable payeeRegistry;
+    address public immutable settlementAsset;
 
     mapping(Fund => uint256) private _balances;
 
     error UnauthorizedLevyLedger(address caller);
     error InvalidFundSplit(uint256 ratioBps);
-    error InvalidAddress(address badAddress);
     error SettlementTransferFailed(uint256 amount);
     error UnauthorizedReleaser(address caller);
     error GovernanceNotConfigured();
-    error PayeeRegistryNotSet();
+    error TimelockNotConfigured();
+    error DepositorNotConfigured();
+    error PayeeRegistryNotConfigured();
+    error SettlementAssetNotConfigured();
     error PayeeNotRegistered(address payee);
     error AmountExceedsLimit(uint256 proposalId, uint256 amount, uint256 limit);
     error FundMismatch(Fund expectedFund, Fund actualFund);
     error UnknownProposal(uint256 proposalId);
     error InsufficientBalance(Fund fund, uint256 amount, uint256 balance);
-    error SettlementAssetNotSet();
     error PaymentTransferFailed(address payee, uint256 amount);
 
     event Deposited(uint256 amount, uint256 operatingAmount, uint256 maintenanceAmount);
@@ -47,30 +48,32 @@ contract Treasury is AccessControl, IRelease {
         uint256 proposalId
     );
 
-    constructor(uint256 _operatingRatioBps, address _governance) {
+    constructor(
+        uint256 _operatingRatioBps,
+        address _governance,
+        address _timelock,
+        address _depositor,
+        address _payeeRegistry,
+        address _settlementAsset
+    ) {
         if (_operatingRatioBps > 10_000) {
             revert InvalidFundSplit(_operatingRatioBps);
         }
         if (_governance == address(0)) {
             revert GovernanceNotConfigured();
         }
+        if (_timelock == address(0)) revert TimelockNotConfigured();
+        if (_depositor == address(0)) revert DepositorNotConfigured();
+        if (_payeeRegistry == address(0)) revert PayeeRegistryNotConfigured();
+        if (_settlementAsset == address(0)) revert SettlementAssetNotConfigured();
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(RELEASER_ROLE, _timelock);
+        _grantRole(DEPOSITOR_ROLE, _depositor);
         governance = _governance;
-        operatingRatioBps = _operatingRatioBps;
-    }
-
-    function setPayeeRegistry(address _payeeRegistry) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (_payeeRegistry == address(0)) {
-            revert InvalidAddress(_payeeRegistry);
-        }
         payeeRegistry = _payeeRegistry;
-    }
-
-    function setSettlementAsset(address _settlementAsset) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (_settlementAsset == address(0)) {
-            revert InvalidAddress(_settlementAsset);
-        }
         settlementAsset = _settlementAsset;
+        operatingRatioBps = _operatingRatioBps;
+        renounceRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     /// @notice Pulls the levy settlement asset from the authorised LevyLedger
@@ -79,10 +82,7 @@ contract Treasury is AccessControl, IRelease {
         if (!hasRole(DEPOSITOR_ROLE, msg.sender)) {
             revert UnauthorizedLevyLedger(msg.sender);
         }
-        if (
-            settlementAsset == address(0) ||
-            !IERC20(settlementAsset).transferFrom(msg.sender, address(this), amount)
-        ) {
+        if (!IERC20(settlementAsset).transferFrom(msg.sender, address(this), amount)) {
             revert SettlementTransferFailed(amount);
         }
 
@@ -107,9 +107,6 @@ contract Treasury is AccessControl, IRelease {
             revert UnauthorizedReleaser(msg.sender);
         }
 
-        if (payeeRegistry == address(0)) {
-            revert PayeeRegistryNotSet();
-        }
         (bool exists, Fund proposalFund, uint256 proposalLimit) = IProposalQuery(governance)
             .approvedSpend(proposalId);
         if (!exists) {
@@ -125,9 +122,6 @@ contract Treasury is AccessControl, IRelease {
             revert FundMismatch(proposalFund, fund);
         }
 
-        if (settlementAsset == address(0)) {
-            revert SettlementAssetNotSet();
-        }
         uint256 balance = _balances[fund];
         if (balance < amount) {
             revert InsufficientBalance(fund, amount, balance);
