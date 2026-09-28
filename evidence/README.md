@@ -117,7 +117,7 @@ member (`ownership.md`), and is the one the report cites.
 
 | File | What it shows | Reproduce with |
 | --- | --- | --- |
-| `54-governance-castvote-tests.txt` | The 12 `GovernanceVoteTest` tests pass alongside the existing suites, with 100% line and statement coverage of `Governance.sol`: a bound owner votes and an unbound wallet is refused with `NotBoundOwner` (FR2); weight is the number of units held (FR19); a unit votes once per proposal, including after it changes hands or is listed twice by the register, and a second vote with nothing new is refused with `AlreadyVoted` (ADR-003); `VoteCast` carries the wallet, direction, weight and unit ids | `npm run test:coverage` |
+| `54-governance-castvote-tests.txt` | The 13 `GovernanceVoteTest` tests pass alongside the existing suites, with 100% line and statement coverage of `Governance.sol`: a bound owner votes and an unbound wallet is refused with `NotBoundOwner` (FR2); weight is the number of units held (FR19); a unit votes once per proposal, including after it changes hands or is listed twice by the register, and a second vote with nothing new is refused with `AlreadyVoted` (ADR-003); a wallet may vote both ways with different units; `VoteCast` carries the wallet, direction, weight and the ids of only the units that voted in that call, excluding units voted earlier, stale register entries and duplicates, so a tally rebuilt from the log keys on unit ids | `npm run test:coverage` |
 
 The unbound-wallet case proves the guard exists. The refusal test B8 itself is
 #67, which the report cites.

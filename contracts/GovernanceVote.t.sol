@@ -133,9 +133,23 @@ contract GovernanceVoteTest is Test {
     function test_DuplicateUnitEntryCountsOnce() public {
         members.bindUnit(3, bob); // unitsOf(bob) is now [3, 3]
 
+        vm.expectEmit(address(governance));
+        emit VoteCast(proposalId, bob, true, 1, _units(3));
         vm.prank(bob);
         assertEq(governance.castVote(proposalId, true), 1);
         assertEq(governance.tallyOf(proposalId).forVotes, 1);
+    }
+
+    /// A wallet holding one live unit and one stale entry votes with the live
+    /// unit only, and the event names only that unit.
+    function test_LiveAndStaleEntriesVoteOnlyTheLiveUnit() public {
+        members.bindUnit(2, bob); // unitsOf(alice) still lists 2, but bob owns it
+
+        vm.expectEmit(address(governance));
+        emit VoteCast(proposalId, alice, true, 1, _units(1));
+        vm.prank(alice);
+        assertEq(governance.castVote(proposalId, true), 1);
+        assertFalse(governance.unitHasVoted(proposalId, 2));
     }
 
     /// The vote belongs to the unit: one wallet may appear in the log voting
@@ -145,6 +159,10 @@ contract GovernanceVoteTest is Test {
         governance.castVote(proposalId, true); // units 1, 2
 
         members.bindUnit(4, alice);
+        // The follow-up event names only the newly voted unit, so a replay
+        // keyed on unitIds counts unit 4 once and units 1 and 2 not again.
+        vm.expectEmit(address(governance));
+        emit VoteCast(proposalId, alice, false, 1, _units(4));
         vm.prank(alice);
         governance.castVote(proposalId, false); // unit 4
 
@@ -183,5 +201,10 @@ contract GovernanceVoteTest is Test {
         emit VoteCast(proposalId, alice, false, 2, units);
         vm.prank(alice);
         governance.castVote(proposalId, false);
+    }
+
+    function _units(uint256 unitId) internal pure returns (uint256[] memory units) {
+        units = new uint256[](1);
+        units[0] = unitId;
     }
 }
