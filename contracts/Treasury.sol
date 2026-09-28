@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.36;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {AccessControlEnumerable} from "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {Fund, IRelease} from "./interfaces/IRelease.sol";
@@ -13,7 +13,7 @@ import {IPayeeQuery} from "./interfaces/IPayeeQuery.sol";
 /// by `operatingRatioBps` between the operating fund and the long-term maintenance fund,
 /// and the two balances never mix. The ratio is per-building configuration ratified by
 /// owners at genesis (product §6.2, ADR-010), not one of spec §5's statutory parameters.
-contract Treasury is AccessControl, IRelease {
+contract Treasury is AccessControlEnumerable, IRelease {
     bytes32 public constant DEPOSITOR_ROLE = keccak256("DEPOSITOR_ROLE");
     bytes32 public constant RELEASER_ROLE = keccak256("RELEASER_ROLE");
 
@@ -31,6 +31,8 @@ contract Treasury is AccessControl, IRelease {
     error SettlementTransferFailed(uint256 amount);
     error UnauthorizedReleaser(address caller);
     error GovernanceNotConfigured();
+    error TimelockNotConfigured();
+    error DepositorNotConfigured();
     error PayeeNotRegistered(address payee);
     error PayeeMismatch(address expectedPayee, address actualPayee);
     error AmountExceedsLimit(uint256 proposalId, uint256 amount, uint256 limit);
@@ -50,6 +52,8 @@ contract Treasury is AccessControl, IRelease {
     constructor(
         uint256 _operatingRatioBps,
         address _governance,
+        address _timelock,
+        address _depositor,
         address _payeeRegistry,
         address _settlementAsset
     ) {
@@ -59,6 +63,12 @@ contract Treasury is AccessControl, IRelease {
         if (_governance == address(0)) {
             revert GovernanceNotConfigured();
         }
+        if (_timelock == address(0)) {
+            revert TimelockNotConfigured();
+        }
+        if (_depositor == address(0)) {
+            revert DepositorNotConfigured();
+        }
         if (_payeeRegistry == address(0)) {
             revert PayeeRegistryAddressIsZero();
         }
@@ -66,6 +76,9 @@ contract Treasury is AccessControl, IRelease {
             revert SettlementAssetAddressIsZero();
         }
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(RELEASER_ROLE, _timelock);
+        _grantRole(DEPOSITOR_ROLE, _depositor);
+        renounceRole(DEFAULT_ADMIN_ROLE, msg.sender);
         governance = _governance;
         payeeRegistry = _payeeRegistry;
         settlementAsset = _settlementAsset;
@@ -78,10 +91,7 @@ contract Treasury is AccessControl, IRelease {
         if (!hasRole(DEPOSITOR_ROLE, msg.sender)) {
             revert UnauthorizedLevyLedger(msg.sender);
         }
-        if (
-            settlementAsset == address(0) ||
-            !IERC20(settlementAsset).transferFrom(msg.sender, address(this), amount)
-        ) {
+        if (!IERC20(settlementAsset).transferFrom(msg.sender, address(this), amount)) {
             revert SettlementTransferFailed(amount);
         }
 

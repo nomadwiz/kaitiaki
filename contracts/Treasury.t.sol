@@ -5,6 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {Governance} from "./Governance.sol";
 import {Fund} from "./interfaces/IRelease.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 import {Treasury} from "./Treasury.sol";
 import {MockNZD} from "./MockNZD.sol";
 import {GovernanceStub} from "./stubs/GovernanceStub.sol";
@@ -27,14 +28,7 @@ contract TreasuryTest is Test {
         governance = new GovernanceStub();
         settlementAsset = new MockNZD();
         payeeRegistry = new PayeeRegistryStub();
-        treasury = new Treasury(
-            8000,
-            address(governance),
-            address(payeeRegistry),
-            address(settlementAsset)
-        );
-        treasury.grantRole(treasury.RELEASER_ROLE(), timelock);
-        treasury.grantRole(treasury.DEPOSITOR_ROLE(), ledger);
+        treasury = _newTreasury(8000);
         settlementAsset.mint(ledger, 2_000e18 + 1);
     }
 
@@ -69,33 +63,104 @@ contract TreasuryTest is Test {
 
     function test_RejectsOutOfRangeSplit() public {
         vm.expectRevert(abi.encodeWithSelector(Treasury.InvalidFundSplit.selector, 10_001));
-        new Treasury(10_001, address(governance), address(payeeRegistry), address(settlementAsset));
+        _newTreasury(10_001);
     }
 
     function test_RejectsZeroGovernance() public {
         vm.expectRevert(Treasury.GovernanceNotConfigured.selector);
-        new Treasury(8000, address(0), address(payeeRegistry), address(settlementAsset));
+        new Treasury(
+            8000,
+            address(0),
+            timelock,
+            ledger,
+            address(payeeRegistry),
+            address(settlementAsset)
+        );
     }
 
     function test_ConstructorRejectsZeroConfigurationAddresses() public {
-        vm.expectRevert(Treasury.PayeeRegistryAddressIsZero.selector);
-        new Treasury(8000, address(governance), address(0), address(settlementAsset));
-
-        vm.expectRevert(Treasury.SettlementAssetAddressIsZero.selector);
-        new Treasury(8000, address(governance), address(payeeRegistry), address(0));
-    }
-
-    function test_DepositorRoleCanBeGrantedAfterDeployment() public {
-        Treasury configured = new Treasury(
+        vm.expectRevert(Treasury.TimelockNotConfigured.selector);
+        new Treasury(
             8000,
             address(governance),
+            address(0),
+            ledger,
             address(payeeRegistry),
             address(settlementAsset)
         );
 
-        configured.grantRole(configured.DEPOSITOR_ROLE(), ledger);
+        vm.expectRevert(Treasury.DepositorNotConfigured.selector);
+        new Treasury(
+            8000,
+            address(governance),
+            timelock,
+            address(0),
+            address(payeeRegistry),
+            address(settlementAsset)
+        );
 
-        assertTrue(configured.hasRole(configured.DEPOSITOR_ROLE(), ledger));
+        vm.expectRevert(Treasury.PayeeRegistryAddressIsZero.selector);
+        new Treasury(
+            8000,
+            address(governance),
+            timelock,
+            ledger,
+            address(0),
+            address(settlementAsset)
+        );
+
+        vm.expectRevert(Treasury.SettlementAssetAddressIsZero.selector);
+        new Treasury(
+            8000,
+            address(governance),
+            timelock,
+            ledger,
+            address(payeeRegistry),
+            address(0)
+        );
+    }
+
+    /// NFR8: no address administers the roles once construction ends.
+    function test_NoRoleAdminAfterDeployment() public view {
+        assertEq(treasury.getRoleMemberCount(treasury.DEFAULT_ADMIN_ROLE()), 0);
+    }
+
+    /// FR31, R8: whoever calls, including the deployer, a grant of RELEASER_ROLE
+    /// after construction reverts, because the role's admin has no members.
+    function testFuzz_NoAddressCanGrantReleaser(address caller) public {
+        bytes32 adminRole = treasury.DEFAULT_ADMIN_ROLE();
+        bytes32 releaserRole = treasury.RELEASER_ROLE();
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                caller,
+                adminRole
+            )
+        );
+        vm.prank(caller);
+        treasury.grantRole(releaserRole, caller);
+    }
+
+    /// The deployer (this test contract) is refused like anyone else.
+    function test_DeployerCannotGrantReleaser() public {
+        bytes32 adminRole = treasury.DEFAULT_ADMIN_ROLE();
+        bytes32 releaserRole = treasury.RELEASER_ROLE();
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(this),
+                adminRole
+            )
+        );
+        treasury.grantRole(releaserRole, stranger);
+    }
+
+    /// NFR8: each role has exactly the one member the constructor named.
+    function test_RolesHeldOnlyByConstructorArguments() public view {
+        assertEq(treasury.getRoleMemberCount(treasury.RELEASER_ROLE()), 1);
+        assertEq(treasury.getRoleMember(treasury.RELEASER_ROLE(), 0), timelock);
+        assertEq(treasury.getRoleMemberCount(treasury.DEPOSITOR_ROLE()), 1);
+        assertEq(treasury.getRoleMember(treasury.DEPOSITOR_ROLE(), 0), ledger);
     }
 
     /// FR8 as a property: every receipt is fully allocated, and operating gets
@@ -104,13 +169,7 @@ contract TreasuryTest is Test {
         ratioBps = bound(ratioBps, 0, 10_000);
         amount = bound(amount, 0, type(uint128).max);
 
-        Treasury configured = new Treasury(
-            ratioBps,
-            address(governance),
-            address(payeeRegistry),
-            address(settlementAsset)
-        );
-        configured.grantRole(configured.DEPOSITOR_ROLE(), ledger);
+        Treasury configured = _newTreasury(ratioBps);
         settlementAsset.mint(ledger, amount);
 
         vm.startPrank(ledger);
@@ -146,20 +205,8 @@ contract TreasuryTest is Test {
     }
 
     function test_BoundaryRatiosAreAccepted() public {
-        assertEq(
-            new Treasury(0, address(governance), address(payeeRegistry), address(settlementAsset))
-                .operatingRatioBps(),
-            0
-        );
-        assertEq(
-            new Treasury(
-                10_000,
-                address(governance),
-                address(payeeRegistry),
-                address(settlementAsset)
-            ).operatingRatioBps(),
-            10_000
-        );
+        assertEq(_newTreasury(0).operatingRatioBps(), 0);
+        assertEq(_newTreasury(10_000).operatingRatioBps(), 10_000);
     }
 
     function test_ReleaseRequiresReleaserRole() public {
@@ -273,17 +320,16 @@ contract TreasuryTest is Test {
         Treasury configured = new Treasury(
             8000,
             address(realGovernance),
+            timelock,
+            ledger,
             address(payeeRegistry),
             address(settlementAsset)
         );
-        configured.grantRole(configured.RELEASER_ROLE(), timelock);
         payeeRegistry.admit(payee);
         payeeRegistry.admit(otherPayee);
         settlementAsset.mint(ledger, 1_000e18);
         vm.prank(ledger);
         settlementAsset.approve(address(configured), 1_000e18);
-        vm.prank(ledger);
-        configured.grantRole(configured.DEPOSITOR_ROLE(), ledger);
         vm.prank(ledger);
         configured.deposit(1_000e18);
 
@@ -311,10 +357,11 @@ contract TreasuryTest is Test {
         Treasury configured = new Treasury(
             8000,
             address(realGovernance),
+            timelock,
+            ledger,
             address(payeeRegistry),
             address(settlementAsset)
         );
-        configured.grantRole(configured.RELEASER_ROLE(), timelock);
         payeeRegistry.admit(payee);
         uint256 admitId = realGovernance.propose(payee);
 
@@ -378,6 +425,18 @@ contract TreasuryTest is Test {
 
     function _configureProposal(Fund fund, uint256 limit) internal {
         governance.setProposal(1, fund, limit, payee);
+    }
+
+    function _newTreasury(uint256 ratioBps) internal returns (Treasury) {
+        return
+            new Treasury(
+                ratioBps,
+                address(governance),
+                timelock,
+                ledger,
+                address(payeeRegistry),
+                address(settlementAsset)
+            );
     }
 
     function _deposit(uint256 amount) internal {
