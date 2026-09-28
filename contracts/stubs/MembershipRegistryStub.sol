@@ -4,7 +4,7 @@ pragma solidity 0.8.36;
 import {IMembershipQuery} from "../interfaces/IMembershipQuery.sol";
 
 /// @notice Stand-in for the real `MembershipRegistry` (Money in vertical per
-/// docs/ownership.md) so Governance and LevyLedger can be built and tested against
+/// doc/design/ownership.md) so Governance and LevyLedger can be built and tested against
 /// the interface before that contract exists. `bindUnit` here is open to any
 /// caller — the real contract restricts it to the land-title adapter role;
 /// this stub trades that guard for the ability to set up test fixtures

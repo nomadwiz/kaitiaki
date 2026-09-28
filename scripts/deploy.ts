@@ -1,5 +1,5 @@
 // Deploys the six-contract stub set in the build order fixed by
-// docs/decisions/views/functional-view.md §6:
+// doc/design/spec.md §4:
 //   MembershipRegistry -> Treasury + PayeeRegistry -> Governance + Timelock -> LevyLedger
 //
 // Every contract here is a stub (see contracts/stubs/) except Governance
@@ -27,7 +27,7 @@ const payeeRegistry = await ethers.deployContract("PayeeRegistryStub");
 await payeeRegistry.waitForDeployment();
 console.log(`PayeeRegistryStub deployed to ${payeeRegistry.target}`);
 
-// The firm's key is fixed at deployment (docs/spec.md §4). Locally that is
+// The firm's key is fixed at deployment (doc/design/spec.md §4). Locally that is
 // the first funded signer; the week-5 deployment names the real one.
 const [firm] = await ethers.getSigners();
 const governance = await ethers.deployContract("Governance", [

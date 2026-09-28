@@ -1,7 +1,7 @@
 // A canary for the mocha/ethers runner, not a test of the system.
 //
 // Issue #42. Contract tests are written in Solidity (see
-// contracts/Toolchain.t.sol and docs/product.md §16.2). TypeScript is
+// contracts/Toolchain.t.sol and doc/design/product.md §16.2). TypeScript is
 // kept for the claims that are off-chain by definition: the QAS-4 replay test
 // (FR39, FR40), which derives every balance from the event log alone, and the
 // week-5 read interface. Both need this path to work, so it gets a canary now.

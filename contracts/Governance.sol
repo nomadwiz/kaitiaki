@@ -6,7 +6,7 @@ import {IPayeeQuery} from "./interfaces/IPayeeQuery.sol";
 import {IMembershipQuery} from "./interfaces/IMembershipQuery.sol";
 
 /// @notice Proposals, voting, quorum, queueing and attestation for one
-/// building (docs/spec.md §4). Written for this project rather than extending
+/// building (doc/design/spec.md §4). Written for this project rather than extending
 /// OpenZeppelin's `Governor`, whose purpose is the general execution path this
 /// design removes (ADR-013). A proposal carries terms — a payee, a limit, a
 /// fund — and never a target address or calldata (ADR-001).
@@ -24,7 +24,7 @@ contract Governance {
         Work
     }
 
-    /// @notice Everything docs/decisions/views/information-view.md §2.1 lists
+    /// @notice Everything doc/design/decisions/views/information-view.md §2.1 lists
     /// for a proposal. `limit`, `fund`, `description` and `quoteHash` are
     /// unused by an `Admit` proposal and left zero.
     struct Proposal {
