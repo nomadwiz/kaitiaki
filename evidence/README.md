@@ -88,7 +88,7 @@ passing unchanged before and after.
 
 | File | What it shows | Reproduce with |
 | --- | --- | --- |
-| `49-treasury-role-administration-tests.txt` | Treasury configures the timelock and LevyLedger roles at deployment, exposes exactly one releaser, and renounces the deployer's admin role so release permissions cannot be re-granted | `npm run test:coverage` |
+| `49-treasury-role-administration-tests.txt` | The constructor grants `RELEASER_ROLE` to the timelock and `DEPOSITOR_ROLE` to the LevyLedger, each role then has exactly that one member, and no address holds `DEFAULT_ADMIN_ROLE` (NFR8); a `grantRole` of `RELEASER_ROLE` by any caller, fuzzed and including the deployer, reverts with `AccessControlUnauthorizedAccount` (FR31, R8); each zero constructor address is refused with its own error | `npm run test:coverage` |
 
 ## week4
 

@@ -5,6 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {Governance} from "./Governance.sol";
 import {Fund} from "./interfaces/IRelease.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 import {Treasury} from "./Treasury.sol";
 import {MockNZD} from "./MockNZD.sol";
 import {GovernanceStub} from "./stubs/GovernanceStub.sol";
@@ -119,8 +120,43 @@ contract TreasuryTest is Test {
         );
     }
 
-    function test_RoleAdministrationIsRenouncedAtDeployment() public {
+    /// NFR8: no address administers the roles once construction ends.
+    function test_NoRoleAdminAfterDeployment() public view {
         assertEq(treasury.getRoleMemberCount(treasury.DEFAULT_ADMIN_ROLE()), 0);
+    }
+
+    /// FR31, R8: whoever calls, including the deployer, a grant of RELEASER_ROLE
+    /// after construction reverts, because the role's admin has no members.
+    function testFuzz_NoAddressCanGrantReleaser(address caller) public {
+        bytes32 adminRole = treasury.DEFAULT_ADMIN_ROLE();
+        bytes32 releaserRole = treasury.RELEASER_ROLE();
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                caller,
+                adminRole
+            )
+        );
+        vm.prank(caller);
+        treasury.grantRole(releaserRole, caller);
+    }
+
+    /// The deployer (this test contract) is refused like anyone else.
+    function test_DeployerCannotGrantReleaser() public {
+        bytes32 adminRole = treasury.DEFAULT_ADMIN_ROLE();
+        bytes32 releaserRole = treasury.RELEASER_ROLE();
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                address(this),
+                adminRole
+            )
+        );
+        treasury.grantRole(releaserRole, stranger);
+    }
+
+    /// NFR8: each role has exactly the one member the constructor named.
+    function test_RolesHeldOnlyByConstructorArguments() public view {
         assertEq(treasury.getRoleMemberCount(treasury.RELEASER_ROLE()), 1);
         assertEq(treasury.getRoleMember(treasury.RELEASER_ROLE(), 0), timelock);
         assertEq(treasury.getRoleMemberCount(treasury.DEPOSITOR_ROLE()), 1);
@@ -321,10 +357,11 @@ contract TreasuryTest is Test {
         Treasury configured = new Treasury(
             8000,
             address(realGovernance),
+            timelock,
+            ledger,
             address(payeeRegistry),
             address(settlementAsset)
         );
-        configured.grantRole(configured.RELEASER_ROLE(), timelock);
         payeeRegistry.admit(payee);
         uint256 admitId = realGovernance.propose(payee);
 
