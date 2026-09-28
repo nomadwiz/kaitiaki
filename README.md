@@ -6,7 +6,7 @@ on what levy money buys; a contract releases it.
 The treasury has exactly one function that sends money out, and it checks four
 things itself before moving anything. No proposal can carry an instruction —
 there is no general execution path anywhere in these contracts, deliberately.
-`docs/spec.md` §2 states the four guarantees that rest on it.
+`doc/design/spec.md` §2 states the four guarantees that rest on it.
 
 ## The paper
 
@@ -23,7 +23,7 @@ contract snippets only, never the full source.
 |             | `@tutd-work`           | **Money out** — `Treasury`, `PayeeRegistry`                                  |
 |             | `@laysokhour-computer` | **Decisions** — `Governance`, `Timelock`                                     |
 
-`docs/ownership.md` says who writes which tests, and why nobody writes the
+`doc/design/ownership.md` says who writes which tests, and why nobody writes the
 refusal tests for their own contracts.
 
 ## Getting started
@@ -58,22 +58,21 @@ npx hardhat test mocha
 The compiler version and the EVM target are pinned rather than floating because
 the report publishes gas measurements, and a measurement is only meaningful if
 the bytecode behind it can be reproduced. The reasoning for every row is in
-`docs/product.md` §16.2.
+`doc/design/product.md` §16.2.
 
-## Status
+## The documents
 
-**Week 1.** The toolchain, the contract interfaces and their stubs (#44), and the mock settlement token `MockNZD` (#45) are in place. None of the six system contracts is built yet.
+The design this build implements is in `doc/design/` of the documents
+repository, `nomadwiz/kaitiki-doc`. Clone that first, then the build
+inside it as `code/`:
 
-Six contracts are planned, in this implementation order — `MembershipRegistry`, then
-`Treasury` and `PayeeRegistry`, then `Governance` and `Timelock`, then
-`LevyLedger` — which is not a transaction order: `Treasury` takes its references
-at construction, so deployment precomputes their addresses or uses one factory. Plus `MockNZD`, a mock NZD ERC-20. A seventh, `MaintenancePlan`, is designed
-and deliberately **not** built; nine requirements depend on it or on systems
-outside the prototype, and `docs/spec.md` marks each one.
+```
+git clone https://github.com/nomadwiz/kaitiki-doc.git comp842-a1
+git clone https://github.com/nomadwiz/kaitiaki.git comp842-a1/code
+```
 
-Deployment in week 5 is to a **public test network**, not the permissioned
-national housing chain the design assumes. The report says so, and so does this
-file.
+Paths written `doc/design/…` in the build's source comments resolve from the
+documents repository's root; from inside `code/` they are `../doc/design/…`.
 
 ## Where things are
 
@@ -81,12 +80,6 @@ file.
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | `contracts/`        | Solidity sources, and the `.t.sol` tests that run against them                                                                   |
 | `test/`             | TypeScript tests, for the claims that are off-chain by definition                                                                |
-| `docs/index.md`     | The map of every document here, and where each identifier is defined                                                             |
-| `docs/product.md`   | The product in plain language — the problem, the evidence, the build plan and the timeline                                       |
-| `docs/sad.md`       | The architecture description: requirements, drivers, the five views, evaluation and limits                                       |
-| `docs/spec.md`      | The build specification: the guarantees, the contracts and their guards, the statutory parameters, the events, the refusal tests |
-| `docs/ownership.md` | Who owns which vertical, and who writes which tests                                                                              |
-| `docs/decisions/`   | Why the design is the way it is — thirteen decision records, one superseded, and the five architecture views                     |
 | `CLAUDE.md`         | The working agreement, for people and their assistants                                                                           |
 | `evidence/`         | Screenshots, test listings and gas tables the report cites                                                                       |
 

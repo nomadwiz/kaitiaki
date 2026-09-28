@@ -10,7 +10,7 @@ import {PayeeRegistryStub} from "./stubs/PayeeRegistryStub.sol";
 import {MembershipRegistryStub} from "./stubs/MembershipRegistryStub.sol";
 
 /// @notice Issue #53. Raising proposals: FR16, FR17, FR18. The refusal test B2
-/// itself is issue #61 and is written by another member (docs/ownership.md);
+/// itself is issue #61 and is written by another member (doc/design/ownership.md);
 /// the unregistered-vendor case here only proves the guard exists.
 contract GovernanceProposeTest is Test {
     Governance internal governance;

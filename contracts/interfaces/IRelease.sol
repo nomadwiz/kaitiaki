@@ -2,7 +2,7 @@
 pragma solidity 0.8.36;
 
 /// @notice The two funds a building's levies are split into at deposit.
-/// docs/decisions/views/information-view.md §2.1 lists no third fund, and
+/// doc/design/decisions/views/information-view.md §2.1 lists no third fund, and
 /// none should be added without a decision record.
 enum Fund {
     Operating,

@@ -4,7 +4,7 @@ pragma solidity 0.8.36;
 import {IRelease, Fund} from "../interfaces/IRelease.sol";
 
 /// @notice Stand-in for the real `Treasury` (Money out vertical per
-/// docs/ownership.md). `release` here performs no guard checks at all — the real
+/// doc/design/ownership.md). `release` here performs no guard checks at all — the real
 /// contract enforces G1-G4 (releaser role, payee registered, amount within
 /// cap, fund matches proposal) before moving anything. This stub only
 /// records the call so Timelock and Governance can be built and tested
