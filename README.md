@@ -64,9 +64,10 @@ the bytecode behind it can be reproduced. The reasoning for every row is in
 
 **Week 1.** The toolchain, the contract interfaces and their stubs (#44), and the mock settlement token `MockNZD` (#45) are in place. None of the six system contracts is built yet.
 
-Six contracts are planned, in this build order — `MembershipRegistry`, then
+Six contracts are planned, in this implementation order — `MembershipRegistry`, then
 `Treasury` and `PayeeRegistry`, then `Governance` and `Timelock`, then
-`LevyLedger` — plus `MockNZD`, a mock NZD ERC-20. A seventh, `MaintenancePlan`, is designed
+`LevyLedger` — which is not a transaction order: `Treasury` takes its references
+at construction, so deployment precomputes their addresses or uses one factory. Plus `MockNZD`, a mock NZD ERC-20. A seventh, `MaintenancePlan`, is designed
 and deliberately **not** built; nine requirements depend on it or on systems
 outside the prototype, and `docs/spec.md` marks each one.
 

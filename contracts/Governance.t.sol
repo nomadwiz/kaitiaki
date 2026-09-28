@@ -131,6 +131,45 @@ contract GovernanceProposeTest is Test {
         assertEq(p.createdAt, block.timestamp);
     }
 
+    function test_ApprovedSpendReturnsWorkTerms() public {
+        payees.admit(vendor);
+
+        vm.prank(firm);
+        uint256 id = governance.propose(
+            "Repaint stairwell",
+            4_500e18,
+            Fund.LongTermMaintenance,
+            vendor,
+            QUOTE_HASH
+        );
+
+        (bool exists, Fund fund, uint256 limit, address approvedPayee) = governance.approvedSpend(
+            id
+        );
+        assertTrue(exists);
+        assertEq(uint8(fund), uint8(Fund.LongTermMaintenance));
+        assertEq(limit, 4_500e18);
+        assertEq(approvedPayee, vendor);
+    }
+
+    function test_ApprovedSpendRejectsAdmitAndUnknownIds() public {
+        vm.prank(firm);
+        uint256 admitId = governance.propose(vendor);
+
+        (bool admitExists, , uint256 admitLimit, address admitPayee) = governance.approvedSpend(
+            admitId
+        );
+        assertFalse(admitExists);
+        assertEq(admitLimit, 0);
+        assertEq(admitPayee, vendor);
+
+        (bool unknownExists, , uint256 unknownLimit, address unknownPayee) = governance
+            .approvedSpend(999);
+        assertFalse(unknownExists);
+        assertEq(unknownLimit, 0);
+        assertEq(unknownPayee, address(0));
+    }
+
     /// The event alone carries every stored field (rule 6, QAS-4).
     function test_ProposeWorkEmitsProposalCreated() public {
         payees.admit(vendor);
