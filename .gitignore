@@ -31,6 +31,3 @@
 .vscode/
 *.log
 npm-debug.log*
-
-# NOTE: docs/decisions/ is TRACKED — the decision records and architecture views
-# holding the argument behind every design decision. Do not add it here.
