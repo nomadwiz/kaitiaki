@@ -305,6 +305,46 @@ contract TreasuryTest is Test {
         assertEq(settlementAsset.balanceOf(payee), 1e18);
     }
 
+    /// An Admit proposal carries no spending terms, so no payment can cite it.
+    function test_ReleaseRefusesAdmitProposal() public {
+        Governance realGovernance = new Governance(address(this), payeeRegistry);
+        Treasury configured = new Treasury(
+            8000,
+            address(realGovernance),
+            address(payeeRegistry),
+            address(settlementAsset)
+        );
+        configured.grantRole(configured.RELEASER_ROLE(), timelock);
+        payeeRegistry.admit(payee);
+        uint256 admitId = realGovernance.propose(payee);
+
+        vm.expectRevert(abi.encodeWithSelector(Treasury.UnknownProposal.selector, admitId));
+        vm.prank(timelock);
+        configured.release(Fund.Operating, payee, 0, admitId);
+    }
+
+    /// `release` is the only way value leaves (rule 1): no generic call path,
+    /// no withdrawal, and no setter that could redirect a payment.
+    function test_NoOtherValueOrRedirectSurface() public {
+        _assertAbsent(abi.encodeWithSignature("execute(bytes)", ""), "execute");
+        _assertAbsent(abi.encodeWithSignature("withdraw(uint256)", 1), "withdraw");
+        _assertAbsent(abi.encodeWithSignature("transfer(address,uint256)", payee, 1), "transfer");
+        _assertAbsent(
+            abi.encodeWithSignature("setPayeeRegistry(address)", stranger),
+            "setPayeeRegistry"
+        );
+        _assertAbsent(
+            abi.encodeWithSignature("setSettlementAsset(address)", stranger),
+            "setSettlementAsset"
+        );
+        _assertAbsent(abi.encodeWithSignature("setReleaser(address)", stranger), "setReleaser");
+    }
+
+    function _assertAbsent(bytes memory callData, string memory name) internal {
+        (bool ok, ) = address(treasury).call(callData);
+        assertFalse(ok, string.concat("Treasury must not expose ", name));
+    }
+
     function test_ReleaseAtLimitLeavesOtherFundUntouched() public {
         _configureProposal(Fund.Operating, 800e18);
         payeeRegistry.admit(payee);
