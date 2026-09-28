@@ -82,7 +82,7 @@ passing unchanged before and after.
 
 | File | What it shows | Reproduce with |
 | --- | --- | --- |
-| `48-treasury-release-tests.txt` | Treasury release tests pass for Governance-backed proposal reads, constructor-bound registry and settlement asset, timelock-only releaser authorization, proposal payee matching, proposal limits including the exact-limit boundary, fund matching, sufficient balances, opposite-fund isolation, settlement-token payment, and `PaymentReleased` event emission | `npm run test:coverage` |
+| `48-treasury-release-tests.txt` | Treasury release tests pass for Governance-backed proposal reads (an Admit proposal is refused as unknown), constructor-bound registry and settlement asset, release refused to any caller without `RELEASER_ROLE` (including the admin), proposal payee matching, proposal limits including the exact-limit boundary, fund matching, sufficient balances, opposite-fund isolation, settlement-token payment, `PaymentReleased` event emission, and no other value-moving or redirecting function. The role is granted in the tests' `setUp`; that no address can grant it after deployment is #49 | `npm run test:coverage` |
 
 ### Issue #49 — Treasury role administration
 
@@ -101,3 +101,14 @@ passing unchanged before and after.
 The unregistered-vendor case proves the guard exists. The refusal test B2
 itself is #61, written by another member (`ownership.md`), and is the one the
 report cites.
+
+### Issue #46 — MembershipRegistry: unit-to-wallet bindings and voting eligibility
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `46-membership-registry-tests.txt` | The 11 `MembershipRegistryTest` tests pass alongside the existing suites, with 100% line and statement coverage of `MembershipRegistry.sol`: only the land-title adapter may bind, fuzzed over 256 callers, and any other caller is refused with `NotAdapter`; a unit binds to exactly one wallet, and a second binding — to another wallet or the same one — is refused with `UnitAlreadyBound` (FR1); an unbound wallet, or the zero address, is never an owner (FR2); a wallet's `unitsOf` length equals the units bound to it, fuzzed over 0–255 units (FR19); `UnitBound` carries the unit and wallet | `npm run test:coverage` |
+
+The register holds no voting weight and no entitlement share: weight is the
+number of units a wallet holds (ADR-003), which `Governance` counts. The
+refusal test B8 — an unbound wallet cannot vote — is #67, written by another
+member (`ownership.md`), and is the one the report cites.
