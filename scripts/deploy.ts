@@ -3,7 +3,7 @@
 //   MembershipRegistry -> Treasury + PayeeRegistry -> Governance + Timelock -> LevyLedger
 //
 // Every contract here is a stub (see contracts/stubs/) except Governance
-// (#53). This script exists so the deployment order is
+// (#53, #54). This script exists so the deployment order is
 // exercised end to end now, rather than assembled for the first time once
 // every real contract lands. Real deployment (week 5, issue #75) replaces
 // each stub with its real contract one at a time. The order above is the
@@ -33,6 +33,7 @@ const [firm] = await ethers.getSigners();
 const governance = await ethers.deployContract("Governance", [
   firm.address,
   payeeRegistry.target,
+  membershipRegistry.target,
 ]);
 await governance.waitForDeployment();
 console.log(`Governance deployed to ${governance.target} (firm ${firm.address})`);

@@ -10,6 +10,7 @@ import {Treasury} from "./Treasury.sol";
 import {MockNZD} from "./MockNZD.sol";
 import {GovernanceStub} from "./stubs/GovernanceStub.sol";
 import {PayeeRegistryStub} from "./stubs/PayeeRegistryStub.sol";
+import {MembershipRegistryStub} from "./stubs/MembershipRegistryStub.sol";
 
 contract TreasuryTest is Test {
     event Deposited(uint256 amount, uint256 operatingAmount, uint256 maintenanceAmount);
@@ -18,6 +19,7 @@ contract TreasuryTest is Test {
     GovernanceStub internal governance;
     MockNZD internal settlementAsset;
     PayeeRegistryStub internal payeeRegistry;
+    MembershipRegistryStub internal members;
     address internal ledger = makeAddr("ledger");
     address internal stranger = makeAddr("stranger");
     address internal timelock = makeAddr("timelock");
@@ -28,6 +30,7 @@ contract TreasuryTest is Test {
         governance = new GovernanceStub();
         settlementAsset = new MockNZD();
         payeeRegistry = new PayeeRegistryStub();
+        members = new MembershipRegistryStub();
         treasury = _newTreasury(8000);
         settlementAsset.mint(ledger, 2_000e18 + 1);
     }
@@ -316,7 +319,7 @@ contract TreasuryTest is Test {
     }
 
     function test_TreasuryReadsTermsFromGovernance() public {
-        Governance realGovernance = new Governance(address(this), payeeRegistry);
+        Governance realGovernance = new Governance(address(this), payeeRegistry, members);
         Treasury configured = new Treasury(
             8000,
             address(realGovernance),
@@ -353,7 +356,7 @@ contract TreasuryTest is Test {
 
     /// An Admit proposal carries no spending terms, so no payment can cite it.
     function test_ReleaseRefusesAdmitProposal() public {
-        Governance realGovernance = new Governance(address(this), payeeRegistry);
+        Governance realGovernance = new Governance(address(this), payeeRegistry, members);
         Treasury configured = new Treasury(
             8000,
             address(realGovernance),

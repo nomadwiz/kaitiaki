@@ -96,7 +96,7 @@ passing unchanged before and after.
 
 | File | What it shows | Reproduce with |
 | --- | --- | --- |
-| `53-governance-propose-tests.txt` | The 14 `GovernanceProposeTest` tests pass alongside the existing suites, with 100% line and branch coverage of `Governance.sol`: the firm proposes both kinds (FR16, FR17); any other caller is refused with `NotFirm`, fuzzed over 256 callers per function; a work proposal naming an unregistered vendor is refused at creation with `PayeeNotRegistered` (FR18, G2); `ProposalCreated` carries the proposal's fields | `npm run test:coverage` |
+| `53-governance-propose-tests.txt` | The 14 `GovernanceProposeTest` tests pass alongside the existing suites, with 100% line and statement coverage of `Governance.sol`: the firm proposes both kinds (FR16, FR17); any other caller is refused with `NotFirm`, fuzzed over 256 callers per function; a work proposal naming an unregistered vendor is refused at creation with `PayeeNotRegistered` (FR18, G2); `ProposalCreated` carries the proposal's fields | `npm run test:coverage` |
 
 The unregistered-vendor case proves the guard exists. The refusal test B2
 itself is #61, written by another member (`ownership.md`), and is the one the
@@ -112,3 +112,12 @@ The register holds no voting weight and no entitlement share: weight is the
 number of units a wallet holds (ADR-003), which `Governance` counts. The
 refusal test B8 — an unbound wallet cannot vote — is #67, written by another
 member (`ownership.md`), and is the one the report cites.
+
+### Issue #54 — Governance: castVote and eligibility
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `54-governance-castvote-tests.txt` | The 13 `GovernanceVoteTest` tests pass alongside the existing suites, with 100% line and statement coverage of `Governance.sol`: a bound owner votes and an unbound wallet is refused with `NotBoundOwner` (FR2); weight is the number of units held (FR19); a unit votes once per proposal, including after it changes hands or is listed twice by the register, and a second vote with nothing new is refused with `AlreadyVoted` (ADR-003); a wallet may vote both ways with different units; `VoteCast` carries the wallet, direction, weight and the ids of only the units that voted in that call, excluding units voted earlier, stale register entries and duplicates, so a tally rebuilt from the log keys on unit ids | `npm run test:coverage` |
+
+The unbound-wallet case proves the guard exists. The refusal test B8 itself is
+#67, which the report cites.
