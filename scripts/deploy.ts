@@ -5,11 +5,11 @@
 // Every contract here is a stub (see contracts/stubs/) except Governance
 // (#53, #54). This script exists so the deployment order is
 // exercised end to end now, rather than assembled for the first time once
-// every real contract lands. Real deployment (week 5, issue #75) replaces
+// every real contract lands. Real deployment (week 5, issue #73) replaces
 // each stub with its real contract one at a time. The order above is the
 // implementation order, not a transaction order: the real Treasury takes the
 // Governance, Timelock and LevyLedger addresses at construction and nothing can
-// change them later, so #75 must precompute those addresses (CREATE2 or one
+// change them later, so #73 must precompute those addresses (CREATE2 or one
 // factory) and check the role holders after deployment.
 import { network } from "hardhat";
 
