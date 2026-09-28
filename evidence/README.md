@@ -78,6 +78,12 @@ passing unchanged before and after.
 | --- | --- | --- |
 | `47-treasury-tests.txt` | Treasury tests pass, including the configured ledger, settlement-token custody, and 80/20 fund split | `npm run test:coverage` |
 
+### Issue #48 — Treasury release guards
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `48-treasury-release-tests.txt` | Treasury release tests pass for Governance-backed proposal reads (an Admit proposal is refused as unknown), constructor-bound registry and settlement asset, release refused to any caller without `RELEASER_ROLE` (including the admin), proposal payee matching, proposal limits including the exact-limit boundary, fund matching, sufficient balances, opposite-fund isolation, settlement-token payment, `PaymentReleased` event emission, and no other value-moving or redirecting function. The role is granted in the tests' `setUp`; that no address can grant it after deployment is #49 | `npm run test:coverage` |
+
 ## week4
 
 ### Issue #53 — Governance: propose, for both proposal kinds
