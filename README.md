@@ -45,6 +45,25 @@ npx hardhat test solidity
 npx hardhat test mocha
 ```
 
+## Sepolia deployment account
+
+Issue #51 reserves a funded deployment account before week 5. Hardhat 3
+resolves `SEPOLIA_RPC_URL`, `SEPOLIA_PRIVATE_KEY`, and
+`SEPOLIA_PRIVATE_KEY` through `configVariable`; store the endpoint and key in
+the encrypted Hardhat keystore rather than committing them. The public
+`SEPOLIA_MIN_BALANCE_WEI` threshold is supplied as an environment variable:
+
+```
+npx hardhat keystore set SEPOLIA_RPC_URL
+npx hardhat keystore set SEPOLIA_PRIVATE_KEY
+export SEPOLIA_MIN_BALANCE_WEI=<required-balance-in-wei>
+npm run check:sepolia-account
+```
+
+The account must be a throwaway test-network account. Never put its private key
+or `.env` file in Git. Every CI run executes `npm run check:config-secrets` to
+reject tracked environment files and private-key-shaped values.
+
 ## Stack
 
 | Piece      | Choice                                                                                                                                                                                                                      |

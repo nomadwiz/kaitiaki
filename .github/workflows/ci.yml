@@ -18,6 +18,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Check configuration secrets
+        run: npm run check:config-secrets
+
       - name: Lint
         run: npm run lint
 

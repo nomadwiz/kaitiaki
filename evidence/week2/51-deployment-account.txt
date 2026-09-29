@@ -1,0 +1,19 @@
+# Issue #51 — funded Sepolia deployment account
+
+The deployment account is supplied through Hardhat 3's encrypted keystore or
+through `configVariable` environment variables. The private key and `.env` are
+never committed.
+
+Configure the account once:
+
+    npx hardhat keystore set SEPOLIA_RPC_URL
+    npx hardhat keystore set SEPOLIA_PRIVATE_KEY
+    export SEPOLIA_MIN_BALANCE_WEI=<required-balance-in-wei>
+
+Verify the account and its balance before week 5:
+
+    npm run check:sepolia-account
+
+CI checks every revision for tracked `.env` files and private-key-shaped values:
+
+    npm run check:config-secrets
