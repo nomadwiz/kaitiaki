@@ -82,7 +82,13 @@ passing unchanged before and after.
 
 | File | What it shows | Reproduce with |
 | --- | --- | --- |
-| `48-treasury-release-tests.txt` | Treasury release tests pass for Governance-backed proposal reads (an Admit proposal is refused as unknown), constructor-bound registry and settlement asset, release refused to any caller without `RELEASER_ROLE` (including the admin), proposal payee matching, proposal limits including the exact-limit boundary, fund matching, sufficient balances, opposite-fund isolation, settlement-token payment, `PaymentReleased` event emission, and no other value-moving or redirecting function. The role is granted in the tests' `setUp`; that no address can grant it after deployment is #49 | `npm run test:coverage` |
+| `48-treasury-release-tests.txt` | Treasury tests pass for Governance-backed proposal reads (an Admit proposal is refused as unknown), constructor-bound registry and settlement asset, release refused to any caller without `RELEASER_ROLE` (including the admin), proposal payee matching, cumulative proposal limits including the exact-limit boundary and repeated-release overrun, fund matching, sufficient balances, opposite-fund isolation, settlement-token payment, `PaymentReleased` event emission, and no other value-moving or redirecting function. The role is granted in the tests' `setUp`; that no address can grant it after deployment is #49 | `npm run test:coverage` |
+
+### Issue #91 — Treasury cumulative release limits
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `91-treasury-cumulative-release-tests.txt` | Releases are tracked per proposal; a second payment is allowed only while the cumulative total remains within the approved limit, the exact cumulative limit is accepted, and an overrun reverts with `AmountExceedsLimit` | `npm run test:coverage` |
 
 ### Issue #49 — Treasury role administration
 

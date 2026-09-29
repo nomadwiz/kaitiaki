@@ -1,0 +1,127 @@
+# npm run test:coverage
+
+
+npm notice run kaitiaki@0.1.0 test:coverage
+npm notice run hardhat test solidity --coverage
+No contracts to compile
+
+Running Solidity tests
+
+  contracts/Toolchain.t.sol:ToolchainTest
+    ✔ test_RunnerExecutes()
+    ✔ test_ExpectRevertIsAvailable()
+    ✔ test_CheatcodesAreAvailable()
+
+  contracts/GovernanceVote.t.sol:GovernanceVoteTest
+    ✔ test_WeightIsUnitsHeld()
+    ✔ test_WalletMayVoteBothWaysWithDifferentUnits()
+    ✔ test_VotesAreSeparatePerProposal()
+    ✔ test_VoteCastCarriesWalletDirectionAndUnits()
+    ✔ test_UnknownProposalRefused()
+    ✔ test_UnitRebindMovesTheVote()
+    ✔ test_UnboundWalletRefused()
+    ✔ test_TransferredUnitCannotVoteTwice()
+    ✔ test_SecondVoteRefused()
+    ✔ test_NewlyAcquiredUnitVotesOnce()
+    ✔ test_LiveAndStaleEntriesVoteOnlyTheLiveUnit()
+    ✔ test_DuplicateUnitEntryCountsOnce()
+    ✔ test_BoundOwnerVotes()
+
+  contracts/MockNZD.t.sol:MockNZDTest
+    ✔ test_NoGovernanceSurface()
+    ✔ test_NameSymbolAndDecimals()
+    ✔ test_MintOnSepolia()
+    ✔ test_MintOnHardhatNetwork()
+    ✔ test_AnyAddressMayMint()
+    ✔ testFuzz_MintRefusedOffTestChains(uint256) (runs: 256)
+
+  contracts/Treasury.t.sol:TreasuryTest
+    ✔ test_TreasuryStubReleaseEmitsOperatingPayment()
+    ✔ test_TreasuryStubReleaseEmitsMaintenancePayment()
+    ✔ test_TreasuryReadsTermsFromGovernance()
+    ✔ test_RolesHeldOnlyByConstructorArguments()
+    ✔ test_ReleaseRequiresReleaserRole()
+    ✔ test_ReleaseRejectsWrongFund()
+    ✔ test_ReleaseRejectsUnregisteredPayee()
+    ✔ test_ReleaseRejectsUnknownProposal()
+    ✔ test_ReleaseRejectsSettlementTransferFailure()
+    ✔ test_ReleaseRejectsInsufficientBalance()
+    ✔ test_ReleaseRejectsCumulativeAmountOverProposalLimit()
+    ✔ test_ReleaseRejectsAmountOverProposalLimit()
+    ✔ test_ReleaseRefusesAdmitProposal()
+    ✔ test_ReleasePaysSettlementAssetAndUpdatesBalance()
+    ✔ test_ReleaseMayUseExactCumulativeProposalLimit()
+    ✔ test_ReleaseEmitsPaymentDetails()
+    ✔ test_ReleaseAtLimitLeavesOtherFundUntouched()
+    ✔ test_RejectsZeroGovernance()
+    ✔ test_RejectsOutOfRangeSplit()
+    ✔ test_ReceiptsAccumulateAcrossACycle()
+    ✔ test_NoRoleAdminAfterDeployment()
+    ✔ test_NoOtherValueOrRedirectSurface()
+    ✔ test_DepositSplitsReceiptAcrossBothFunds()
+    ✔ test_DepositRejectsSettlementTransferFailure()
+    ✔ test_DepositOnlyByLevyLedger()
+    ✔ test_DepositEmitsTheSplit()
+    ✔ test_DeployerCannotGrantReleaser()
+    ✔ test_ConstructorRejectsZeroConfigurationAddresses()
+    ✔ test_BoundaryRatiosAreAccepted()
+    ✔ test_AdminCannotRelease()
+    ✔ testFuzz_SplitConservesEveryReceipt(uint256,uint256) (runs: 256)
+    ✔ testFuzz_NoAddressCanGrantReleaser(address) (runs: 256)
+
+  contracts/MembershipRegistry.t.sol:MembershipRegistryTest
+    ✔ test_UnboundWalletIsNotOwner()
+    ✔ test_UnboundUnitHasNoOwner()
+    ✔ test_ConstructorRefusesZeroAdapter()
+    ✔ test_ConstructorRecordsAdapter()
+    ✔ test_BindRefusesZeroWallet()
+    ✔ test_BindRefusesUnitBoundToSameWallet()
+    ✔ test_BindRefusesUnitBoundToAnotherWallet()
+    ✔ test_BindEmitsUnitBound()
+    ✔ test_AdapterBindsUnit()
+    ✔ testFuzz_WeightIsUnitCount(uint8) (runs: 256)
+    ✔ testFuzz_BindRefusesNonAdapter(address) (runs: 256)
+
+  contracts/Governance.t.sol:GovernanceProposeTest
+    ✔ test_UnknownIdIsZeroed()
+    ✔ test_ProposeWorkRefusesUnregisteredVendor()
+    ✔ test_ProposeWorkEmitsProposalCreated()
+    ✔ test_ProposeAdmitRefusesZeroVendor()
+    ✔ test_ProposeAdmitEmitsProposalCreated()
+    ✔ test_ProposeAdmitDoesNotRegisterVendor()
+    ✔ test_IdsIncreaseFromOne()
+    ✔ test_FirmProposesWork()
+    ✔ test_FirmProposesAdmit()
+    ✔ test_ConstructorRefusesZeroRegistry()
+    ✔ test_ConstructorRefusesZeroMembershipRegistry()
+    ✔ test_ConstructorRefusesZeroFirm()
+    ✔ test_ConstructorRecordsFirmAndRegistry()
+    ✔ test_ApprovedSpendReturnsWorkTerms()
+    ✔ test_ApprovedSpendRejectsAdmitAndUnknownIds()
+    ✔ testFuzz_ProposeWorkRefusesNonFirm(address) (runs: 256)
+    ✔ testFuzz_ProposeAdmitRefusesNonFirm(address) (runs: 256)
+
+
+  82 passing
+Saved html report to /Users/tutd/Library/CloudStorage/OneDrive-AUTUniversity/04_S2 2026/COMP842 Applied Blockchains and Cryptocurrencies/gorup_work/kaitiaki/coverage/html
+╔═════════════════════════════════════════════════════════════════════════════════════╗
+║                                   Coverage Report                                   ║
+╚═════════════════════════════════════════════════════════════════════════════════════╝
+╔═════════════════════════════════════════════════════════════════════════════════════╗
+║ File Coverage                                                                       ║
+╟────────────────────────────────────────────┬────────┬─────────────┬─────────────────╢
+║ File Path                                  │ Line % │ Statement % │ Uncovered Lines ║
+╟────────────────────────────────────────────┼────────┼─────────────┼─────────────────╢
+║ contracts/Governance.sol                   │ 100.00 │ 100.00      │ -               ║
+║ contracts/MockNZD.sol                      │ 100.00 │ 100.00      │ -               ║
+║ contracts/MembershipRegistry.sol           │ 100.00 │ 100.00      │ -               ║
+║ contracts/stubs/MembershipRegistryStub.sol │ 100.00 │ 100.00      │ -               ║
+║ contracts/stubs/PayeeRegistryStub.sol      │ 100.00 │ 100.00      │ -               ║
+║ contracts/stubs/TreasuryStub.sol           │ 100.00 │ 100.00      │ -               ║
+║ contracts/stubs/GovernanceStub.sol         │ 100.00 │ 100.00      │ -               ║
+║ contracts/Treasury.sol                     │ 100.00 │ 100.00      │ -               ║
+╟────────────────────────────────────────────┼────────┼─────────────┼─────────────────╢
+║ Total                                      │ 100.00 │ 100.00      │                 ║
+╚════════════════════════════════════════════╧════════╧═════════════╧═════════════════╝
+
+

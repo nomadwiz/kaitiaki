@@ -23,6 +23,7 @@ contract Treasury is AccessControlEnumerable, IRelease {
     address public immutable settlementAsset;
 
     mapping(Fund => uint256) private _balances;
+    mapping(uint256 proposalId => uint256 amount) public released;
 
     error UnauthorizedLevyLedger(address caller);
     error InvalidFundSplit(uint256 ratioBps);
@@ -35,7 +36,12 @@ contract Treasury is AccessControlEnumerable, IRelease {
     error DepositorNotConfigured();
     error PayeeNotRegistered(address payee);
     error PayeeMismatch(address expectedPayee, address actualPayee);
-    error AmountExceedsLimit(uint256 proposalId, uint256 amount, uint256 limit);
+    error AmountExceedsLimit(
+        uint256 proposalId,
+        uint256 amount,
+        uint256 alreadyReleased,
+        uint256 limit
+    );
     error FundMismatch(Fund expectedFund, Fund actualFund);
     error UnknownProposal(uint256 proposalId);
     error InsufficientBalance(Fund fund, uint256 amount, uint256 balance);
@@ -131,8 +137,9 @@ contract Treasury is AccessControlEnumerable, IRelease {
         if (payee != proposalPayee) {
             revert PayeeMismatch(proposalPayee, payee);
         }
-        if (amount > proposalLimit) {
-            revert AmountExceedsLimit(proposalId, amount, proposalLimit);
+        uint256 alreadyReleased = released[proposalId];
+        if (alreadyReleased > proposalLimit || amount > proposalLimit - alreadyReleased) {
+            revert AmountExceedsLimit(proposalId, amount, alreadyReleased, proposalLimit);
         }
         if (fund != proposalFund) {
             revert FundMismatch(proposalFund, fund);
@@ -147,6 +154,7 @@ contract Treasury is AccessControlEnumerable, IRelease {
             revert PaymentTransferFailed(payee, amount);
         }
 
+        released[proposalId] = alreadyReleased + amount;
         emit PaymentReleased(fund, payee, amount, proposalId);
     }
 

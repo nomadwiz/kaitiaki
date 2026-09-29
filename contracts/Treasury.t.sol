@@ -11,11 +11,14 @@ import {MockNZD} from "./MockNZD.sol";
 import {GovernanceStub} from "./stubs/GovernanceStub.sol";
 import {PayeeRegistryStub} from "./stubs/PayeeRegistryStub.sol";
 import {MembershipRegistryStub} from "./stubs/MembershipRegistryStub.sol";
+import {TreasuryStub} from "./stubs/TreasuryStub.sol";
 
 contract TreasuryTest is Test {
     event Deposited(uint256 amount, uint256 operatingAmount, uint256 maintenanceAmount);
+    event Released(Fund fund, address payee, uint256 amount, uint256 proposalId);
 
     Treasury internal treasury;
+    TreasuryStub internal treasuryStub;
     GovernanceStub internal governance;
     MockNZD internal settlementAsset;
     PayeeRegistryStub internal payeeRegistry;
@@ -32,6 +35,7 @@ contract TreasuryTest is Test {
         payeeRegistry = new PayeeRegistryStub();
         members = new MembershipRegistryStub();
         treasury = _newTreasury(8000);
+        treasuryStub = new TreasuryStub();
         settlementAsset.mint(ledger, 2_000e18 + 1);
     }
 
@@ -250,7 +254,7 @@ contract TreasuryTest is Test {
         _deposit(1_000e18);
 
         vm.expectRevert(
-            abi.encodeWithSelector(Treasury.AmountExceedsLimit.selector, 1, 1_001e18, 1_000e18)
+            abi.encodeWithSelector(Treasury.AmountExceedsLimit.selector, 1, 1_001e18, 0, 1_000e18)
         );
         vm.prank(timelock);
         treasury.release(Fund.Operating, payee, 1_001e18, 1);
@@ -299,6 +303,44 @@ contract TreasuryTest is Test {
 
         assertEq(settlementAsset.balanceOf(payee), 500e18);
         assertEq(treasury.balanceOf(Fund.Operating), 300e18);
+        assertEq(treasury.released(1), 500e18);
+    }
+
+    function test_ReleaseRejectsCumulativeAmountOverProposalLimit() public {
+        _configureProposal(Fund.Operating, 1_000e18);
+        payeeRegistry.admit(payee);
+        _deposit(1_000e18);
+
+        vm.startPrank(timelock);
+        treasury.release(Fund.Operating, payee, 600e18, 1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Treasury.AmountExceedsLimit.selector,
+                1,
+                401e18,
+                600e18,
+                1_000e18
+            )
+        );
+        treasury.release(Fund.Operating, payee, 401e18, 1);
+        vm.stopPrank();
+
+        assertEq(treasury.released(1), 600e18);
+        assertEq(settlementAsset.balanceOf(payee), 600e18);
+    }
+
+    function test_ReleaseMayUseExactCumulativeProposalLimit() public {
+        _configureProposal(Fund.Operating, 1_000e18);
+        payeeRegistry.admit(payee);
+        _deposit(1_500e18);
+
+        vm.startPrank(timelock);
+        treasury.release(Fund.Operating, payee, 600e18, 1);
+        treasury.release(Fund.Operating, payee, 400e18, 1);
+        vm.stopPrank();
+
+        assertEq(treasury.released(1), 1_000e18);
+        assertEq(settlementAsset.balanceOf(payee), 1_000e18);
     }
 
     function test_ReleaseRejectsSettlementTransferFailure() public {
@@ -417,6 +459,20 @@ contract TreasuryTest is Test {
         emit PaymentReleased(Fund.Operating, payee, 500e18, 1);
         vm.prank(timelock);
         treasury.release(Fund.Operating, payee, 500e18, 1);
+    }
+
+    function test_TreasuryStubReleaseEmitsOperatingPayment() public {
+        vm.expectEmit(address(treasuryStub));
+        emit Released(Fund.Operating, payee, 125e18, 7);
+
+        treasuryStub.release(Fund.Operating, payee, 125e18, 7);
+    }
+
+    function test_TreasuryStubReleaseEmitsMaintenancePayment() public {
+        vm.expectEmit(address(treasuryStub));
+        emit Released(Fund.LongTermMaintenance, payee, 250e18, 8);
+
+        treasuryStub.release(Fund.LongTermMaintenance, payee, 250e18, 8);
     }
 
     event PaymentReleased(
