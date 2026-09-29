@@ -33,7 +33,9 @@ contract PayeeRegistryTest is Test {
 
     function test_AdmissionFromAnyOtherCallerReverts() public {
         address caller = makeAddr("other");
-        vm.expectRevert(abi.encodeWithSelector(PayeeRegistry.UnauthorizedExecutor.selector, caller));
+        vm.expectRevert(
+            abi.encodeWithSelector(PayeeRegistry.UnauthorizedExecutor.selector, caller)
+        );
         vm.prank(caller);
         payees.admit(vendor, 1);
     }
