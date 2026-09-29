@@ -12,12 +12,13 @@ contract PayeeRegistry is IPayeeQuery {
     /// @notice The sole contract allowed to admit payees.
     address public immutable executor;
 
-    mapping(address payee => bool registered) private _registered;
+    mapping(address payee => uint256 admittedBy) private _admittedBy;
 
     error ExecutorIsZero();
     error UnauthorizedExecutor(address caller);
     error PayeeIsZero();
     error ProposalIdIsZero();
+    error PayeeAlreadyRegistered(address payee, uint256 admittedBy);
 
     event PayeeAdmitted(address indexed payee, uint256 indexed proposalId);
 
@@ -34,17 +35,18 @@ contract PayeeRegistry is IPayeeQuery {
         if (payee == address(0)) revert PayeeIsZero();
         if (proposalId == 0) revert ProposalIdIsZero();
 
-        // Admission is idempotent so a second passed proposal cannot replace
-        // the proposal that established the payee's record.
-        if (_registered[payee]) return;
+        uint256 firstProposalId = _admittedBy[payee];
+        if (firstProposalId != 0) {
+            revert PayeeAlreadyRegistered(payee, firstProposalId);
+        }
 
-        _registered[payee] = true;
+        _admittedBy[payee] = proposalId;
         emit PayeeAdmitted(payee, proposalId);
     }
 
     /// @notice Whether `payee` has been admitted.
     /// @param payee The vendor address to query.
     function isRegistered(address payee) external view returns (bool) {
-        return _registered[payee];
+        return _admittedBy[payee] != 0;
     }
 }

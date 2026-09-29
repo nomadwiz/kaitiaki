@@ -62,16 +62,17 @@ contract PayeeRegistryTest is Test {
         payees.admit(address(0), 1);
     }
 
-    function test_AdmissionIsIdempotentAndKeepsFirstAdmission() public {
+    function test_AdmissionRejectsDuplicateAndKeepsFirstAdmission() public {
         vm.prank(executor);
         payees.admit(vendor, 1);
 
-        vm.recordLogs();
+        vm.expectRevert(
+            abi.encodeWithSelector(PayeeRegistry.PayeeAlreadyRegistered.selector, vendor, 1)
+        );
         vm.prank(executor);
         payees.admit(vendor, 2);
 
         assertTrue(payees.isRegistered(vendor));
-        assertEq(vm.getRecordedLogs().length, 0);
     }
 
     function testFuzz_IsRegisteredIsReadableByAnyCaller(address caller) public {
