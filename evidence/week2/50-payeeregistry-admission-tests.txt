@@ -1,0 +1,41 @@
+# npm run test:coverage
+
+
+Compiled 22 Solidity files with solc 0.8.36 (evm target: prague)
+
+Running Solidity tests
+
+  contracts/PayeeRegistry.t.sol:PayeeRegistryTest
+    ✔ test_ExecutorAdmissionRegistersPayeeAndEmitsProposal()
+    ✔ test_DirectAdmissionFromFirmReverts()
+    ✔ test_AdmissionFromAnyOtherCallerReverts()
+    ✔ test_ConstructorRejectsZeroExecutor()
+    ✔ test_ConstructorRecordsExecutor()
+    ✔ test_AdmissionRejectsZeroProposalId()
+    ✔ test_AdmissionRejectsZeroPayee()
+    ✔ test_AdmissionIsIdempotentAndKeepsFirstAdmission()
+    ✔ testFuzz_IsRegisteredIsReadableByAnyCaller(address) (runs: 256)
+
+
+  87 passing
+Saved html report to /Users/tutd/Library/CloudStorage/OneDrive-AUTUniversity/04_S2 2026/COMP842 Applied Blockchains and Cryptocurrencies/gorup_work/kaitiaki/coverage/html
+╔═════════════════════════════════════════════════════════════════════════════════════╗
+║                                   Coverage Report                                   ║
+╚═════════════════════════════════════════════════════════════════════════════════════╝
+╔═════════════════════════════════════════════════════════════════════════════════════╗
+║ File Coverage                                                                       ║
+╟────────────────────────────────────────────┬────────┬─────────────┬─────────────────╢
+║ File Path                                  │ Line % │ Statement % │ Uncovered Lines ║
+╟────────────────────────────────────────────┼────────┼─────────────┼─────────────────╢
+║ contracts/Governance.sol                   │ 100.00 │ 100.00      │ -               ║
+║ contracts/MockNZD.sol                      │ 100.00 │ 100.00      │ -               ║
+║ contracts/MembershipRegistry.sol           │ 100.00 │ 100.00      │ -               ║
+║ contracts/PayeeRegistry.sol                │ 100.00 │ 100.00      │ -               ║
+║ contracts/stubs/MembershipRegistryStub.sol │ 100.00 │ 100.00      │ -               ║
+║ contracts/stubs/PayeeRegistryStub.sol      │ 100.00 │ 100.00      │ -               ║
+║ contracts/stubs/TreasuryStub.sol           │ 0.00   │ 0.00        │ 17              ║
+║ contracts/stubs/GovernanceStub.sol         │ 100.00 │ 100.00      │ -               ║
+║ contracts/Treasury.sol                     │ 100.00 │ 100.00      │ -               ║
+╟────────────────────────────────────────────┼────────┼─────────────┼─────────────────╢
+║ Total                                      │ 99.28  │ 99.39       │                 ║
+╚════════════════════════════════════════════╧════════╧═════════════╧═════════════════╝

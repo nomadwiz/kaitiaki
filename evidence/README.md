@@ -90,6 +90,12 @@ passing unchanged before and after.
 | --- | --- | --- |
 | `49-treasury-role-administration-tests.txt` | The constructor grants `RELEASER_ROLE` to the timelock and `DEPOSITOR_ROLE` to the LevyLedger, each role then has exactly that one member, and no address holds `DEFAULT_ADMIN_ROLE` (NFR8); a `grantRole` of `RELEASER_ROLE` by any caller, fuzzed and including the deployer, reverts with `AccessControlUnauthorizedAccount` (FR31, R8); each zero constructor address is refused with its own error | `npm run test:coverage` |
 
+### Issue #50 — PayeeRegistry: admission by owner vote only
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `50-payeeregistry-admission-tests.txt` | Payee admission is restricted to the immutable execution caller, rejects zero proposal IDs, direct admission by the firm's key reverts, `isRegistered` is publicly readable, and `PayeeAdmitted` carries the admitting proposal ID; duplicate admission preserves the first record | `npm run test:coverage` |
+
 ## week4
 
 ### Issue #53 — Governance: propose, for both proposal kinds
