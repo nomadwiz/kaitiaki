@@ -212,11 +212,16 @@ contract TreasuryTest is Test {
         assertEq(_newTreasury(10_000).operatingRatioBps(), 10_000);
     }
 
-    function test_ReleaseRequiresReleaserRole() public {
+    /// Refusal B3 (spec §7), proving G1 and FR31: any caller other than the
+    /// timelock is refused with its own named error (NFR9).
+    function testFuzz_ReleaseRefusesNonTimelock(address caller) public {
+        vm.assume(caller != timelock);
         _configureProposal(Fund.Operating, 1_000e18);
+        payeeRegistry.admit(payee);
+        _deposit(1_000e18);
 
-        vm.expectRevert(abi.encodeWithSelector(Treasury.UnauthorizedReleaser.selector, stranger));
-        vm.prank(stranger);
+        vm.expectRevert(abi.encodeWithSelector(Treasury.UnauthorizedReleaser.selector, caller));
+        vm.prank(caller);
         treasury.release(Fund.Operating, payee, 1e18, 1);
     }
 
@@ -235,6 +240,11 @@ contract TreasuryTest is Test {
         treasury.release(Fund.Operating, payee, 1e18, 1);
     }
 
+    /// Refusal B2′ (spec §7, FR34): a payee not registered at payment time is refused
+    /// with `PayeeNotRegistered`, although the approved proposal names that payee.
+    /// Proves G2 again — the check is not cached. Proved by calling `Treasury.release`
+    /// directly with an unregistered payee, because registry removal is designed and
+    /// not built (FR14).
     function test_ReleaseRejectsUnregisteredPayee() public {
         _configureProposal(Fund.Operating, 1_000e18);
         _deposit(1_000e18);
@@ -256,20 +266,22 @@ contract TreasuryTest is Test {
         treasury.release(Fund.Operating, payee, 1_001e18, 1);
     }
 
-    function test_ReleaseRejectsWrongFund() public {
-        _configureProposal(Fund.LongTermMaintenance, 1_000e18);
+    /// Refusal test B5, proving G4: a release drawing on any fund other than the
+    /// approved one reverts with `FundMismatch`, whichever fund was approved and
+    /// for any non-zero amount up to the limit.
+    function testFuzz_ReleaseRejectsWrongFund(uint8 approvedSeed, uint256 amount) public {
+        Fund approved = Fund(bound(approvedSeed, 0, 1));
+        Fund requested = approved == Fund.Operating ? Fund.LongTermMaintenance : Fund.Operating;
+        amount = bound(amount, 1, 1_000e18);
+        _configureProposal(approved, 1_000e18);
         payeeRegistry.admit(payee);
         _deposit(1_000e18);
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                Treasury.FundMismatch.selector,
-                Fund.LongTermMaintenance,
-                Fund.Operating
-            )
+            abi.encodeWithSelector(Treasury.FundMismatch.selector, approved, requested)
         );
         vm.prank(timelock);
-        treasury.release(Fund.Operating, payee, 1e18, 1);
+        treasury.release(requested, payee, amount, 1);
     }
 
     function test_ReleaseRejectsInsufficientBalance() public {
