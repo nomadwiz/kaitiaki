@@ -11,6 +11,9 @@
 // everywhere else, including a key pasted bare into hardhat.config.ts, which a
 // match on `PRIVATE_KEY=` alone would miss.
 //
+// Limit: `git grep -I` skips any file git treats as binary, so a key inside one
+// is not found.
+//
 // Usage, from the repository root (CI runs it on every pull request):
 //   npm run check:config-secrets
 // Exit 0: nothing found. Exit 1: a finding, listed on stderr. Untrack the file

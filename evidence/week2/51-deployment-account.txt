@@ -14,13 +14,14 @@ Running Mocha tests
 
 
   check-config-secrets
-    ✔ passes a clean tree (106ms)
-    ✔ fails on a tracked file holding a private-key-shaped value (112ms)
-    ✔ fails on a tracked .env (122ms)
-    ✔ fails when a line of .env.example has a value (99ms)
-    ✔ passes a committed Ignition journal, whose transaction hashes are key-shaped (105ms)
+    ✔ passes a clean tree (90ms)
+    ✔ fails on a tracked file holding a private-key-shaped value (92ms)
+    ✔ fails on a tracked .env (93ms)
+    ✔ fails when a line of .env.example has a value (89ms)
+    ✔ passes a committed Ignition journal, whose transaction hashes are key-shaped (89ms)
+    ✔ fails closed outside a git repository (46ms)
 
 
-  5 passing (548ms)
+  6 passing (502ms)
 
 

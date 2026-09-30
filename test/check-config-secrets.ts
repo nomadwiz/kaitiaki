@@ -53,4 +53,15 @@ describe("check-config-secrets", () => {
     const path = "ignition/deployments/chain-11155111/journal.jsonl";
     expect(scan({ ".env.example": cleanExample, [path]: journal })).to.equal(0);
   });
+
+  it("fails closed outside a git repository", () => {
+    const dir = mkdtempSync(join(tmpdir(), "kaitiaki-secrets-"));
+    try {
+      // The ceiling stops git finding a repository above the temp directory.
+      const env = { ...process.env, GIT_CEILING_DIRECTORIES: dirname(dir) };
+      expect(spawnSync(process.execPath, [scanner], { cwd: dir, env }).status).to.equal(1);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
