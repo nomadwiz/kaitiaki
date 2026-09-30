@@ -25,3 +25,14 @@ Running Mocha tests
   6 passing (502ms)
 
 
+
+# npm run check:sepolia-account
+# Date: 30-09-2026
+
+Deployer: 0xC60ACBAEF64f0db5520083c1C54a5b7a9ef9b433
+Balance: 50000000000000000 wei
+Required: 48615570000000000 wei
+Sepolia deployment account has enough funds.
+
+Funding: 0.05 ETH from the Google Cloud Web3 Sepolia faucet, tx 0x86c7d4fe…91e4f839 (shortened: a full 64-hex hash trips check:config-secrets; the full hash is in the deployer address's history on sepolia.etherscan.io)
+Key: a new wallet generated on 30-09-2026 for this project only; the faucet transfer above is its first transaction, and the address has never held mainnet value.
