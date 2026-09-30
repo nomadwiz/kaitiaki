@@ -84,11 +84,33 @@ passing unchanged before and after.
 | --- | --- | --- |
 | `48-treasury-release-tests.txt` | Treasury release tests pass for Governance-backed proposal reads (an Admit proposal is refused as unknown), constructor-bound registry and settlement asset, release refused to any caller without `RELEASER_ROLE` (including the admin), proposal payee matching, proposal limits including the exact-limit boundary, fund matching, sufficient balances, opposite-fund isolation, settlement-token payment, `PaymentReleased` event emission, and no other value-moving or redirecting function. The role is granted in the tests' `setUp`; that no address can grant it after deployment is #49 | `npm run test:coverage` |
 
+### Issue #91 — Treasury cumulative release limits
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `91-treasury-cumulative-release-tests.txt` | 82 passing, `Treasury.sol` at 100% line and statement coverage. Release limits are cumulative per proposal (ADR-014): a second release that takes the total one wei past the limit reverts with the four-argument `AmountExceedsLimit` and leaves `released` unchanged, a total exactly at the limit is paid, one proposal's spent limit does not reduce another's, and a fuzz test over two amounts shows the pair succeeds if and only if their sum is within the limit. The new tests assert `PaymentReleased` on every release they expect to pay | `npm run test:coverage` |
+
 ### Issue #49 — Treasury role administration
 
 | File | What it shows | Reproduce with |
 | --- | --- | --- |
 | `49-treasury-role-administration-tests.txt` | The constructor grants `RELEASER_ROLE` to the timelock and `DEPOSITOR_ROLE` to the LevyLedger, each role then has exactly that one member, and no address holds `DEFAULT_ADMIN_ROLE` (NFR8); a `grantRole` of `RELEASER_ROLE` by any caller, fuzzed and including the deployer, reverts with `AccessControlUnauthorizedAccount` (FR31, R8); each zero constructor address is refused with its own error | `npm run test:coverage` |
+
+### Issue #50 — PayeeRegistry: admission by owner vote only
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `50-payeeregistry-admission-tests.txt` | The ten `PayeeRegistryTest` tests pass alongside the existing suites, 88 passing, with 100% line and statement coverage of `PayeeRegistry.sol`: only the immutable executor may call `admit`, and any other caller is refused with `UnauthorizedExecutor(caller)`, fuzzed over 256 callers (FR12); a direct admission from the firm's key is refused (G2); a zero payee or a zero proposal id is refused with its own error; `isRegistered` is readable by any caller (FR13); `PayeeAdmitted` carries the payee and the admitting proposal id | `npm run test:coverage` |
+
+This is the boundary test: it proves no address but the executor can admit. That the executor admits only after an executed affirmative proposal depends on which contract the executor is, which #56 settles, and is not proved here. With the caller check temporarily removed from `admit`, the fuzz test and the firm-key test both failed with "next call did not revert as expected"; the check was restored before this output was captured on 30-09-2026.
+
+### Issue #90 — PayeeRegistry: duplicate admission is refused
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `90-payeeregistry-duplicate-admission-tests.txt` | Admission is write-once. A second admission of a registered payee reverts with `PayeeAlreadyRegistered(payee, admittedBy)`, carrying the first admitting proposal id, whether it repeats the same proposal or names a new one, and the payee stays registered; because the call reverts, no second `PayeeAdmitted` reaches the log. The same run as the #50 capture: 88 passing, 100% line and statement coverage of `PayeeRegistry.sol` | `npm run test:coverage` |
+
+With the duplicate check temporarily removed from `admit`, both duplicate tests failed with "next call did not revert as expected" and no other test failed; the check was restored before this output was captured on 30-09-2026.
 
 ### Issue #51 — secrets check and the deployment account
 
