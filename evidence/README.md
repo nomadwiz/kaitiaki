@@ -152,3 +152,17 @@ test fails because the call no longer reverts — the release is paid.
 | `62-refusal-b2-prime-tests.txt` | The 78 tests pass, with 100% line and statement coverage of `Treasury.sol`. Among them, `test_ReleaseRejectsUnregisteredPayee` is refusal B2′ (spec §7, FR34): the timelock calls `Treasury.release` for an approved proposal whose payee is not registered, and the call reverts with `PayeeNotRegistered(payee)`, a named error of its own (NFR9). This proves G2 again — the check is made at payment time and not cached from the proposal | `npm run test:coverage` |
 
 B2′ is proved by calling `Treasury.release` directly with an unregistered payee, because registry removal is designed and not built (FR14). The test was checked to bite on 30-09-2026: with the registration check deleted from `Treasury.release`, it was the only one of the 78 to fail, with "next call did not revert as expected"; the check was then restored.
+
+### Issue #69 — QAS-4: replay the event log on an independent node
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `69-qas4-replay.txt` | The seven `QAS-4 replay` tests pass. `scripts/replay.ts` is handed only a provider it may ask for `eth_getLogs`, so it makes no contract call and no storage read. It decodes every event the replayed contracts emit, Treasury's `RoleGranted` and `RoleRevoked` included, and refuses any log from those addresses it cannot decode. From the log alone it derives both fund balances, which equal `Treasury.balanceOf` exactly for each fund while a direct token transfer of 500 sits in Treasury uncredited; the holders of each Treasury role, so `RELEASER_ROLE` is held by the Timelock alone, `DEPOSITOR_ROLE` by the LevyLedger alone and `DEFAULT_ADMIN_ROLE` by nobody (rule 1, QAS-8); the amount released per proposal; each proposal's tally, keyed on the unit ids in `VoteCast` and equal to `Governance.tallyOf`, including a wallet that votes twice with different units; the unit-to-wallet bindings from `UnitBound`, equal to `MembershipRegistry`; and every transition in order. Six forged logs are refused: a vote for a unit no `UnitBound` gave the voter, a unit counted twice, a weight that is not the number of units, a vote on a proposal never created, a release on an admission proposal, and an undecodable log (FR40, NFR2) | `npm run test:mocha` |
+
+The in-process network stands in for a node run by a party independent of the
+operator and the firm — an insurer, a lender or an audit firm
+(`deployment-view.md` §2.1). The same script runs against any JSON-RPC
+endpoint: `node scripts/replay.ts <rpc-url> <treasury> <governance> <membership-registry> [from-block]`.
+Not yet replayed, because their contracts are not built: arrears from
+`ChargeIssued` and `LevyPaid` (FR9, #58), `PayeeAdmitted` (#103), and
+`ProposalQueued` and `WorkAttested` (#55, #56, #57).
