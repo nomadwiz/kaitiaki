@@ -212,11 +212,11 @@ describe("QAS-4 replay", () => {
   type Event = [name: string, args: unknown[]];
   const work: Event = [
     "ProposalCreated",
-    [1n, 1, vendor, 400n, 0, ZeroHash, "Roof"],
+    [1n, 1, vendor, 400n, 0, ZeroHash, "Roof", 1n],
   ];
   const admit: Event = [
     "ProposalCreated",
-    [1n, 0, vendor, 0n, 0, ZeroHash, ""],
+    [1n, 0, vendor, 0n, 0, ZeroHash, "", 1n],
   ];
   const bound: Event = ["UnitBound", [1n, alice]];
   const issued: Event = ["ChargeIssued", [0n, 1n, 100n, 1n]];

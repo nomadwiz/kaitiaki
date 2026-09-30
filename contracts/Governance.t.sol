@@ -20,6 +20,7 @@ contract GovernanceProposeTest is Test {
     address internal firm = makeAddr("firm");
     address internal vendor = makeAddr("vendor");
     address internal stranger = makeAddr("stranger");
+    address internal owner = makeAddr("owner");
 
     bytes32 internal constant QUOTE_HASH = keccak256("quote: repaint stairwell");
 
@@ -30,7 +31,8 @@ contract GovernanceProposeTest is Test {
         uint256 limit,
         Fund fund,
         bytes32 quoteHash,
-        string description
+        string description,
+        uint256 principalUnits
     );
 
     function setUp() public {
@@ -88,8 +90,11 @@ contract GovernanceProposeTest is Test {
     }
 
     function test_ProposeAdmitEmitsProposalCreated() public {
+        members.bindUnit(1, owner);
+        members.bindUnit(2, owner);
+
         vm.expectEmit(address(governance));
-        emit ProposalCreated(1, Governance.ProposalKind.Admit, vendor, 0, Fund.Operating, 0, "");
+        emit ProposalCreated(1, Governance.ProposalKind.Admit, vendor, 0, Fund.Operating, 0, "", 2);
         vm.prank(firm);
         governance.propose(vendor);
     }
@@ -173,6 +178,7 @@ contract GovernanceProposeTest is Test {
     /// The event alone carries every stored field (rule 6, QAS-4).
     function test_ProposeWorkEmitsProposalCreated() public {
         payees.admit(vendor);
+        members.bindUnit(1, owner);
 
         vm.expectEmit(address(governance));
         emit ProposalCreated(
@@ -182,7 +188,8 @@ contract GovernanceProposeTest is Test {
             4_500e18,
             Fund.Operating,
             QUOTE_HASH,
-            "Repaint stairwell"
+            "Repaint stairwell",
+            1
         );
         vm.prank(firm);
         governance.propose("Repaint stairwell", 4_500e18, Fund.Operating, vendor, QUOTE_HASH);

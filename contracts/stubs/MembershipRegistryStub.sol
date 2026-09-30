@@ -13,7 +13,12 @@ contract MembershipRegistryStub is IMembershipQuery {
     mapping(uint256 unitId => address wallet) public ownerOfUnit;
     mapping(address wallet => uint256[] unitIds) private _unitsOfWallet;
 
+    /// @notice Rebinding a unit here moves it rather than adding one, so this
+    /// counts each unit once, as the real registry's write-once binding does.
+    uint256 public boundUnitCount;
+
     function bindUnit(uint256 unitId, address wallet) external {
+        if (ownerOfUnit[unitId] == address(0)) ++boundUnitCount;
         ownerOfUnit[unitId] = wallet;
         _unitsOfWallet[wallet].push(unitId);
     }
