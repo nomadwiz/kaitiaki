@@ -112,6 +112,14 @@ This is the boundary test: it proves no address but the executor can admit. That
 
 With the duplicate check temporarily removed from `admit`, both duplicate tests failed with "next call did not revert as expected" and no other test failed; the check was restored before this output was captured on 30-09-2026.
 
+### Issue #51 — secrets check and the deployment account
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `51-deployment-account.txt` | The configuration secrets check passes on this tree, and its six tests pass: it exits 1 on a tracked file holding a private-key-shaped value, on a tracked `.env`, on a value filled in to `.env.example`, and outside a git repository, where it fails closed rather than passing; it exits 0 on a clean tree and on a committed Ignition journal, whose transaction hashes have the same shape as a key. Each test runs the check against a throwaway git repository, and the fake key is built at run time | `npm run check:config-secrets; npx hardhat test mocha test/check-config-secrets.ts` |
+
+This covers the third acceptance criterion of #51, no key committed and a check on every pull request. It does not show the first, a funded account: that needs `npm run check:sepolia-account` run by the key holder, and its output (address, balance, required balance, date) captured here. The required balance is worked out at the top of `scripts/check-sepolia-account.ts`.
+
 ## week4
 
 ### Issue #53 — Governance: propose, for both proposal kinds

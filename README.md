@@ -45,6 +45,20 @@ npx hardhat test solidity
 npx hardhat test mocha
 ```
 
+## Sepolia deployment account
+
+`hardhat.config.ts` resolves `SEPOLIA_RPC_URL` and `SEPOLIA_PRIVATE_KEY` through `configVariable`. Store both in the encrypted Hardhat keystore, never in a committed file, then check the account's balance:
+
+```
+npx hardhat keystore set SEPOLIA_RPC_URL
+npx hardhat keystore set SEPOLIA_PRIVATE_KEY
+npm run check:sepolia-account
+```
+
+The check prints the deployer address, its balance and the required balance, and exits 1 if the balance is short. The required balance, and how it was worked out, is at the top of `scripts/check-sepolia-account.ts`. The account must be a throwaway test-network account.
+
+`npm run check:config-secrets` runs in CI on every pull request. It exits 1 if a `.env` file is tracked, if `.env.example` has a value filled in, or if any tracked file outside `ignition/deployments/` holds a private-key-shaped value.
+
 ## Stack
 
 | Piece      | Choice                                                                                                                                                                                                                      |

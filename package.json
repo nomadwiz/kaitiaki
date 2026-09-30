@@ -15,6 +15,8 @@
     "test:mocha": "hardhat test mocha",
     "test:coverage": "hardhat test solidity --coverage",
     "test:gas": "hardhat test solidity --gas-stats",
+    "check:config-secrets": "node scripts/check-config-secrets.mjs",
+    "check:sepolia-account": "hardhat run scripts/check-sepolia-account.ts --network sepolia",
     "typecheck": "tsc --noEmit",
     "lint": "solhint \"contracts/**/*.sol\"",
     "lint:fix": "solhint \"contracts/**/*.sol\" --fix",
