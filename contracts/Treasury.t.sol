@@ -317,20 +317,22 @@ contract TreasuryTest is Test {
     function test_ReleaseRejectsCumulativeAmountOverProposalLimit() public {
         _configureProposal(Fund.Operating, 1_000e18);
         payeeRegistry.admit(payee);
-        _deposit(1_000e18);
+        _deposit(1_500e18);
 
         vm.startPrank(timelock);
+        vm.expectEmit(address(treasury));
+        emit PaymentReleased(Fund.Operating, payee, 600e18, 1);
         treasury.release(Fund.Operating, payee, 600e18, 1);
         vm.expectRevert(
             abi.encodeWithSelector(
                 Treasury.AmountExceedsLimit.selector,
                 1,
-                401e18,
+                400e18 + 1,
                 600e18,
                 1_000e18
             )
         );
-        treasury.release(Fund.Operating, payee, 401e18, 1);
+        treasury.release(Fund.Operating, payee, 400e18 + 1, 1);
         vm.stopPrank();
 
         assertEq(treasury.released(1), 600e18);
@@ -344,11 +346,64 @@ contract TreasuryTest is Test {
 
         vm.startPrank(timelock);
         treasury.release(Fund.Operating, payee, 600e18, 1);
+        vm.expectEmit(address(treasury));
+        emit PaymentReleased(Fund.Operating, payee, 400e18, 1);
         treasury.release(Fund.Operating, payee, 400e18, 1);
         vm.stopPrank();
 
         assertEq(treasury.released(1), 1_000e18);
         assertEq(settlementAsset.balanceOf(payee), 1_000e18);
+    }
+
+    function test_ReleaseLimitsAreTrackedPerProposal() public {
+        _configureProposal(Fund.Operating, 400e18);
+        governance.setProposal(2, Fund.Operating, 400e18, payee);
+        payeeRegistry.admit(payee);
+        _deposit(1_000e18);
+
+        vm.startPrank(timelock);
+        treasury.release(Fund.Operating, payee, 400e18, 1);
+        vm.expectEmit(address(treasury));
+        emit PaymentReleased(Fund.Operating, payee, 400e18, 2);
+        treasury.release(Fund.Operating, payee, 400e18, 2);
+        vm.stopPrank();
+
+        assertEq(treasury.released(1), 400e18);
+        assertEq(treasury.released(2), 400e18);
+        assertEq(settlementAsset.balanceOf(payee), 800e18);
+    }
+
+    /// Refusal test B4, proving G3 across a sequence: two releases against one
+    /// proposal succeed together only while their total stays within its limit.
+    function testFuzz_CumulativeReleaseNeverExceedsLimit(uint256 first, uint256 second) public {
+        uint256 limit = 1_000e18;
+        first = bound(first, 0, limit);
+        second = bound(second, 0, limit);
+        _configureProposal(Fund.Operating, limit);
+        payeeRegistry.admit(payee);
+        _deposit(2_000e18);
+
+        vm.startPrank(timelock);
+        treasury.release(Fund.Operating, payee, first, 1);
+        if (first + second <= limit) {
+            vm.expectEmit(address(treasury));
+            emit PaymentReleased(Fund.Operating, payee, second, 1);
+        } else {
+            vm.expectRevert(
+                abi.encodeWithSelector(
+                    Treasury.AmountExceedsLimit.selector,
+                    1,
+                    second,
+                    first,
+                    limit
+                )
+            );
+        }
+        treasury.release(Fund.Operating, payee, second, 1);
+        vm.stopPrank();
+
+        assertLe(treasury.released(1), limit);
+        assertEq(settlementAsset.balanceOf(payee), treasury.released(1));
     }
 
     function test_ReleaseRejectsSettlementTransferFailure() public {
