@@ -217,6 +217,8 @@ contract TreasuryTest is Test {
     function testFuzz_ReleaseRefusesNonTimelock(address caller) public {
         vm.assume(caller != timelock);
         _configureProposal(Fund.Operating, 1_000e18);
+        payeeRegistry.admit(payee);
+        _deposit(1_000e18);
 
         vm.expectRevert(abi.encodeWithSelector(Treasury.UnauthorizedReleaser.selector, caller));
         vm.prank(caller);

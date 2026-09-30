@@ -128,8 +128,9 @@ The unbound-wallet case proves the guard exists. The refusal test B8 itself is
 
 | File | What it shows | Reproduce with |
 | --- | --- | --- |
-| `63-refusal-b3-tests.txt` | The 28 `TreasuryTest` tests pass alongside the existing suites, with 100% line and statement coverage of `Treasury.sol`. Refusal B3 (spec §7), proving G1 and FR31: `testFuzz_ReleaseRefusesNonTimelock` calls `Treasury.release` from 256 random callers other than the timelock, and every one is refused with the distinct named error `UnauthorizedReleaser(caller)` (NFR9); `test_AdminCannotRelease` pins the deployer's case | `npm run test:coverage` |
+| `63-refusal-b3-tests.txt` | The 28 `TreasuryTest` tests pass alongside the existing suites, with 100% line and statement coverage of `Treasury.sol`. Refusal B3 (spec §7), proving G1 and FR31: `testFuzz_ReleaseRefusesNonTimelock` calls `Treasury.release` from 256 random callers other than the timelock, with the payee registered and the fund holding enough, so the caller is the only reason to refuse; every one is refused with the distinct named error `UnauthorizedReleaser(caller)` (NFR9); `test_AdminCannotRelease` pins the deployer's case | `npm run test:coverage` |
 
-The test bites: with the role check removed from `Treasury.release`, both tests
-fail, because the call falls through to the payee check and reverts with
-`PayeeNotRegistered` instead.
+The test bites: with the role check removed from `Treasury.release`, the fuzz
+test fails because the call no longer reverts — the release is paid.
+`test_AdminCannotRelease`, whose payee is not registered, fails with
+`PayeeNotRegistered` instead of `UnauthorizedReleaser`.

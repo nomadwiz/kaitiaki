@@ -49,27 +49,6 @@ Running Solidity tests
     ✔ test_ExpectRevertIsAvailable()
     ✔ test_CheatcodesAreAvailable()
 
-  contracts/MockNZD.t.sol:MockNZDTest
-    ✔ test_NoGovernanceSurface()
-    ✔ test_NameSymbolAndDecimals()
-    ✔ test_MintOnSepolia()
-    ✔ test_MintOnHardhatNetwork()
-    ✔ test_AnyAddressMayMint()
-    ✔ testFuzz_MintRefusedOffTestChains(uint256) (runs: 256)
-
-  contracts/MembershipRegistry.t.sol:MembershipRegistryTest
-    ✔ test_UnboundWalletIsNotOwner()
-    ✔ test_UnboundUnitHasNoOwner()
-    ✔ test_ConstructorRefusesZeroAdapter()
-    ✔ test_ConstructorRecordsAdapter()
-    ✔ test_BindRefusesZeroWallet()
-    ✔ test_BindRefusesUnitBoundToSameWallet()
-    ✔ test_BindRefusesUnitBoundToAnotherWallet()
-    ✔ test_BindEmitsUnitBound()
-    ✔ test_AdapterBindsUnit()
-    ✔ testFuzz_WeightIsUnitCount(uint8) (runs: 256)
-    ✔ testFuzz_BindRefusesNonAdapter(address) (runs: 256)
-
   contracts/GovernanceVote.t.sol:GovernanceVoteTest
     ✔ test_WeightIsUnitsHeld()
     ✔ test_WalletMayVoteBothWaysWithDifferentUnits()
@@ -84,6 +63,25 @@ Running Solidity tests
     ✔ test_LiveAndStaleEntriesVoteOnlyTheLiveUnit()
     ✔ test_DuplicateUnitEntryCountsOnce()
     ✔ test_BoundOwnerVotes()
+
+  contracts/Governance.t.sol:GovernanceProposeTest
+    ✔ test_UnknownIdIsZeroed()
+    ✔ test_ProposeWorkRefusesUnregisteredVendor()
+    ✔ test_ProposeWorkEmitsProposalCreated()
+    ✔ test_ProposeAdmitRefusesZeroVendor()
+    ✔ test_ProposeAdmitEmitsProposalCreated()
+    ✔ test_ProposeAdmitDoesNotRegisterVendor()
+    ✔ test_IdsIncreaseFromOne()
+    ✔ test_FirmProposesWork()
+    ✔ test_FirmProposesAdmit()
+    ✔ test_ConstructorRefusesZeroRegistry()
+    ✔ test_ConstructorRefusesZeroMembershipRegistry()
+    ✔ test_ConstructorRefusesZeroFirm()
+    ✔ test_ConstructorRecordsFirmAndRegistry()
+    ✔ test_ApprovedSpendReturnsWorkTerms()
+    ✔ test_ApprovedSpendRejectsAdmitAndUnknownIds()
+    ✔ testFuzz_ProposeWorkRefusesNonFirm(address) (runs: 256)
+    ✔ testFuzz_ProposeAdmitRefusesNonFirm(address) (runs: 256)
 
   contracts/Treasury.t.sol:TreasuryTest
     ✔ test_TreasuryReadsTermsFromGovernance()
@@ -115,24 +113,26 @@ Running Solidity tests
     ✔ testFuzz_ReleaseRefusesNonTimelock(address) (runs: 256)
     ✔ testFuzz_NoAddressCanGrantReleaser(address) (runs: 256)
 
-  contracts/Governance.t.sol:GovernanceProposeTest
-    ✔ test_UnknownIdIsZeroed()
-    ✔ test_ProposeWorkRefusesUnregisteredVendor()
-    ✔ test_ProposeWorkEmitsProposalCreated()
-    ✔ test_ProposeAdmitRefusesZeroVendor()
-    ✔ test_ProposeAdmitEmitsProposalCreated()
-    ✔ test_ProposeAdmitDoesNotRegisterVendor()
-    ✔ test_IdsIncreaseFromOne()
-    ✔ test_FirmProposesWork()
-    ✔ test_FirmProposesAdmit()
-    ✔ test_ConstructorRefusesZeroRegistry()
-    ✔ test_ConstructorRefusesZeroMembershipRegistry()
-    ✔ test_ConstructorRefusesZeroFirm()
-    ✔ test_ConstructorRecordsFirmAndRegistry()
-    ✔ test_ApprovedSpendReturnsWorkTerms()
-    ✔ test_ApprovedSpendRejectsAdmitAndUnknownIds()
-    ✔ testFuzz_ProposeWorkRefusesNonFirm(address) (runs: 256)
-    ✔ testFuzz_ProposeAdmitRefusesNonFirm(address) (runs: 256)
+  contracts/MembershipRegistry.t.sol:MembershipRegistryTest
+    ✔ test_UnboundWalletIsNotOwner()
+    ✔ test_UnboundUnitHasNoOwner()
+    ✔ test_ConstructorRefusesZeroAdapter()
+    ✔ test_ConstructorRecordsAdapter()
+    ✔ test_BindRefusesZeroWallet()
+    ✔ test_BindRefusesUnitBoundToSameWallet()
+    ✔ test_BindRefusesUnitBoundToAnotherWallet()
+    ✔ test_BindEmitsUnitBound()
+    ✔ test_AdapterBindsUnit()
+    ✔ testFuzz_WeightIsUnitCount(uint8) (runs: 256)
+    ✔ testFuzz_BindRefusesNonAdapter(address) (runs: 256)
+
+  contracts/MockNZD.t.sol:MockNZDTest
+    ✔ test_NoGovernanceSurface()
+    ✔ test_NameSymbolAndDecimals()
+    ✔ test_MintOnSepolia()
+    ✔ test_MintOnHardhatNetwork()
+    ✔ test_AnyAddressMayMint()
+    ✔ testFuzz_MintRefusedOffTestChains(uint256) (runs: 256)
 
 
   78 passing
