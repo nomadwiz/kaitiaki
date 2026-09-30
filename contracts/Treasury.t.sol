@@ -256,20 +256,22 @@ contract TreasuryTest is Test {
         treasury.release(Fund.Operating, payee, 1_001e18, 1);
     }
 
-    function test_ReleaseRejectsWrongFund() public {
-        _configureProposal(Fund.LongTermMaintenance, 1_000e18);
+    /// Refusal test B5, proving G4: a release drawing on any fund other than the
+    /// approved one reverts with `FundMismatch`, whichever fund was approved and
+    /// for any non-zero amount up to the limit.
+    function testFuzz_ReleaseRejectsWrongFund(uint8 approvedSeed, uint256 amount) public {
+        Fund approved = Fund(bound(approvedSeed, 0, 1));
+        Fund requested = approved == Fund.Operating ? Fund.LongTermMaintenance : Fund.Operating;
+        amount = bound(amount, 1, 1_000e18);
+        _configureProposal(approved, 1_000e18);
         payeeRegistry.admit(payee);
         _deposit(1_000e18);
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                Treasury.FundMismatch.selector,
-                Fund.LongTermMaintenance,
-                Fund.Operating
-            )
+            abi.encodeWithSelector(Treasury.FundMismatch.selector, approved, requested)
         );
         vm.prank(timelock);
-        treasury.release(Fund.Operating, payee, 1e18, 1);
+        treasury.release(requested, payee, amount, 1);
     }
 
     function test_ReleaseRejectsInsufficientBalance() public {
