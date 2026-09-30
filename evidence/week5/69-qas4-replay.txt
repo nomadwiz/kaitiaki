@@ -1,0 +1,27 @@
+# npm run test:mocha
+
+> kaitiaki@0.1.0 test:mocha
+> hardhat test mocha
+
+No contracts to compile
+
+Running Mocha tests
+
+
+  QAS-4 replay
+    ✔ derives fund balances, role holders, tallies and eligibility from events alone (279ms)
+    ✔ refuses a VoteCast naming a unit no UnitBound gave the voter
+    ✔ refuses a unit counted twice on one proposal
+    ✔ refuses a VoteCast whose weight is not its number of units
+    ✔ refuses a VoteCast on a proposal no ProposalCreated made
+    ✔ refuses a release on an admission proposal
+    ✔ refuses a log from a replayed address with no known event
+
+  toolchain
+    ✔ connects to the in-process simulated network
+    ✔ gives tests funded signers
+
+
+  9 passing (299ms)
+
+
