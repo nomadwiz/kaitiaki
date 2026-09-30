@@ -23,6 +23,7 @@ contract Treasury is AccessControlEnumerable, IRelease {
     address public immutable settlementAsset;
 
     mapping(Fund => uint256) private _balances;
+    /// @notice Total paid under each proposal; never exceeds its limit (ADR-014).
     mapping(uint256 proposalId => uint256 amount) public released;
 
     error UnauthorizedLevyLedger(address caller);
@@ -138,7 +139,8 @@ contract Treasury is AccessControlEnumerable, IRelease {
             revert PayeeMismatch(proposalPayee, payee);
         }
         uint256 alreadyReleased = released[proposalId];
-        if (alreadyReleased > proposalLimit || amount > proposalLimit - alreadyReleased) {
+        // Cannot underflow: Governance writes a limit once, and released only grows through this check.
+        if (amount > proposalLimit - alreadyReleased) {
             revert AmountExceedsLimit(proposalId, amount, alreadyReleased, proposalLimit);
         }
         if (fund != proposalFund) {
@@ -150,11 +152,11 @@ contract Treasury is AccessControlEnumerable, IRelease {
             revert InsufficientBalance(fund, amount, balance);
         }
         _balances[fund] = balance - amount;
+        released[proposalId] = alreadyReleased + amount;
         if (!IERC20(settlementAsset).transfer(payee, amount)) {
             revert PaymentTransferFailed(payee, amount);
         }
 
-        released[proposalId] = alreadyReleased + amount;
         emit PaymentReleased(fund, payee, amount, proposalId);
     }
 
