@@ -7,6 +7,7 @@
 // from the chain; the contract view calls below are the test's own assertions,
 // made only after the replay has returned.
 import { expect } from "chai";
+import { Interface, ZeroHash, id } from "ethers";
 import { network } from "hardhat";
 
 import { replay } from "../scripts/replay.js";
@@ -15,7 +16,7 @@ const OPERATING = 0;
 const MAINTENANCE = 1;
 
 describe("QAS-4 replay", () => {
-  it("derives fund balances, tallies and eligibility from events alone", async () => {
+  it("derives fund balances, role holders, tallies and eligibility from events alone", async () => {
     const { ethers } = await network.getOrCreate();
     const [
       firm,
@@ -72,20 +73,8 @@ describe("QAS-4 replay", () => {
     const propose = governance.getFunction(
       "propose(string,uint256,uint8,address,bytes32)",
     );
-    await propose(
-      "Roof repair",
-      400n,
-      OPERATING,
-      vendor.address,
-      ethers.ZeroHash,
-    );
-    await propose(
-      "Lift overhaul",
-      100n,
-      MAINTENANCE,
-      vendor.address,
-      ethers.ZeroHash,
-    );
+    await propose("Roof repair", 400n, OPERATING, vendor.address, ZeroHash);
+    await propose("Lift overhaul", 100n, MAINTENANCE, vendor.address, ZeroHash);
 
     // Alice votes for with units 1 and 2, then receives unit 5 and votes
     // against with it. One wallet, two votes, both counted: the tally keys on
@@ -151,8 +140,23 @@ describe("QAS-4 replay", () => {
       );
     }
 
-    // Five bindings, two deposits, two proposals, five votes, three releases.
+    // From the log alone: only the Timelock may release, only the LevyLedger
+    // may deposit, and nobody administers either role (rule 1, QAS-8).
+    expect(derived.roles.get(await treasury.RELEASER_ROLE())).to.deep.equal(
+      new Set([timelock.address]),
+    );
+    expect(derived.roles.get(await treasury.DEPOSITOR_ROLE())).to.deep.equal(
+      new Set([depositor.address]),
+    );
+    expect(derived.roles.get(ZeroHash)).to.deep.equal(new Set());
+
+    // Treasury's four role events at construction, then five bindings, two
+    // deposits, two proposals, five votes and three releases.
     expect(derived.transitions.map((t) => t.name)).to.deep.equal([
+      "RoleGranted",
+      "RoleGranted",
+      "RoleGranted",
+      "RoleRevoked",
       ...Array(4).fill("UnitBound"),
       "Deposited",
       "Deposited",
@@ -170,30 +174,88 @@ describe("QAS-4 replay", () => {
     ]);
   });
 
-  it("refuses a log whose VoteCast names a unit no UnitBound gave the voter", async () => {
-    const { ethers } = await network.getOrCreate();
-    const [, alice] = await ethers.getSigners();
-    const { interface: governance } =
-      await ethers.getContractFactory("Governance");
-    const vote = governance.encodeEventLog("VoteCast", [
-      1n,
-      alice.address,
-      true,
-      1n,
-      [7n],
-    ]);
-    const forgedNode = {
-      getLogs: async () => [{ ...vote, blockNumber: 1, index: 0 }],
-    } as never;
+  // A node that serves a fabricated log. The replay must refuse a log that
+  // contradicts itself, rather than derive a state from it.
+  const vendor = "0x000000000000000000000000000000000000dead";
+  const alice = "0x000000000000000000000000000000000000a11c";
+  type Event = [name: string, args: unknown[]];
+  const work: Event = [
+    "ProposalCreated",
+    [1n, 1, vendor, 400n, 0, ZeroHash, "Roof"],
+  ];
+  const admit: Event = [
+    "ProposalCreated",
+    [1n, 0, vendor, 0n, 0, ZeroHash, ""],
+  ];
+  const bound: Event = ["UnitBound", [1n, alice]];
+  const cases: [string, Event[], string][] = [
+    [
+      "a VoteCast naming a unit no UnitBound gave the voter",
+      [work, ["VoteCast", [1n, alice, true, 1n, [7n]]]],
+      "unit 7 is not bound to",
+    ],
+    [
+      "a unit counted twice on one proposal",
+      [
+        work,
+        bound,
+        ["VoteCast", [1n, alice, true, 1n, [1n]]],
+        ["VoteCast", [1n, alice, false, 1n, [1n]]],
+      ],
+      "unit 1 already voted on proposal 1",
+    ],
+    [
+      "a VoteCast whose weight is not its number of units",
+      [work, bound, ["VoteCast", [1n, alice, true, 2n, [1n]]]],
+      "weight 2 for 1 units",
+    ],
+    [
+      "a VoteCast on a proposal no ProposalCreated made",
+      [bound, ["VoteCast", [1n, alice, true, 1n, [1n]]]],
+      "unknown proposal 1",
+    ],
+    [
+      "a release on an admission proposal",
+      [admit, ["PaymentReleased", [0, vendor, 1n, 1n]]],
+      "no work proposal 1",
+    ],
+    [
+      "a log from a replayed address with no known event",
+      [["unknown", []]],
+      "unrecognised log",
+    ],
+  ];
 
-    const error = await replay(
-      forgedNode,
-      { treasury: "", governance: "", membershipRegistry: "" },
-      0,
-    ).catch((e: Error) => e);
-    expect(error)
-      .to.be.an("error")
-      .with.property("message")
-      .that.contains("unit 7 not eligible");
-  });
+  for (const [what, events, message] of cases) {
+    it(`refuses ${what}`, async () => {
+      const { ethers } = await network.getOrCreate();
+      const fragments = await Promise.all(
+        ["Governance", "MembershipRegistry", "Treasury"].map(
+          async (name) =>
+            (await ethers.getContractFactory(name)).interface.fragments,
+        ),
+      );
+      const abi = new Interface(
+        fragments.flat().filter((f) => f.type === "event"),
+      );
+      const logs = events.map(([name, args], index) => ({
+        ...(name === "unknown"
+          ? { topics: [id("Unknown()")], data: "0x" }
+          : abi.encodeEventLog(name, args)),
+        blockNumber: 1,
+        index,
+      }));
+      const forgedNode = { getLogs: async () => logs } as never;
+
+      const error = await replay(
+        forgedNode,
+        { treasury: "", governance: "", membershipRegistry: "" },
+        0,
+      ).catch((e: Error) => e);
+      expect(error)
+        .to.be.an("error")
+        .with.property("message")
+        .that.contains(message);
+    });
+  }
 });
