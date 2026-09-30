@@ -94,13 +94,17 @@ passing unchanged before and after.
 
 | File | What it shows | Reproduce with |
 | --- | --- | --- |
-| `50-payeeregistry-admission-tests.txt` | Payee admission is restricted to the immutable execution caller, rejects zero proposal IDs, direct admission by the firm's key reverts, `isRegistered` is publicly readable, and `PayeeAdmitted` carries the admitting proposal ID; duplicate admission preserves the first record | `npm run test:coverage` |
+| `50-payeeregistry-admission-tests.txt` | The ten `PayeeRegistryTest` tests pass alongside the existing suites, 88 passing, with 100% line and statement coverage of `PayeeRegistry.sol`: only the immutable executor may call `admit`, and any other caller is refused with `UnauthorizedExecutor(caller)`, fuzzed over 256 callers (FR12); a direct admission from the firm's key is refused (G2); a zero payee or a zero proposal id is refused with its own error; `isRegistered` is readable by any caller (FR13); `PayeeAdmitted` carries the payee and the admitting proposal id | `npm run test:coverage` |
+
+This is the boundary test: it proves no address but the executor can admit. That the executor admits only after an executed affirmative proposal depends on which contract the executor is, which #56 settles, and is not proved here. With the caller check temporarily removed from `admit`, the fuzz test and the firm-key test both failed with "next call did not revert as expected"; the check was restored before this output was captured on 30-09-2026.
 
 ### Issue #90 — PayeeRegistry: duplicate admission is refused
 
 | File | What it shows | Reproduce with |
 | --- | --- | --- |
-| `90-payeeregistry-duplicate-admission-tests.txt` | A second admission of an already registered payee reverts with `PayeeAlreadyRegistered(payee, admittedBy)` and preserves the first admitting proposal ID; the full Solidity suite passes with the write-once behavior | `npm run test:coverage` |
+| `90-payeeregistry-duplicate-admission-tests.txt` | Admission is write-once. A second admission of a registered payee reverts with `PayeeAlreadyRegistered(payee, admittedBy)`, carrying the first admitting proposal id, whether it names a new proposal or repeats the same one, and the payee stays registered; because the call reverts, no second `PayeeAdmitted` reaches the log. The same run as the #50 capture: 88 passing, 100% line and statement coverage of `PayeeRegistry.sol` | `npm run test:coverage` |
+
+With the duplicate check temporarily removed from `admit`, both duplicate tests failed with "next call did not revert as expected" and no other test failed; the check was restored before this output was captured on 30-09-2026.
 
 ## week4
 
