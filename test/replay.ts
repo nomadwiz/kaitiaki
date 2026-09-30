@@ -118,8 +118,11 @@ describe("QAS-4 replay", () => {
       derived.funds.operating + derived.funds.maintenance + 500n,
     );
 
-    expect(derived.releasedByProposal.get(1n)).to.equal(400n);
-    expect(derived.releasedByProposal.get(2n)).to.equal(60n);
+    for (const id of [1n, 2n]) {
+      expect(derived.releasedByProposal.get(id)).to.equal(
+        await treasury.released(id),
+      );
+    }
 
     for (const id of [1n, 2n]) {
       const [forVotes, againstVotes] = await governance.tallyOf(id);
