@@ -90,6 +90,14 @@ passing unchanged before and after.
 | --- | --- | --- |
 | `49-treasury-role-administration-tests.txt` | The constructor grants `RELEASER_ROLE` to the timelock and `DEPOSITOR_ROLE` to the LevyLedger, each role then has exactly that one member, and no address holds `DEFAULT_ADMIN_ROLE` (NFR8); a `grantRole` of `RELEASER_ROLE` by any caller, fuzzed and including the deployer, reverts with `AccessControlUnauthorizedAccount` (FR31, R8); each zero constructor address is refused with its own error | `npm run test:coverage` |
 
+### Issue #51 — secrets check and the deployment account
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `51-deployment-account.txt` | The configuration secrets check passes on this tree, and its five tests pass: it exits 1 on a tracked file holding a private-key-shaped value, on a tracked `.env`, and on a value filled in to `.env.example`; it exits 0 on a clean tree and on a committed Ignition journal, whose transaction hashes have the same shape as a key. Each test runs the check against a throwaway git repository, and the fake key is built at run time | `npm run check:config-secrets; npx hardhat test mocha test/check-config-secrets.ts` |
+
+This covers the third acceptance criterion of #51, no key committed and a check on every pull request. It does not show the first, a funded account: that needs `npm run check:sepolia-account` run by the key holder, and its output (address, balance, required balance, date) captured here. The required balance is worked out at the top of `scripts/check-sepolia-account.ts`.
+
 ## week4
 
 ### Issue #53 — Governance: propose, for both proposal kinds
