@@ -121,3 +121,19 @@ member (`ownership.md`), and is the one the report cites.
 
 The unbound-wallet case proves the guard exists. The refusal test B8 itself is
 #67, which the report cites.
+
+## week5
+
+### Issue #69 — QAS-4: replay the event log on an independent node
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `69-qas4-replay.txt` | The two `QAS-4 replay` tests pass. `scripts/replay.ts` is handed only a provider it may ask for `eth_getLogs`, so it makes no contract call and no storage read, and from the log alone it derives both fund balances, which equal `Treasury.balanceOf` exactly for each fund while a direct token transfer of 500 sits in Treasury uncredited; the amount released per proposal; each proposal's tally, keyed on the unit ids in `VoteCast` and equal to `Governance.tallyOf`, including a wallet that votes twice with different units; the unit-to-wallet bindings from `UnitBound`, equal to `MembershipRegistry`; and every transition in order. A forged log whose `VoteCast` names a unit no `UnitBound` gave the voter is refused (FR40, NFR2) | `npm run test:mocha` |
+
+The in-process network stands in for a node run by a party independent of the
+operator and the firm — an insurer, a lender or an audit firm
+(`deployment-view.md` §2.1). The same script runs against any JSON-RPC
+endpoint: `node scripts/replay.ts <rpc-url> <treasury> <governance> <membership-registry> [from-block]`.
+Not yet replayed, because their contracts are not built: arrears from
+`ChargeIssued` and `LevyPaid` (FR9, #58), `PayeeAdmitted` (#103), and
+`ProposalQueued` and `WorkAttested` (#55, #56, #57).
