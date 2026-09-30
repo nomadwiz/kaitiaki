@@ -31,8 +31,8 @@ contract PayeeRegistryTest is Test {
         payees.admit(vendor, 1);
     }
 
-    function test_AdmissionFromAnyOtherCallerReverts() public {
-        address caller = makeAddr("other");
+    function testFuzz_AdmissionFromAnyNonExecutorReverts(address caller) public {
+        vm.assume(caller != executor);
         vm.expectRevert(
             abi.encodeWithSelector(PayeeRegistry.UnauthorizedExecutor.selector, caller)
         );
@@ -70,17 +70,15 @@ contract PayeeRegistryTest is Test {
             abi.encodeWithSelector(PayeeRegistry.PayeeAlreadyRegistered.selector, vendor, 1)
         );
         vm.prank(executor);
-        payees.admit(vendor, 2);
+        payees.admit(vendor, 1);
 
         assertTrue(payees.isRegistered(vendor));
     }
 
-    function testFuzz_IsRegisteredIsReadableByAnyCaller(address caller) public {
-        vm.assume(caller != address(0));
+    function test_IsRegisteredIsReadableByAnyCaller() public {
         vm.prank(executor);
         payees.admit(vendor, 1);
 
-        vm.prank(caller);
         assertTrue(payees.isRegistered(vendor));
         assertFalse(payees.isRegistered(makeAddr("unknown")));
     }

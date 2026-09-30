@@ -94,13 +94,13 @@ passing unchanged before and after.
 
 | File | What it shows | Reproduce with |
 | --- | --- | --- |
-| `50-payeeregistry-admission-tests.txt` | Payee admission is restricted to the immutable execution caller, rejects zero proposal IDs, direct admission by the firm's key reverts, `isRegistered` is publicly readable, and `PayeeAdmitted` carries the admitting proposal ID; duplicate admission preserves the first record | `npm run test:coverage` |
+| `50-payeeregistry-admission-tests.txt` | Boundary test: payee admission is restricted to the immutable execution caller, rejects zero proposal IDs, direct admission by the firm's key reverts, `isRegistered` is publicly readable, and `PayeeAdmitted` carries the admitting proposal ID; duplicate admission is refused without changing the first record. End-to-end admission through an executed affirmative proposal is not covered here. | `npm run test:coverage` |
 
 ### Issue #90 — PayeeRegistry: duplicate admission is refused
 
 | File | What it shows | Reproduce with |
 | --- | --- | --- |
-| `90-payeeregistry-duplicate-admission-tests.txt` | A second admission of an already registered payee reverts with `PayeeAlreadyRegistered(payee, admittedBy)` and preserves the first admitting proposal ID; the full Solidity suite passes with the write-once behavior | `npm run test:coverage` |
+| `90-payeeregistry-duplicate-admission-tests.txt` | A second admission of an already registered payee reverts with `PayeeAlreadyRegistered(payee, admittedBy)` and preserves the first admitting proposal ID; the full Solidity suite passes with the write-once behaviour | `npm run test:coverage` |
 
 ## week4
 
