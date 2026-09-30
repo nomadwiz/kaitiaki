@@ -258,7 +258,7 @@ contract TreasuryTest is Test {
 
     /// Refusal test B5, proving G4: a release drawing on any fund other than the
     /// approved one reverts with `FundMismatch`, whichever fund was approved and
-    /// for any amount within the limit.
+    /// for any non-zero amount up to the limit.
     function testFuzz_ReleaseRejectsWrongFund(uint8 approvedSeed, uint256 amount) public {
         Fund approved = Fund(bound(approvedSeed, 0, 1));
         Fund requested = approved == Fund.Operating ? Fund.LongTermMaintenance : Fund.Operating;
