@@ -134,3 +134,13 @@ The test bites: with the role check removed from `Treasury.release`, the fuzz
 test fails because the call no longer reverts — the release is paid.
 `test_AdminCannotRelease`, whose payee is not registered, fails with
 `PayeeNotRegistered` instead of `UnauthorizedReleaser`.
+
+### Issue #65 — Refusal test B5
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `65-refusal-b5-tests.txt` | Refusal test B5, proving G4: `testFuzz_ReleaseRejectsWrongFund` passes over 256 runs alongside the existing suites, 78 passing, with 100% line and statement coverage of `Treasury.sol`. Each run approves one of the two funds and asks `Treasury.release` to draw on the other, for any amount from 1 up to the proposal's limit, with a registered, matching payee and the timelock as caller, and the call reverts with `FundMismatch(approved, requested)` (NFR9). It replaces the single hand-picked `test_ReleaseRejectsWrongFund`, as spec §7 "Fuzz the value guards" asks | `npm run test:coverage` |
+
+With the fund check temporarily removed from `Treasury.release`, the same test
+fails: the fuzzer finds a counterexample whose release to the wrong fund does
+not revert. The check was restored before this output was captured.
