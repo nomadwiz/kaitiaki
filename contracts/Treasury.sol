@@ -23,6 +23,8 @@ contract Treasury is AccessControlEnumerable, IRelease {
     address public immutable settlementAsset;
 
     mapping(Fund => uint256) private _balances;
+    /// @notice Total paid under each proposal; never exceeds its limit (ADR-014).
+    mapping(uint256 proposalId => uint256 amount) public released;
 
     error UnauthorizedLevyLedger(address caller);
     error InvalidFundSplit(uint256 ratioBps);
@@ -35,7 +37,12 @@ contract Treasury is AccessControlEnumerable, IRelease {
     error DepositorNotConfigured();
     error PayeeNotRegistered(address payee);
     error PayeeMismatch(address expectedPayee, address actualPayee);
-    error AmountExceedsLimit(uint256 proposalId, uint256 amount, uint256 limit);
+    error AmountExceedsLimit(
+        uint256 proposalId,
+        uint256 amount,
+        uint256 alreadyReleased,
+        uint256 limit
+    );
     error FundMismatch(Fund expectedFund, Fund actualFund);
     error UnknownProposal(uint256 proposalId);
     error InsufficientBalance(Fund fund, uint256 amount, uint256 balance);
@@ -131,8 +138,10 @@ contract Treasury is AccessControlEnumerable, IRelease {
         if (payee != proposalPayee) {
             revert PayeeMismatch(proposalPayee, payee);
         }
-        if (amount > proposalLimit) {
-            revert AmountExceedsLimit(proposalId, amount, proposalLimit);
+        uint256 alreadyReleased = released[proposalId];
+        // Cannot underflow: Governance writes a limit once, and released only grows through this check.
+        if (amount > proposalLimit - alreadyReleased) {
+            revert AmountExceedsLimit(proposalId, amount, alreadyReleased, proposalLimit);
         }
         if (fund != proposalFund) {
             revert FundMismatch(proposalFund, fund);
@@ -143,6 +152,7 @@ contract Treasury is AccessControlEnumerable, IRelease {
             revert InsufficientBalance(fund, amount, balance);
         }
         _balances[fund] = balance - amount;
+        released[proposalId] = alreadyReleased + amount;
         if (!IERC20(settlementAsset).transfer(payee, amount)) {
             revert PaymentTransferFailed(payee, amount);
         }
