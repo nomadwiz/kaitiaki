@@ -122,9 +122,6 @@ describe("QAS-4 replay", () => {
       expect(derived.releasedByProposal.get(id)).to.equal(
         await treasury.released(id),
       );
-    }
-
-    for (const id of [1n, 2n]) {
       const [forVotes, againstVotes] = await governance.tallyOf(id);
       expect(derived.tallies.get(id)).to.deep.equal({ forVotes, againstVotes });
     }
