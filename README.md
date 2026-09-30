@@ -23,8 +23,7 @@ contract snippets only, never the full source.
 |             | `@tutd-work`           | **Money out** — `Treasury`, `PayeeRegistry`                                  |
 |             | `@laysokhour-computer` | **Decisions** — `Governance`, `Timelock`                                     |
 
-`doc/design/ownership.md` says who writes which tests, and why nobody writes the
-refusal tests for their own contracts.
+`doc/design/ownership.md` says who writes which tests: each owner writes the refusal tests for their own contracts.
 
 ## Getting started
 
