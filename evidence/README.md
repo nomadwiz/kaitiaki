@@ -121,3 +121,15 @@ member (`ownership.md`), and is the one the report cites.
 
 The unbound-wallet case proves the guard exists. The refusal test B8 itself is
 #67, which the report cites.
+
+## week5
+
+### Issue #63 — Refusal test B3
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `63-refusal-b3-tests.txt` | The 28 `TreasuryTest` tests pass alongside the existing suites, with 100% line and statement coverage of `Treasury.sol`. Refusal B3 (spec §7), proving G1 and FR31: `testFuzz_ReleaseRefusesNonTimelock` calls `Treasury.release` from 256 random callers other than the timelock, and every one is refused with the distinct named error `UnauthorizedReleaser(caller)` (NFR9); `test_AdminCannotRelease` pins the deployer's case | `npm run test:coverage` |
+
+The test bites: with the role check removed from `Treasury.release`, both tests
+fail, because the call falls through to the payee check and reverts with
+`PayeeNotRegistered` instead.
