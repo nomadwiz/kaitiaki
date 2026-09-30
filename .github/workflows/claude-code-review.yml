@@ -1,0 +1,265 @@
+# Reviews every pull request with the agent-skills and ponytail plugins and posts
+# the result as a request-changes review, not a comment. A comment is something to
+# scroll past; a review is a state the author has to answer.
+#
+# The other half of this runs in nomadwiz/kaitiki-doc and reads this repository.
+# This one reads that one, because the two drift in opposite directions and only
+# the direction guarded here is expensive: the documents say what Kaitiaki should
+# be, so a change that departs from one is a defect in the change.
+#
+# The documents are checked out at kaitiki-doc/, not at the parent of this
+# repository, although CLAUDE.md links to them as ../doc/... . Checking them out
+# over the workspace root would replace this file on disk with that repository's
+# copy of it, and claude-code-action refuses to run when this file differs from the
+# copy on the default branch. The prompt translates the paths instead.
+#
+# Repository secrets this needs (Settings -> Secrets and variables -> Actions):
+#   CLAUDE_CODE_OAUTH_TOKEN    the Claude Code subscription token
+#   KAITIAKI_CROSS_REPO_TOKEN  a fine-grained personal access token with
+#                              Contents: read on nomadwiz/kaitiaki and
+#                              nomadwiz/kaitiki-doc. Both repositories are private,
+#                              so the default GITHUB_TOKEN cannot read the other one.
+
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+
+permissions:
+  contents: write # merge a clean pull request, and update one that is behind
+  pull-requests: write # submit a review, and dismiss the previous one
+  issues: read
+  id-token: write
+
+# A second push while a review is running cancels the first, so two reviews never
+# race onto one pull request.
+concurrency:
+  group: review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  claude-review:
+    # A draft is not reviewed. ready_for_review is already a trigger, so nothing
+    # is lost: the review runs the moment the draft flag comes off.
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the build
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the reviewer reads history; depth 1 has none
+
+      # The report and the evidence cite commits in this repository, so the
+      # documents come with their full history too.
+      - name: Check out the documents
+        uses: actions/checkout@v4
+        with:
+          repository: nomadwiz/kaitiki-doc
+          ref: master # the documents' default branch is master, not main
+          path: kaitiki-doc
+          token: ${{ secrets.KAITIAKI_CROSS_REPO_TOKEN }}
+          fetch-depth: 0
+
+      # A CHANGES_REQUESTED review stays in force across every later push. A
+      # COMMENT review does not clear it, and GITHUB_TOKEN is forbidden from
+      # APPROVE, which is the one event that would. Without this step the first
+      # run that finds a nit blocks the pull request until somebody dismisses it
+      # by hand, and the reviewer becomes something people work around.
+      - name: Dismiss the previous review
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh api "repos/$REPO/pulls/$PR/reviews" --paginate \
+            --jq '.[] | select((.user.login == "claude[bot]" or .user.login == "github-actions[bot]") and .state == "CHANGES_REQUESTED") | .id' \
+          | while read -r id; do
+              gh api -X PUT "repos/$REPO/pulls/$PR/reviews/$id/dismissals" \
+                -f message='Superseded by a newer review.' -f event=DISMISS
+            done
+
+      # The agent-skills plugin's manifest names a github source, and the plugin
+      # installer clones that over SSH, which a runner has no key for. Ponytail is
+      # unaffected: its manifest declares source "./", so it installs from the
+      # marketplace clone already on disk and never fetches again. The rewrite is
+      # safe because the clone is anonymous and the repository is public — the
+      # extraheader actions/checkout leaves behind is per-repository and does not
+      # reach the plugin cache.
+      - name: Let the plugin installer clone over HTTPS
+        run: git config --global url."https://github.com/".insteadOf "git@github.com:"
+
+      # Record when the review starts, so the guard below can tell this run's
+      # verdict from one an earlier run left behind.
+      - name: Note the start time
+        run: echo "REVIEW_SINCE=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+
+      - name: Review
+        uses: anthropics/claude-code-action@v1
+        env:
+          # Passed for the read-only gh calls. The verdict itself is posted by
+          # claude[bot]: the action supplies its own app token to Claude and this
+          # value does not win. The dismissal step matches both logins for that
+          # reason — get it wrong and a request-changes review never clears.
+          GH_TOKEN: ${{ github.token }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          plugin_marketplaces: |
+            https://github.com/addyosmani/agent-skills.git
+            https://github.com/DietrichGebert/ponytail.git
+          plugins: |
+            agent-skills@addy-agent-skills
+            ponytail@ponytail
+          claude_args: >-
+            --model claude-opus-5-5 --effort high
+            --allowedTools "Read,Grep,Glob,Write,Task,Skill,SlashCommand,Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh api:*),Bash(git log:*),Bash(git diff:*),Bash(git show:*),Bash(jq:*),Bash(grep:*)"
+          prompt: |
+            Review pull request #${{ github.event.pull_request.number }} of ${{ github.repository }}, the Kaitiaki build: Solidity contracts on Hardhat. The working directory is that repository. The documents repository, nomadwiz/kaitiki-doc, is checked out at `kaitiki-doc/` on its `master` branch with full history.
+
+            ## Read the contract first
+
+            Read `CLAUDE.md` in the working directory, then `kaitiki-doc/CLAUDE.md`, `kaitiki-doc/doc/design/spec.md` and `kaitiki-doc/doc/design/ownership.md`.
+
+            `CLAUDE.md` links to the documents as `../doc/...`, which is where they sit in a working clone. Here they are under `kaitiki-doc/doc/` — so `../doc/design/spec.md` is `kaitiki-doc/doc/design/spec.md`. Translate every such link; none of them is broken for that reason alone. A link whose `#anchor` matches no heading in the target is broken, and worth reporting.
+
+            Enforce what those files say. Do not restate them, do not reinterpret them, and do not apply a rule they do not contain. `CLAUDE.md` holds every rule for this repository; where a rule points at a document for its reason, that document is right about the reason.
+
+            Three things decide most reviews here, so check them on every change:
+
+            - **Scope.** `CLAUDE.md` rule 3: never build what is designed but not built — the `D` rows in section 8 of `kaitiki-doc/doc/design/spec.md`, and everything in its section 10. Building something from either list is the defect to catch first.
+            - **The money path.** `CLAUDE.md` rule 1 names every way value could leave other than `Treasury.release` called by the timelock. Rule 2 forbids inventing, rounding or changing a parameter from section 5 of `spec.md`. Rule 5 requires each refusing check to revert with its own named error. Rule 8 forbids a new dependency without an issue. A change that breaks any of these requests changes, however small.
+            - **Lanes.** `kaitiki-doc/doc/design/ownership.md` maps each contract to one owner, and each author merges their own pull requests: a change reaching another vertical's contract needs no review from that owner, so never ask for one. Each owner also writes the refusal tests for their own contracts. One lane rule still holds: nobody implements another vertical's contract to unblock themselves; they write against the interface and use a stub. Flag a breach of it.
+
+            ## Run both reviewers over the diff
+
+            - `/agent-skills:review` for correctness, architecture and security.
+            - `/ponytail:ponytail-review` for what can be deleted.
+
+            ## Check the two repositories for drift
+
+            The documents say what Kaitiaki should be. The code says what it is. Report a mismatch, name both sides, and resolve neither — which side moves is the author's decision, not yours. `CLAUDE.md` rule 4 settles the default: a settled decision is not reopened in code, so a change departing from an ADR is raised as an issue, not merged.
+
+            **Here the expensive direction is the change.** A document going stale about correct code is cheap and the documents repository's own reviewer catches it. A change departing from a document that was not updated with it is what this review is for. Where the diff makes a document wrong, say which document and which line.
+
+            **Only a present-tense claim can drift.** A statement inside a dated historical record is correct as written and must not be flagged: a commit message describing what was true then, evidence under `evidence/` captured in a given week, anything under `kaitiki-doc/doc/plan/`, a dated amendment inside an ADR.
+
+            Three checks, cheapest first:
+
+            1. Where the diff adds, removes or renames an event, compare against the ten in section 6 of `kaitiki-doc/doc/design/spec.md`. An event outside that list is drift, and so is one whose fields cannot rebuild the state it changes from the log alone (`CLAUDE.md` rule 6).
+            2. Where the diff adds or changes a refusing check, it matches its row in section 7 of `spec.md`: its own named error, and a `.t.sol` test using `vm.expectRevert` with that error. Where it touches a constant or a deployment argument, it matches section 5 of `spec.md` exactly.
+            3. Where the diff builds a requirement, check its row in section 8 of `spec.md` and the claim in section 4.1 or 4.2 of `kaitiki-doc/doc/output/report.md`. A requirement now built that a document still calls `D`, or one claimed built that this change removes, needs the document changed — say which.
+
+            ## Post exactly one review
+
+            One API call carries the verdict and every inline comment together. Write the JSON to a file, confirm it parses with `jq . <file>`, then post it:
+
+            ```
+            gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews --input <file>
+            ```
+
+            The file:
+
+            ```json
+            {
+              "event": "REQUEST_CHANGES",
+              "body": "<the summary>",
+              "comments": [
+                {"path": "<path>", "line": <line>, "side": "RIGHT", "body": "<the finding>"}
+              ]
+            }
+            ```
+
+            Use `"event": "COMMENT"` with an empty `comments` array when you found nothing. Never `"APPROVE"`: the token is forbidden from it and the call fails.
+
+            **A clean verdict merges the pull request.** A `COMMENT` carrying a summary and no inline comments is squash-merged by the step that runs after you, without anybody looking at it first. So post one only where you would merge the change yourself, and use `REQUEST_CHANGES` wherever you would want the author to look before it lands.
+
+            Every `line` must be one the diff touches, or GitHub rejects the whole review with a 422. `side` is `"RIGHT"` for an added or changed line and `"LEFT"` for a removed one. A finding about a file the diff does not touch goes in the body, not in `comments`.
+
+            **Post nothing separately — one review is the deliverable.** Comments without a verdict leave the pull request unblocked with findings scattered through it, and a verdict without its comments makes the author hunt for the lines. A run that posts comments and no verdict fails the job.
+
+            Open the body with one sentence saying whether anything blocks. Then group the findings under `### Correctness`, `### Drift against the documents`, `### Project rules` and `### What can be deleted`, leaving out any group that is empty. Quote the rule or the document you measured against, so the author can check your reading. A finding with no file and line is not a finding.
+
+            Report only what you can point at. Where something cannot be determined from this code and those documents, say so and stop. Never pick the most plausible reading and carry on.
+
+      # A run that posted inline comments and no verdict still reported success,
+      # and the pull request then sat unblocked with findings scattered over it.
+      # Kete, the INFS803 project this workflow was copied from, had three such
+      # silent successes on its first day, which is what earned this guard.
+      - name: Fail if no verdict was posted
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          n=$(gh api "repos/$REPO/pulls/$PR/reviews" --paginate \
+            --jq "[.[] | select(.submitted_at > \"$REVIEW_SINCE\") | select((.body|length) > 0)] | length")
+          [ "$n" -gt 0 ] || { echo "The review step posted no verdict for this run." >&2; exit 1; }
+          echo "Verdict posted."
+
+      # Claude merges what it found clean, so a pull request nothing is blocking
+      # does not wait on somebody noticing that nothing is blocking it.
+      #
+      # Clean means all three: this run posted a verdict, the verdict is a plain
+      # COMMENT rather than CHANGES_REQUESTED, and it carries no inline findings.
+      # All three are needed, because COMMENTED alone does not mean clean — in
+      # Kete, the INFS803 project this workflow was copied from, runs that posted
+      # comments and no verdict landed as COMMENTED too, with an empty body and
+      # one inline comment each.
+      #
+      # The decision is deliberately not Claude's. The diff under review is
+      # untrusted input, and a model holding the merge button is a model a diff can
+      # argue into merging. This step reads the verdict already posted and the
+      # API's own counts, so nothing inside a pull request can move it.
+      - name: Merge what the review found clean
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          BASE: ${{ github.event.pull_request.base.ref }}
+          HEAD: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+
+          id=$(gh api "repos/$REPO/pulls/$PR/reviews" --paginate \
+            --jq "[.[] | select(.submitted_at > \"$REVIEW_SINCE\")
+                       | select(.state == \"COMMENTED\")
+                       | select((.body|length) > 0)] | last | .id // empty")
+          if [ -z "$id" ]; then
+            echo "This run requested changes, or posted no clean verdict. Not merging."
+            exit 0
+          fi
+
+          findings=$(gh api "repos/$REPO/pulls/$PR/reviews/$id/comments" --jq 'length')
+          if [ "$findings" -ne 0 ]; then
+            echo "The verdict carries $findings inline findings. Not merging."
+            exit 0
+          fi
+
+          # A branch behind its base was reviewed against something that is no
+          # longer what it will become. Update it and stop: the update pushes, that
+          # push is another synchronize event, and the run it fires reviews the
+          # merged result and merges it.
+          #
+          # The update merges $BASE into the branch. It is never a rebase, because
+          # a rebase of a pushed branch needs a force push to land, and that
+          # rewrites history a teammate may already have pulled.
+          behind=$(gh api "repos/$REPO/compare/$BASE...$HEAD" --jq '.behind_by')
+          if [ "$behind" -gt 0 ]; then
+            if gh api -X PUT "repos/$REPO/pulls/$PR/update-branch" --silent 2>/dev/null; then
+              echo "Branch was $behind commits behind $BASE. Updated; the next run merges it."
+            else
+              echo "Branch is $behind commits behind $BASE and will not update — a conflict. Left open."
+            fi
+            exit 0
+          fi
+
+          # Squashed, so one pull request is one commit on $BASE. GitHub writes a
+          # Co-authored-by trailer for every author in the squashed range, so a
+          # teammate's commits in the pull request still carry their name.
+          if gh api -X PUT "repos/$REPO/pulls/$PR/merge" -f merge_method=squash --silent; then
+            echo "Merged #$PR."
+          else
+            echo "Merge refused. Left open for a person."
+          fi
