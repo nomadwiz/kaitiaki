@@ -70,12 +70,12 @@ contract PayeeRegistryTest is Test {
             abi.encodeWithSelector(PayeeRegistry.PayeeAlreadyRegistered.selector, vendor, 1)
         );
         vm.prank(executor);
-        payees.admit(vendor, 2);
+        payees.admit(vendor, 1);
 
         assertTrue(payees.isRegistered(vendor));
     }
 
-    function test_AdmissionRejectsRepeatOfSameProposal() public {
+    function test_AdmissionUnderNewProposalRejectedWithFirstId() public {
         vm.prank(executor);
         payees.admit(vendor, 1);
 
@@ -83,7 +83,7 @@ contract PayeeRegistryTest is Test {
             abi.encodeWithSelector(PayeeRegistry.PayeeAlreadyRegistered.selector, vendor, 1)
         );
         vm.prank(executor);
-        payees.admit(vendor, 1);
+        payees.admit(vendor, 2);
     }
 
     function test_IsRegisteredIsReadableByAnyCaller() public {

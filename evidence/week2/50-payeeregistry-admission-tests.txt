@@ -44,25 +44,22 @@ Compiled 22 Solidity files with solc 0.8.36 (evm target: prague)
 
 Running Solidity tests
 
-  contracts/GovernanceVote.t.sol:GovernanceVoteTest
-    ✔ test_WeightIsUnitsHeld()
-    ✔ test_WalletMayVoteBothWaysWithDifferentUnits()
-    ✔ test_VotesAreSeparatePerProposal()
-    ✔ test_VoteCastCarriesWalletDirectionAndUnits()
-    ✔ test_UnknownProposalRefused()
-    ✔ test_UnitRebindMovesTheVote()
-    ✔ test_UnboundWalletRefused()
-    ✔ test_TransferredUnitCannotVoteTwice()
-    ✔ test_SecondVoteRefused()
-    ✔ test_NewlyAcquiredUnitVotesOnce()
-    ✔ test_LiveAndStaleEntriesVoteOnlyTheLiveUnit()
-    ✔ test_DuplicateUnitEntryCountsOnce()
-    ✔ test_BoundOwnerVotes()
-
   contracts/Toolchain.t.sol:ToolchainTest
     ✔ test_RunnerExecutes()
     ✔ test_ExpectRevertIsAvailable()
     ✔ test_CheatcodesAreAvailable()
+
+  contracts/PayeeRegistry.t.sol:PayeeRegistryTest
+    ✔ test_IsRegisteredIsReadableByAnyCaller()
+    ✔ test_ExecutorAdmissionRegistersPayeeAndEmitsProposal()
+    ✔ test_DirectAdmissionFromFirmReverts()
+    ✔ test_ConstructorRejectsZeroExecutor()
+    ✔ test_ConstructorRecordsExecutor()
+    ✔ test_AdmissionUnderNewProposalRejectedWithFirstId()
+    ✔ test_AdmissionRejectsZeroProposalId()
+    ✔ test_AdmissionRejectsZeroPayee()
+    ✔ test_AdmissionRejectsDuplicateAndKeepsFirstAdmission()
+    ✔ testFuzz_AdmissionFromAnyNonExecutorReverts(address) (runs: 256)
 
   contracts/MockNZD.t.sol:MockNZDTest
     ✔ test_NoGovernanceSurface()
@@ -72,17 +69,24 @@ Running Solidity tests
     ✔ test_AnyAddressMayMint()
     ✔ testFuzz_MintRefusedOffTestChains(uint256) (runs: 256)
 
-  contracts/PayeeRegistry.t.sol:PayeeRegistryTest
-    ✔ test_IsRegisteredIsReadableByAnyCaller()
-    ✔ test_ExecutorAdmissionRegistersPayeeAndEmitsProposal()
-    ✔ test_DirectAdmissionFromFirmReverts()
-    ✔ test_ConstructorRejectsZeroExecutor()
-    ✔ test_ConstructorRecordsExecutor()
-    ✔ test_AdmissionRejectsZeroProposalId()
-    ✔ test_AdmissionRejectsZeroPayee()
-    ✔ test_AdmissionRejectsRepeatOfSameProposal()
-    ✔ test_AdmissionRejectsDuplicateAndKeepsFirstAdmission()
-    ✔ testFuzz_AdmissionFromAnyNonExecutorReverts(address) (runs: 256)
+  contracts/Governance.t.sol:GovernanceProposeTest
+    ✔ test_UnknownIdIsZeroed()
+    ✔ test_ProposeWorkRefusesUnregisteredVendor()
+    ✔ test_ProposeWorkEmitsProposalCreated()
+    ✔ test_ProposeAdmitRefusesZeroVendor()
+    ✔ test_ProposeAdmitEmitsProposalCreated()
+    ✔ test_ProposeAdmitDoesNotRegisterVendor()
+    ✔ test_IdsIncreaseFromOne()
+    ✔ test_FirmProposesWork()
+    ✔ test_FirmProposesAdmit()
+    ✔ test_ConstructorRefusesZeroRegistry()
+    ✔ test_ConstructorRefusesZeroMembershipRegistry()
+    ✔ test_ConstructorRefusesZeroFirm()
+    ✔ test_ConstructorRecordsFirmAndRegistry()
+    ✔ test_ApprovedSpendReturnsWorkTerms()
+    ✔ test_ApprovedSpendRejectsAdmitAndUnknownIds()
+    ✔ testFuzz_ProposeWorkRefusesNonFirm(address) (runs: 256)
+    ✔ testFuzz_ProposeAdmitRefusesNonFirm(address) (runs: 256)
 
   contracts/Treasury.t.sol:TreasuryTest
     ✔ test_TreasuryReadsTermsFromGovernance()
@@ -127,24 +131,20 @@ Running Solidity tests
     ✔ testFuzz_WeightIsUnitCount(uint8) (runs: 256)
     ✔ testFuzz_BindRefusesNonAdapter(address) (runs: 256)
 
-  contracts/Governance.t.sol:GovernanceProposeTest
-    ✔ test_UnknownIdIsZeroed()
-    ✔ test_ProposeWorkRefusesUnregisteredVendor()
-    ✔ test_ProposeWorkEmitsProposalCreated()
-    ✔ test_ProposeAdmitRefusesZeroVendor()
-    ✔ test_ProposeAdmitEmitsProposalCreated()
-    ✔ test_ProposeAdmitDoesNotRegisterVendor()
-    ✔ test_IdsIncreaseFromOne()
-    ✔ test_FirmProposesWork()
-    ✔ test_FirmProposesAdmit()
-    ✔ test_ConstructorRefusesZeroRegistry()
-    ✔ test_ConstructorRefusesZeroMembershipRegistry()
-    ✔ test_ConstructorRefusesZeroFirm()
-    ✔ test_ConstructorRecordsFirmAndRegistry()
-    ✔ test_ApprovedSpendReturnsWorkTerms()
-    ✔ test_ApprovedSpendRejectsAdmitAndUnknownIds()
-    ✔ testFuzz_ProposeWorkRefusesNonFirm(address) (runs: 256)
-    ✔ testFuzz_ProposeAdmitRefusesNonFirm(address) (runs: 256)
+  contracts/GovernanceVote.t.sol:GovernanceVoteTest
+    ✔ test_WeightIsUnitsHeld()
+    ✔ test_WalletMayVoteBothWaysWithDifferentUnits()
+    ✔ test_VotesAreSeparatePerProposal()
+    ✔ test_VoteCastCarriesWalletDirectionAndUnits()
+    ✔ test_UnknownProposalRefused()
+    ✔ test_UnitRebindMovesTheVote()
+    ✔ test_UnboundWalletRefused()
+    ✔ test_TransferredUnitCannotVoteTwice()
+    ✔ test_SecondVoteRefused()
+    ✔ test_NewlyAcquiredUnitVotesOnce()
+    ✔ test_LiveAndStaleEntriesVoteOnlyTheLiveUnit()
+    ✔ test_DuplicateUnitEntryCountsOnce()
+    ✔ test_BoundOwnerVotes()
 
 
   88 passing

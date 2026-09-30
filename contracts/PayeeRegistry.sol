@@ -12,15 +12,13 @@ contract PayeeRegistry is IPayeeQuery {
     /// @notice The sole contract allowed to admit payees.
     address public immutable executor;
 
-    // 0 = not admitted; ProposalIdIsZero keeps that unambiguous
     mapping(address payee => uint256 admittedBy) private _admittedBy;
 
     error ExecutorIsZero();
     error UnauthorizedExecutor(address caller);
     error PayeeIsZero();
     error ProposalIdIsZero();
-    /// @notice Admission is write-once: `payee` was already admitted under
-    /// proposal `admittedBy`, and that first record stands (#90).
+    /// @notice The payee was already admitted; `admittedBy` is the first proposal ID.
     error PayeeAlreadyRegistered(address payee, uint256 admittedBy);
 
     event PayeeAdmitted(address indexed payee, uint256 indexed proposalId);
@@ -38,6 +36,7 @@ contract PayeeRegistry is IPayeeQuery {
         if (payee == address(0)) revert PayeeIsZero();
         if (proposalId == 0) revert ProposalIdIsZero();
 
+        // 0 means not admitted; ProposalIdIsZero keeps that sentinel unambiguous.
         uint256 firstProposalId = _admittedBy[payee];
         if (firstProposalId != 0) {
             revert PayeeAlreadyRegistered(payee, firstProposalId);

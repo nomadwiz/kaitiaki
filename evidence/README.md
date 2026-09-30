@@ -102,7 +102,7 @@ This is the boundary test: it proves no address but the executor can admit. That
 
 | File | What it shows | Reproduce with |
 | --- | --- | --- |
-| `90-payeeregistry-duplicate-admission-tests.txt` | Admission is write-once. A second admission of a registered payee reverts with `PayeeAlreadyRegistered(payee, admittedBy)`, carrying the first admitting proposal id, whether it names a new proposal or repeats the same one, and the payee stays registered; because the call reverts, no second `PayeeAdmitted` reaches the log. The same run as the #50 capture: 88 passing, 100% line and statement coverage of `PayeeRegistry.sol` | `npm run test:coverage` |
+| `90-payeeregistry-duplicate-admission-tests.txt` | Admission is write-once. A second admission of a registered payee reverts with `PayeeAlreadyRegistered(payee, admittedBy)`, carrying the first admitting proposal id, whether it repeats the same proposal or names a new one, and the payee stays registered; because the call reverts, no second `PayeeAdmitted` reaches the log. The same run as the #50 capture: 88 passing, 100% line and statement coverage of `PayeeRegistry.sol` | `npm run test:coverage` |
 
 With the duplicate check temporarily removed from `admit`, both duplicate tests failed with "next call did not revert as expected" and no other test failed; the check was restored before this output was captured on 30-09-2026.
 
