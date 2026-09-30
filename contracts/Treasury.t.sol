@@ -212,8 +212,8 @@ contract TreasuryTest is Test {
         assertEq(_newTreasury(10_000).operatingRatioBps(), 10_000);
     }
 
-    /// Refusal B3 (spec §7), proving G1: whoever calls, if it is not the
-    /// timelock, `release` reverts with `UnauthorizedReleaser`.
+    /// Refusal B3 (spec §7), proving G1 and FR31: any caller other than the
+    /// timelock is refused with its own named error (NFR9).
     function testFuzz_ReleaseRefusesNonTimelock(address caller) public {
         vm.assume(caller != timelock);
         _configureProposal(Fund.Operating, 1_000e18);
