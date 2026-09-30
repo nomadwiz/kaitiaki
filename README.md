@@ -47,22 +47,17 @@ npx hardhat test mocha
 
 ## Sepolia deployment account
 
-Issue #51 reserves a funded deployment account before week 5. Hardhat 3
-resolves `SEPOLIA_RPC_URL`, `SEPOLIA_PRIVATE_KEY`, and
-`SEPOLIA_PRIVATE_KEY` through `configVariable`; store the endpoint and key in
-the encrypted Hardhat keystore rather than committing them. The public
-`SEPOLIA_MIN_BALANCE_WEI` threshold is supplied as an environment variable:
+`hardhat.config.ts` resolves `SEPOLIA_RPC_URL` and `SEPOLIA_PRIVATE_KEY` through `configVariable`. Store both in the encrypted Hardhat keystore, never in a committed file, then check the account's balance:
 
 ```
 npx hardhat keystore set SEPOLIA_RPC_URL
 npx hardhat keystore set SEPOLIA_PRIVATE_KEY
-export SEPOLIA_MIN_BALANCE_WEI=<required-balance-in-wei>
 npm run check:sepolia-account
 ```
 
-The account must be a throwaway test-network account. Never put its private key
-or `.env` file in Git. Every CI run executes `npm run check:config-secrets` to
-reject tracked environment files and private-key-shaped values.
+The check prints the deployer address, its balance and the required balance, and exits 1 if the balance is short. The required balance, and how it was worked out, is at the top of `scripts/check-sepolia-account.ts`. The account must be a throwaway test-network account.
+
+`npm run check:config-secrets` runs in CI on every pull request. It exits 1 if a `.env` file is tracked, if `.env.example` has a value filled in, or if any tracked file outside `ignition/deployments/` holds a private-key-shaped value.
 
 ## Stack
 
