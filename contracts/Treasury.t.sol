@@ -212,11 +212,16 @@ contract TreasuryTest is Test {
         assertEq(_newTreasury(10_000).operatingRatioBps(), 10_000);
     }
 
-    function test_ReleaseRequiresReleaserRole() public {
+    /// Refusal B3 (spec §7), proving G1 and FR31: any caller other than the
+    /// timelock is refused with its own named error (NFR9).
+    function testFuzz_ReleaseRefusesNonTimelock(address caller) public {
+        vm.assume(caller != timelock);
         _configureProposal(Fund.Operating, 1_000e18);
+        payeeRegistry.admit(payee);
+        _deposit(1_000e18);
 
-        vm.expectRevert(abi.encodeWithSelector(Treasury.UnauthorizedReleaser.selector, stranger));
-        vm.prank(stranger);
+        vm.expectRevert(abi.encodeWithSelector(Treasury.UnauthorizedReleaser.selector, caller));
+        vm.prank(caller);
         treasury.release(Fund.Operating, payee, 1e18, 1);
     }
 
