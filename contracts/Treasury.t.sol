@@ -235,6 +235,11 @@ contract TreasuryTest is Test {
         treasury.release(Fund.Operating, payee, 1e18, 1);
     }
 
+    /// Refusal B2′ (spec §7, FR34): a payee not registered at payment time is refused
+    /// with `PayeeNotRegistered`, although the approved proposal names that payee.
+    /// Proves G2 again — the check is not cached. Proved by calling `Treasury.release`
+    /// directly with an unregistered payee, because registry removal is designed and
+    /// not built (FR14).
     function test_ReleaseRejectsUnregisteredPayee() public {
         _configureProposal(Fund.Operating, 1_000e18);
         _deposit(1_000e18);
