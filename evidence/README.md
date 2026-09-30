@@ -144,3 +144,11 @@ The test bites: with the role check removed from `Treasury.release`, the fuzz
 test fails because the call no longer reverts — the release is paid.
 `test_AdminCannotRelease`, whose payee is not registered, fails with
 `PayeeNotRegistered` instead of `UnauthorizedReleaser`.
+
+### Issue #62 — Refusal test B2′
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `62-refusal-b2-prime-tests.txt` | The 78 tests pass, with 100% line and statement coverage of `Treasury.sol`. Among them, `test_ReleaseRejectsUnregisteredPayee` is refusal B2′ (spec §7, FR34): the timelock calls `Treasury.release` for an approved proposal whose payee is not registered, and the call reverts with `PayeeNotRegistered(payee)`, a named error of its own (NFR9). This proves G2 again — the check is made at payment time and not cached from the proposal | `npm run test:coverage` |
+
+B2′ is proved by calling `Treasury.release` directly with an unregistered payee, because registry removal is designed and not built (FR14). The test was checked to bite on 30-09-2026: with the registration check deleted from `Treasury.release`, it was the only one of the 78 to fail, with "next call did not revert as expected"; the check was then restored.
