@@ -11,14 +11,11 @@ import {MockNZD} from "./MockNZD.sol";
 import {GovernanceStub} from "./stubs/GovernanceStub.sol";
 import {PayeeRegistryStub} from "./stubs/PayeeRegistryStub.sol";
 import {MembershipRegistryStub} from "./stubs/MembershipRegistryStub.sol";
-import {TreasuryStub} from "./stubs/TreasuryStub.sol";
 
 contract TreasuryTest is Test {
     event Deposited(uint256 amount, uint256 operatingAmount, uint256 maintenanceAmount);
-    event Released(Fund fund, address payee, uint256 amount, uint256 proposalId);
 
     Treasury internal treasury;
-    TreasuryStub internal treasuryStub;
     GovernanceStub internal governance;
     MockNZD internal settlementAsset;
     PayeeRegistryStub internal payeeRegistry;
@@ -35,7 +32,6 @@ contract TreasuryTest is Test {
         payeeRegistry = new PayeeRegistryStub();
         members = new MembershipRegistryStub();
         treasury = _newTreasury(8000);
-        treasuryStub = new TreasuryStub();
         settlementAsset.mint(ledger, 2_000e18 + 1);
     }
 
@@ -471,20 +467,6 @@ contract TreasuryTest is Test {
         emit PaymentReleased(Fund.Operating, payee, 500e18, 1);
         vm.prank(timelock);
         treasury.release(Fund.Operating, payee, 500e18, 1);
-    }
-
-    function test_TreasuryStubReleaseEmitsOperatingPayment() public {
-        vm.expectEmit(address(treasuryStub));
-        emit Released(Fund.Operating, payee, 125e18, 7);
-
-        treasuryStub.release(Fund.Operating, payee, 125e18, 7);
-    }
-
-    function test_TreasuryStubReleaseEmitsMaintenancePayment() public {
-        vm.expectEmit(address(treasuryStub));
-        emit Released(Fund.LongTermMaintenance, payee, 250e18, 8);
-
-        treasuryStub.release(Fund.LongTermMaintenance, payee, 250e18, 8);
     }
 
     event PaymentReleased(
