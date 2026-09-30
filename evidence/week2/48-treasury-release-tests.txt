@@ -1,9 +1,5 @@
 # npm run test:coverage
 
-
-
-
-
 Compiled 19 Solidity files with solc 0.8.36 (evm target: prague)
 
 Running Solidity tests
@@ -100,5 +96,3 @@ Running Solidity tests
 ╟────────────────────────────────────────────┼────────┼─────────────┼─────────────────╢
 ║ Total                                      │ 95.24  │ 95.50       │                 ║
 ╚════════════════════════════════════════════╧════════╧═════════════╧═════════════════╝
-
-

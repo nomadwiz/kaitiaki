@@ -29,7 +29,7 @@ Running Solidity tests
 
 
   18 passing
-Saved html report to /Users/tutd/Library/CloudStorage/OneDrive-AUTUniversity/04_S2 2026/COMP842 Applied Blockchains and Cryptocurrencies/gorup_work/kaitiaki/coverage/html
+Saved html report to ./coverage/html
 ╔═════════════════════════════════════════════════════════════════════════════════════╗
 ║                                   Coverage Report                                   ║
 ╚═════════════════════════════════════════════════════════════════════════════════════╝
@@ -46,5 +46,4 @@ Saved html report to /Users/tutd/Library/CloudStorage/OneDrive-AUTUniversity/04_
 ╟────────────────────────────────────────────┼────────┼─────────────┼─────────────────╢
 ║ Total                                      │ 70.00  │ 65.63       │                 ║
 ╚════════════════════════════════════════════╧════════╧═════════════╧═════════════════╝
-
 
