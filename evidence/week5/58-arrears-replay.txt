@@ -1,0 +1,73 @@
+# npm run test:mocha
+
+> kaitiaki@0.1.0 test:mocha
+> hardhat test mocha
+
+
+Warning: "at" will be promoted to keyword in the future and will not be allowed as an identifier anymore.
+   --> ./node_modules/@openzeppelin/contracts/utils/structs/EnumerableSet.sol:264:5:
+    |
+264 |     function at(Bytes32Set storage set, uint256 index) internal view returns (bytes32) {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning: "at" will be promoted to keyword in the future and will not be allowed as an identifier anymore.
+   --> ./node_modules/@openzeppelin/contracts/utils/structs/EnumerableSet.sol:366:5:
+    |
+366 |     function at(Bytes4Set storage set, uint256 index) internal view returns (bytes4) {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning: "at" will be promoted to keyword in the future and will not be allowed as an identifier anymore.
+   --> ./node_modules/@openzeppelin/contracts/utils/structs/EnumerableSet.sol:468:5:
+    |
+468 |     function at(AddressSet storage set, uint256 index) internal view returns (address) {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning: "at" will be promoted to keyword in the future and will not be allowed as an identifier anymore.
+   --> ./node_modules/@openzeppelin/contracts/utils/structs/EnumerableSet.sol:570:5:
+    |
+570 |     function at(UintSet storage set, uint256 index) internal view returns (uint256) {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning: "at" will be promoted to keyword in the future and will not be allowed as an identifier anymore.
+   --> ./node_modules/@openzeppelin/contracts/utils/structs/EnumerableSet.sol:716:5:
+    |
+716 |     function at(StringSet storage set, uint256 index) internal view returns (string memory) {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning: "at" will be promoted to keyword in the future and will not be allowed as an identifier anymore.
+   --> ./node_modules/@openzeppelin/contracts/utils/structs/EnumerableSet.sol:858:5:
+    |
+858 |     function at(BytesSet storage set, uint256 index) internal view returns (bytes memory) {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Compiled 24 Solidity files with solc 0.8.36 (evm target: prague)
+
+Running Mocha tests
+
+
+  check-config-secrets
+    ✔ passes a clean tree (74ms)
+    ✔ fails on a tracked file holding a private-key-shaped value (74ms)
+    ✔ fails on a tracked .env (63ms)
+    ✔ fails when a line of .env.example has a value (65ms)
+    ✔ passes a committed Ignition journal, whose transaction hashes are key-shaped (71ms)
+    ✔ fails closed outside a git repository
+
+  QAS-4 replay
+    ✔ derives fund balances, role holders, tallies, eligibility and arrears from events alone (283ms)
+    ✔ refuses a VoteCast naming a unit no UnitBound gave the voter
+    ✔ refuses a unit counted twice on one proposal
+    ✔ refuses a VoteCast whose weight is not its number of units
+    ✔ refuses a VoteCast on a proposal no ProposalCreated made
+    ✔ refuses a release on an admission proposal
+    ✔ refuses a charge paid for a unit other than the one it was issued to
+    ✔ refuses a log from a replayed address with no known event
+
+  toolchain
+    ✔ connects to the in-process simulated network
+    ✔ gives tests funded signers
+
+
+  16 passing (688ms)
+
+

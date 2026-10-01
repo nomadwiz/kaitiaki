@@ -154,6 +154,15 @@ The unbound-wallet case proves the guard exists. The refusal test B8 itself is
 
 ## week5
 
+### Issue #58 — LevyLedger: charges, payment and arrears
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `58-levyledger-tests.txt` | The 17 `LevyLedgerTest` tests pass alongside the existing suites, 110 passing, with 100% line and statement coverage of `LevyLedger.sol`. They run against the real `Treasury`, whose address and the ledger's are fixed before either exists (spec §4). `issueCharges` called one second before the due date reverts with `ChargeNotDue(chargeId, dueDate)` (B1, FR5); at the due date a stranger issues two charges (FR6, NFR7). A stranger pays a unit's charge: `LevyPaid` names the unit and the payer, and the receipt reaches the two funds 800/200 through `Treasury.deposit`, leaving the ledger with no balance and no allowance (FR7, FR8). A charge can be paid a week before it is issued (ADR-016). `arrearsOf` is false at the due date itself, true one second later, false again once paid, and never true for a charge nobody issued (FR9, ADR-016). Paying or issuing twice, an unknown charge and a failed token call each revert with a named error of their own (NFR9) | `npm run test:coverage` |
+| `58-arrears-replay.txt` | The QAS-4 replay test, now running against the real `LevyLedger` instead of a signer standing in for it. From `ChargeIssued`, `LevyPaid` and a timestamp alone, `arrearsAt` gives the same arrears flag as `LevyLedger.arrearsOf` for each of five units: one paid before its charge was issued, one paid late, one never paid, and two never charged. The log carries a `LevyPaid` before the `ChargeIssued` for the same charge, and the replay accepts that order. A forged log in which a charge is paid for a different unit from the one it was issued to is refused (FR9, FR40) | `npm run test:mocha` |
+
+The tests bite, checked on 01-10-2026. With the due-date check removed from `issueCharges`, `test_IssuingBeforeTheDueDateReverts` and `test_OneChargeNotDueRevertsTheWholeBatch` fail. With the "issued" condition removed from `arrearsOf`, `test_ArrearsBeginsOnlyAfterTheDueDate` and `test_AChargeNobodyIssuedIsNeverInArrears` fail. Both were restored before this output was captured.
+
 ### Issue #65 — Refusal test B5
 
 | File | What it shows | Reproduce with |
@@ -192,10 +201,10 @@ B2′ is proved by calling `Treasury.release` directly with an unregistered paye
 The in-process network stands in for a node run by a party independent of the
 operator and the firm — an insurer, a lender or an audit firm
 (`deployment-view.md` §2.1). The same script runs against any JSON-RPC
-endpoint: `node scripts/replay.ts <rpc-url> <treasury> <governance> <membership-registry> [from-block]`.
-Not yet replayed, because their contracts are not built: arrears from
-`ChargeIssued` and `LevyPaid` (FR9, #58), `PayeeAdmitted` (#103), and
-`ProposalQueued` and `WorkAttested` (#55, #56, #57).
+endpoint: `node scripts/replay.ts <rpc-url> <treasury> <governance> <membership-registry> <levy-ledger> [from-block]`.
+Not yet replayed, because their contracts are not built: `PayeeAdmitted` (#103), and
+`ProposalQueued` and `WorkAttested` (#55, #56, #57). Arrears from `ChargeIssued`
+and `LevyPaid` is replayed since #58.
 
 ### Issue #96 — CI must pass before a merge to main
 
