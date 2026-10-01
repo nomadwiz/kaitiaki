@@ -130,4 +130,23 @@ contract MembershipRegistryTest is Test {
         }
         assertEq(registry.unitsOf(neighbour).length, 1);
     }
+
+    // --- The quorum denominator (ADR-003, amendment of 30-09-2026) -----------
+
+    /// Governance stores this count on each proposal as the number quorum is
+    /// measured against (spec §5), so a refused binding must not raise it.
+    function testFuzz_BoundUnitCountCountsEachUnitOnce(uint8 held) public {
+        assertEq(registry.boundUnitCount(), 0);
+
+        for (uint256 i = 0; i < held; ++i) _bind(100 + i, owner);
+        _bind(1, neighbour);
+        assertEq(registry.boundUnitCount(), uint256(held) + 1);
+
+        vm.prank(adapter);
+        vm.expectRevert(
+            abi.encodeWithSelector(MembershipRegistry.UnitAlreadyBound.selector, 1, neighbour)
+        );
+        registry.bindUnit(1, owner);
+        assertEq(registry.boundUnitCount(), uint256(held) + 1);
+    }
 }
