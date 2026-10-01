@@ -1,0 +1,35 @@
+# Issue #96: the rules GitHub enforces on main, nomadwiz/kaitiaki, captured 01-10-2026 (NZT).
+# Reproduce with: gh api repos/nomadwiz/kaitiaki/rules/branches/main
+# "test" is the CI job in .github/workflows/ci.yml; integration_id 15368 is GitHub Actions,
+# so only a run of that workflow can satisfy the check. No rule of type "pull_request"
+# appears, so no approving review is required.
+[
+    {
+        "type": "required_status_checks",
+        "parameters": {
+            "strict_required_status_checks_policy": false,
+            "do_not_enforce_on_create": false,
+            "required_status_checks": [
+                {
+                    "context": "test",
+                    "integration_id": 15368
+                }
+            ]
+        },
+        "ruleset_source_type": "Repository",
+        "ruleset_source": "nomadwiz/kaitiaki",
+        "ruleset_id": 24279738
+    },
+    {
+        "type": "deletion",
+        "ruleset_source_type": "Repository",
+        "ruleset_source": "nomadwiz/kaitiaki",
+        "ruleset_id": 23588637
+    },
+    {
+        "type": "non_fast_forward",
+        "ruleset_source_type": "Repository",
+        "ruleset_source": "nomadwiz/kaitiaki",
+        "ruleset_id": 23588637
+    }
+]

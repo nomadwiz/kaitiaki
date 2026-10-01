@@ -63,7 +63,7 @@ actual pull request open against `main` first.
 **Branch protection on main is not done by this issue's code.** It is a
 repository setting only a repo admin can change (verified: this account has
 `push` but not `admin` on `nomadwiz/kaitiaki`), not something a pull request
-can carry. Whoever holds admin needs to turn it on directly in GitHub settings.
+can carry. An admin turned it on under #96; its evidence is in `week5/`.
 
 Introducing prettier for the first time reformatted three pre-existing files
 (`MockNZD.sol`, `MockNZD.t.sol`, `Toolchain.t.sol`) to the configured line
@@ -196,3 +196,14 @@ endpoint: `node scripts/replay.ts <rpc-url> <treasury> <governance> <membership-
 Not yet replayed, because their contracts are not built: arrears from
 `ChargeIssued` and `LevyPaid` (FR9, #58), `PayeeAdmitted` (#103), and
 `ProposalQueued` and `WorkAttested` (#55, #56, #57).
+
+### Issue #96 — CI must pass before a merge to main
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `96-main-rules.txt` | The rules GitHub enforces on `main`: the ruleset "Require CI on main" requires the `test` check from `.github/workflows/ci.yml` to pass before any merge, and pins it to GitHub Actions (`integration_id` 15368) so no other app can post a passing status under that name; the earlier ruleset still forbids deleting `main` and force-pushing to it. No rule requires an approving review, because authors cannot approve their own pull requests and the Claude review's token cannot approve at all, so a required approval would block every merge | `gh api repos/nomadwiz/kaitiaki/rules/branches/main` |
+
+The rule is not in the code: it is a repository setting, created by an admin
+through `POST /repos/nomadwiz/kaitiaki/rulesets`. A Claude review that finishes
+before CI has its merge refused and leaves the pull request open for its author
+to merge once CI passes.
