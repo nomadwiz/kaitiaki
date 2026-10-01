@@ -7,33 +7,24 @@
 // from the chain; the contract view calls below are the test's own assertions,
 // made only after the replay has returned.
 import { expect } from "chai";
-import { Interface, ZeroHash, id } from "ethers";
+import { Interface, ZeroHash, getCreateAddress, id } from "ethers";
 import { network } from "hardhat";
 
-import { replay } from "../scripts/replay.js";
+import { arrearsAt, replay } from "../scripts/replay.js";
 
 const OPERATING = 0;
 const MAINTENANCE = 1;
 
 describe("QAS-4 replay", () => {
-  it("derives fund balances, role holders, tallies and eligibility from events alone", async () => {
+  it("derives fund balances, role holders, tallies, eligibility and arrears from events alone", async () => {
     const { ethers } = await network.getOrCreate();
-    const [
-      firm,
-      adapter,
-      timelock,
-      depositor,
-      alice,
-      bob,
-      carol,
-      vendor,
-      stranger,
-    ] = await ethers.getSigners();
+    const [firm, adapter, timelock, alice, bob, carol, vendor, stranger] =
+      await ethers.getSigners();
     const fromBlock = await ethers.provider.getBlockNumber();
 
     // Real contracts wherever one is built. PayeeRegistry is a stub until
-    // #50/#103 land; a signer stands in for the Timelock and the LevyLedger,
-    // which Treasury accepts as plain addresses at construction.
+    // #50/#103 land; a signer stands in for the Timelock, which Treasury
+    // accepts as a plain address at construction.
     const token = await ethers.deployContract("MockNZD");
     const payees = await ethers.deployContract("PayeeRegistryStub");
     const registry = await ethers.deployContract("MembershipRegistry", [
@@ -44,14 +35,32 @@ describe("QAS-4 replay", () => {
       payees.target,
       registry.target,
     ]);
+    // Treasury and LevyLedger name each other: Treasury takes the ledger's
+    // address before it exists (spec §4).
+    const ledgerAddress = getCreateAddress({
+      from: firm.address,
+      nonce: (await firm.getNonce()) + 1,
+    });
     const treasury = await ethers.deployContract("Treasury", [
       8_000,
       governance.target,
       timelock.address,
-      depositor.address,
+      ledgerAddress,
       payees.target,
       token.target,
     ]);
+    // Three charges, all due at `due`: unit 1's is paid early, unit 3's
+    // late, and unit 4's never. 333 does not split evenly, so rounding is
+    // exercised.
+    const due =
+      BigInt((await ethers.provider.getBlock("latest"))!.timestamp) + 1_000n;
+    const ledger = await ethers.deployContract("LevyLedger", [
+      treasury.target,
+      [1n, 3n, 4n],
+      [1_000n, 333n, 50n],
+      [due, due, due],
+    ]);
+    expect(ledger.target).to.equal(ledgerAddress);
     await payees.admit(vendor.address);
 
     // Four units, alice holding two of them.
@@ -60,11 +69,16 @@ describe("QAS-4 replay", () => {
     await registry.connect(adapter).bindUnit(3, bob.address);
     await registry.connect(adapter).bindUnit(4, carol.address);
 
-    // Two levy receipts; 333 does not split evenly, so rounding is exercised.
-    await token.mint(depositor.address, 1_333n);
-    await token.connect(depositor).approve(treasury.target, 1_333n);
-    await treasury.connect(depositor).deposit(1_000n);
-    await treasury.connect(depositor).deposit(333n);
+    // Two levy receipts. Alice pays before the charge is issued (ADR-016);
+    // then anyone issues all three once due, and bob pays after.
+    await token.mint(alice.address, 1_000n);
+    await token.mint(bob.address, 333n);
+    await token.connect(alice).approve(ledger.target, 1_000n);
+    await token.connect(bob).approve(ledger.target, 333n);
+    await ledger.connect(alice).payLevy(0);
+    await ethers.provider.send("evm_setNextBlockTimestamp", [Number(due) + 1]);
+    await ledger.connect(stranger).issueCharges([0, 1, 2]);
+    await ledger.connect(bob).payLevy(1);
 
     // A direct token transfer: Treasury holds it, but no fund is credited.
     await token.mint(stranger.address, 500n);
@@ -102,6 +116,7 @@ describe("QAS-4 replay", () => {
         treasury: String(treasury.target),
         governance: String(governance.target),
         membershipRegistry: String(registry.target),
+        levyLedger: String(ledger.target),
       },
       fromBlock,
     );
@@ -140,18 +155,31 @@ describe("QAS-4 replay", () => {
       );
     }
 
+    // FR9: the arrears flag from the two levy events and a timestamp, for
+    // every unit, matches arrearsOf at that timestamp.
+    const now = BigInt((await ethers.provider.getBlock("latest"))!.timestamp);
+    for (const unitId of [1n, 2n, 3n, 4n, 5n]) {
+      expect(
+        arrearsAt(derived.charges, unitId, now),
+        `unit ${unitId}`,
+      ).to.equal(await ledger.arrearsOf(unitId));
+    }
+    expect(arrearsAt(derived.charges, 4n, now)).to.equal(true);
+    expect(arrearsAt(derived.charges, 4n, due)).to.equal(false);
+
     // From the log alone: only the Timelock may release, only the LevyLedger
     // may deposit, and nobody administers either role (rule 1, QAS-8).
     expect(derived.roles.get(await treasury.RELEASER_ROLE())).to.deep.equal(
       new Set([timelock.address]),
     );
     expect(derived.roles.get(await treasury.DEPOSITOR_ROLE())).to.deep.equal(
-      new Set([depositor.address]),
+      new Set([ledgerAddress]),
     );
     expect(derived.roles.get(ZeroHash)).to.deep.equal(new Set());
 
-    // Treasury's four role events at construction, then five bindings, two
-    // deposits, two proposals, five votes and three releases.
+    // Treasury's four role events at construction, then four bindings, an
+    // early payment, three charges issued, a late payment, two proposals, a
+    // fifth binding, five votes and three releases.
     expect(derived.transitions.map((t) => t.name)).to.deep.equal([
       "RoleGranted",
       "RoleGranted",
@@ -159,7 +187,10 @@ describe("QAS-4 replay", () => {
       "RoleRevoked",
       ...Array(4).fill("UnitBound"),
       "Deposited",
+      "LevyPaid",
+      ...Array(3).fill("ChargeIssued"),
       "Deposited",
+      "LevyPaid",
       "ProposalCreated",
       "ProposalCreated",
       "VoteCast",
@@ -188,6 +219,7 @@ describe("QAS-4 replay", () => {
     [1n, 0, vendor, 0n, 0, ZeroHash, ""],
   ];
   const bound: Event = ["UnitBound", [1n, alice]];
+  const issued: Event = ["ChargeIssued", [0n, 1n, 100n, 1n]];
   const cases: [string, Event[], string][] = [
     [
       "a VoteCast naming a unit no UnitBound gave the voter",
@@ -220,6 +252,11 @@ describe("QAS-4 replay", () => {
       "no work proposal 1",
     ],
     [
+      "a charge paid for a unit other than the one it was issued to",
+      [issued, ["LevyPaid", [0n, 2n, alice, 100n]]],
+      "charge 0 names units 1 and 2",
+    ],
+    [
       "a log from a replayed address with no known event",
       [["unknown", []]],
       "unrecognised log",
@@ -230,7 +267,7 @@ describe("QAS-4 replay", () => {
     it(`refuses ${what}`, async () => {
       const { ethers } = await network.getOrCreate();
       const fragments = await Promise.all(
-        ["Governance", "MembershipRegistry", "Treasury"].map(
+        ["Governance", "LevyLedger", "MembershipRegistry", "Treasury"].map(
           async (name) =>
             (await ethers.getContractFactory(name)).interface.fragments,
         ),
@@ -249,7 +286,12 @@ describe("QAS-4 replay", () => {
 
       const error = await replay(
         forgedNode,
-        { treasury: "", governance: "", membershipRegistry: "" },
+        {
+          treasury: "",
+          governance: "",
+          membershipRegistry: "",
+          levyLedger: "",
+        },
         0,
       ).catch((e: Error) => e);
       expect(error)

@@ -6,15 +6,14 @@
 // that contradicts itself is refused, never replayed past.
 //
 // Usage, against any JSON-RPC endpoint:
-//   node scripts/replay.ts <rpc-url> <treasury> <governance> <membership-registry> [from-block]
+//   node scripts/replay.ts <rpc-url> <treasury> <governance> <membership-registry> <levy-ledger> [from-block]
 // Node 22.18 or later strips the types by default; on an earlier Node, add
 // --experimental-strip-types.
 // test/replay.ts runs it against the in-process network and compares every
 // derived value with the contracts' own view functions.
 //
 // Not yet replayed, because the contracts that emit them are not built:
-// ChargeIssued and LevyPaid (arrears, FR9), PayeeAdmitted, ProposalQueued and
-// WorkAttested.
+// PayeeAdmitted, ProposalQueued and WorkAttested.
 import { Interface, JsonRpcProvider, type Provider } from "ethers";
 import { pathToFileURL } from "node:url";
 
@@ -26,6 +25,8 @@ const events = new Interface([
   "event PaymentReleased(uint8 indexed fund, address indexed payee, uint256 amount, uint256 proposalId)",
   "event ProposalCreated(uint256 indexed proposalId, uint8 kind, address indexed payee, uint256 limit, uint8 fund, bytes32 quoteHash, string description)",
   "event VoteCast(uint256 indexed proposalId, address indexed voter, bool inFavour, uint256 weight, uint256[] unitIds)",
+  "event ChargeIssued(uint256 indexed chargeId, uint256 indexed unitId, uint256 amount, uint256 dueDate)",
+  "event LevyPaid(uint256 indexed chargeId, uint256 indexed unitId, address indexed payer, uint256 amount)",
   // OpenZeppelin AccessControl, emitted by Treasury at construction.
   "event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender)",
   "event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender)",
@@ -40,6 +41,7 @@ export async function replay(
     treasury: string;
     governance: string;
     membershipRegistry: string;
+    levyLedger: string;
   },
   fromBlock: number,
 ) {
@@ -59,6 +61,10 @@ export async function replay(
   // ponytail: roles are Treasury's alone; key them by contract address once a
   // second replayed contract uses AccessControl.
   const roles = new Map<string, Set<string>>();
+  // Charges by id. A charge may be paid before it is issued (ADR-016), so
+  // either event may come first.
+  type Charge = { unitId: bigint; dueDate?: bigint; paid: boolean };
+  const charges = new Map<bigint, Charge>();
   const transitions = [];
 
   for (const log of logs) {
@@ -85,6 +91,20 @@ export async function replay(
       proposalKinds.set(a.proposalId, a.kind);
     }
     if (event.name === "UnitBound") owners.set(a.unitId, a.wallet);
+    if (event.name === "ChargeIssued" || event.name === "LevyPaid") {
+      const charge: Charge = charges.get(a.chargeId) ?? {
+        unitId: a.unitId,
+        paid: false,
+      };
+      charges.set(a.chargeId, charge);
+      if (charge.unitId !== a.unitId) {
+        refuse(
+          `charge ${a.chargeId} names units ${charge.unitId} and ${a.unitId}`,
+        );
+      }
+      if (event.name === "ChargeIssued") charge.dueDate = a.dueDate;
+      else charge.paid = true;
+    }
     if (event.name === "Deposited") {
       funds.operating += a.operatingAmount;
       funds.maintenance += a.maintenanceAmount;
@@ -132,24 +152,55 @@ export async function replay(
     });
   }
 
-  return { funds, releasedByProposal, tallies, owners, roles, transitions };
+  return {
+    funds,
+    releasedByProposal,
+    tallies,
+    owners,
+    roles,
+    charges,
+    transitions,
+  };
+}
+
+// FR9, ADR-016: a unit is in arrears at `timestamp` while one of its charges
+// is issued, unpaid and past its due date. The same predicate as
+// LevyLedger.arrearsOf, computed from the replayed charges alone.
+export function arrearsAt(
+  charges: Awaited<ReturnType<typeof replay>>["charges"],
+  unitId: bigint,
+  timestamp: bigint,
+) {
+  return [...charges.values()].some(
+    (c) =>
+      c.unitId === unitId &&
+      c.dueDate !== undefined &&
+      !c.paid &&
+      timestamp > c.dueDate,
+  );
 }
 
 if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
-  const [url, treasury, governance, membershipRegistry, from = "0"] =
-    process.argv.slice(2);
-  if (!membershipRegistry) {
+  const [
+    url,
+    treasury,
+    governance,
+    membershipRegistry,
+    levyLedger,
+    from = "0",
+  ] = process.argv.slice(2);
+  if (!levyLedger) {
     console.error(
-      "usage: node scripts/replay.ts <rpc-url> <treasury> <governance> <membership-registry> [from-block]",
+      "usage: node scripts/replay.ts <rpc-url> <treasury> <governance> <membership-registry> <levy-ledger> [from-block]",
     );
     process.exit(1);
   }
   const derived = await replay(
     new JsonRpcProvider(url),
-    { treasury, governance, membershipRegistry },
+    { treasury, governance, membershipRegistry, levyLedger },
     Number(from),
   );
   console.dir(derived, { depth: null });
