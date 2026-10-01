@@ -1,5 +1,6 @@
 // QAS-4, issue #69: replay the event log on an independent node and derive
-// every fund balance, every tally and every binding from it (FR40, NFR2).
+// every fund balance, every tally, quorum, every binding and every admitted
+// payee from it (FR40, NFR2).
 //
 // The in-process Hardhat network stands in for a node run by a party other
 // than the operator and the firm — an insurer, a lender or an audit firm
@@ -16,17 +17,19 @@ const OPERATING = 0;
 const MAINTENANCE = 1;
 
 describe("QAS-4 replay", () => {
-  it("derives fund balances, role holders, tallies, eligibility and arrears from events alone", async () => {
+  it("derives fund balances, role holders, tallies, quorum, eligibility, payees and arrears from events alone", async () => {
     const { ethers } = await network.getOrCreate();
     const [firm, adapter, timelock, alice, bob, carol, vendor, stranger] =
       await ethers.getSigners();
     const fromBlock = await ethers.provider.getBlockNumber();
 
-    // Real contracts wherever one is built. PayeeRegistry is a stub until
-    // #50/#103 land; a signer stands in for the Timelock, which Treasury
-    // accepts as a plain address at construction.
+    // Real contracts wherever one is built. A signer stands in for the
+    // Timelock (#56), which Treasury and PayeeRegistry each accept as a plain
+    // address at construction.
     const token = await ethers.deployContract("MockNZD");
-    const payees = await ethers.deployContract("PayeeRegistryStub");
+    const payees = await ethers.deployContract("PayeeRegistry", [
+      timelock.address,
+    ]);
     const registry = await ethers.deployContract("MembershipRegistry", [
       adapter.address,
     ]);
@@ -61,7 +64,10 @@ describe("QAS-4 replay", () => {
       [due, due, due],
     ]);
     expect(ledger.target).to.equal(ledgerAddress);
-    await payees.admit(vendor.address);
+
+    // Proposal 1 admits the vendor; the Timelock carries out the admission.
+    await governance.getFunction("propose(address)")(vendor.address);
+    await payees.connect(timelock).admit(vendor.address, 1);
 
     // Four units, alice holding two of them.
     await registry.connect(adapter).bindUnit(1, alice.address);
@@ -92,23 +98,24 @@ describe("QAS-4 replay", () => {
 
     // Alice votes for with units 1 and 2, then receives unit 5 and votes
     // against with it. One wallet, two votes, both counted: the tally keys on
-    // units, never on the wallet (spec §6, ADR-003).
-    await governance.connect(alice).castVote(1, true);
-    await governance.connect(bob).castVote(1, false);
+    // units, never on the wallet (spec §6, ADR-003). Proposal 3 has bob's
+    // vote alone, so it misses quorum's two-wallet minimum.
+    await governance.connect(alice).castVote(2, true);
+    await governance.connect(bob).castVote(2, false);
     await registry.connect(adapter).bindUnit(5, alice.address);
-    await governance.connect(alice).castVote(1, false);
-    await governance.connect(carol).castVote(1, true);
-    await governance.connect(bob).castVote(2, true);
+    await governance.connect(alice).castVote(2, false);
+    await governance.connect(carol).castVote(2, true);
+    await governance.connect(bob).castVote(3, true);
 
     await treasury
       .connect(timelock)
-      .release(OPERATING, vendor.address, 300n, 1);
+      .release(OPERATING, vendor.address, 300n, 2);
     await treasury
       .connect(timelock)
-      .release(OPERATING, vendor.address, 100n, 1);
+      .release(OPERATING, vendor.address, 100n, 2);
     await treasury
       .connect(timelock)
-      .release(MAINTENANCE, vendor.address, 60n, 2);
+      .release(MAINTENANCE, vendor.address, 60n, 3);
 
     const derived = await replay(
       ethers.provider,
@@ -117,6 +124,7 @@ describe("QAS-4 replay", () => {
         governance: String(governance.target),
         membershipRegistry: String(registry.target),
         levyLedger: String(ledger.target),
+        payeeRegistry: String(payees.target),
       },
       fromBlock,
     );
@@ -133,17 +141,33 @@ describe("QAS-4 replay", () => {
       derived.funds.operating + derived.funds.maintenance + 500n,
     );
 
-    for (const id of [1n, 2n]) {
+    for (const id of [2n, 3n]) {
       expect(derived.releasedByProposal.get(id)).to.equal(
         await treasury.released(id),
       );
       const [forVotes, againstVotes] = await governance.tallyOf(id);
       expect(derived.tallies.get(id)).to.deep.equal({ forVotes, againstVotes });
     }
-    expect(derived.tallies.get(1n)).to.deep.equal({
+    expect(derived.tallies.get(2n)).to.deep.equal({
       forVotes: 3n,
       againstVotes: 2n,
     });
+
+    // Quorum from ProposalCreated's principal units and the VoteCast log.
+    for (const id of [1n, 2n, 3n]) {
+      expect(derived.quorum.get(id), `proposal ${id}`).to.equal(
+        await governance.quorumReached(id),
+      );
+    }
+    expect([...derived.quorum.values()]).to.deep.equal([false, true, false]);
+
+    // The payee register, and which proposal admitted each payee.
+    for (const wallet of [vendor, stranger]) {
+      expect(derived.payees.has(wallet.address)).to.equal(
+        await payees.isRegistered(wallet.address),
+      );
+    }
+    expect(derived.payees).to.deep.equal(new Map([[vendor.address, 1n]]));
 
     for (const [unitId, wallet] of derived.owners) {
       expect(wallet).to.equal(await registry.ownerOf(unitId));
@@ -177,14 +201,17 @@ describe("QAS-4 replay", () => {
     );
     expect(derived.roles.get(ZeroHash)).to.deep.equal(new Set());
 
-    // Treasury's four role events at construction, then four bindings, an
-    // early payment, three charges issued, a late payment, two proposals, a
-    // fifth binding, five votes and three releases.
+    // Treasury's four role events at construction, then an admission
+    // proposal and the admission, four bindings, an early payment, three
+    // charges issued, a late payment, two proposals, a fifth binding, five
+    // votes and three releases.
     expect(derived.transitions.map((t) => t.name)).to.deep.equal([
       "RoleGranted",
       "RoleGranted",
       "RoleGranted",
       "RoleRevoked",
+      "ProposalCreated",
+      "PayeeAdmitted",
       ...Array(4).fill("UnitBound"),
       "Deposited",
       "LevyPaid",
@@ -219,6 +246,7 @@ describe("QAS-4 replay", () => {
     [1n, 0, vendor, 0n, 0, ZeroHash, "", 1n],
   ];
   const bound: Event = ["UnitBound", [1n, alice]];
+  const admitted: Event = ["PayeeAdmitted", [vendor, 1n]];
   const issued: Event = ["ChargeIssued", [0n, 1n, 100n, 1n]];
   const cases: [string, Event[], string][] = [
     [
@@ -246,6 +274,12 @@ describe("QAS-4 replay", () => {
       [bound, ["VoteCast", [1n, alice, true, 1n, [1n]]]],
       "unknown proposal 1",
     ],
+    ["a payee admitted twice", [admitted, admitted], "admitted twice"],
+    [
+      "a release to a payee no PayeeAdmitted admitted",
+      [work, ["PaymentReleased", [0, vendor, 1n, 1n]]],
+      "release to unadmitted",
+    ],
     [
       "a release on an admission proposal",
       [admit, ["PaymentReleased", [0, vendor, 1n, 1n]]],
@@ -272,41 +306,70 @@ describe("QAS-4 replay", () => {
     ],
   ];
 
+  async function forge(events: Event[]) {
+    const { ethers } = await network.getOrCreate();
+    const fragments = await Promise.all(
+      [
+        "Governance",
+        "LevyLedger",
+        "MembershipRegistry",
+        "PayeeRegistry",
+        "Treasury",
+      ].map(
+        async (name) =>
+          (await ethers.getContractFactory(name)).interface.fragments,
+      ),
+    );
+    const abi = new Interface(
+      fragments.flat().filter((f) => f.type === "event"),
+    );
+    const logs = events.map(([name, args], index) => ({
+      ...(name === "unknown"
+        ? { topics: [id("Unknown()")], data: "0x" }
+        : abi.encodeEventLog(name, args)),
+      blockNumber: 1,
+      index,
+    }));
+    const forgedNode = { getLogs: async () => logs } as never;
+    return replay(
+      forgedNode,
+      {
+        treasury: "",
+        governance: "",
+        membershipRegistry: "",
+        levyLedger: "",
+        payeeRegistry: "",
+      },
+      0,
+    );
+  }
+
   for (const [what, events, message] of cases) {
     it(`refuses ${what}`, async () => {
-      const { ethers } = await network.getOrCreate();
-      const fragments = await Promise.all(
-        ["Governance", "LevyLedger", "MembershipRegistry", "Treasury"].map(
-          async (name) =>
-            (await ethers.getContractFactory(name)).interface.fragments,
-        ),
-      );
-      const abi = new Interface(
-        fragments.flat().filter((f) => f.type === "event"),
-      );
-      const logs = events.map(([name, args], index) => ({
-        ...(name === "unknown"
-          ? { topics: [id("Unknown()")], data: "0x" }
-          : abi.encodeEventLog(name, args)),
-        blockNumber: 1,
-        index,
-      }));
-      const forgedNode = { getLogs: async () => logs } as never;
-
-      const error = await replay(
-        forgedNode,
-        {
-          treasury: "",
-          governance: "",
-          membershipRegistry: "",
-          levyLedger: "",
-        },
-        0,
-      ).catch((e: Error) => e);
+      const error = await forge(events).catch((e: Error) => e);
       expect(error)
         .to.be.an("error")
         .with.property("message")
         .that.contains(message);
     });
   }
+
+  // Quorum's unit half at its rounding boundary, which the run above never
+  // reaches: two wallets each vote one unit, so two units are voted. With 8
+  // principal units that is a quarter exactly; with 9 it falls short.
+  it("derives quorum's unit half, rounded up, from principal units", async () => {
+    const bob = "0x0000000000000000000000000000000000000b0b";
+    const votedByTwo = (principalUnits: bigint): Event[] => [
+      [
+        "ProposalCreated",
+        [1n, 1, vendor, 400n, 0, ZeroHash, "Roof", principalUnits],
+      ],
+      bound,
+      ["UnitBound", [2n, bob]],
+      ["VoteCast", [1n, alice, true, 1n, [1n]]],
+      ["VoteCast", [1n, bob, false, 1n, [2n]]],
+    ];
+    expect((await forge(votedByTwo(8n))).quorum.get(1n)).to.equal(true);
+    expect((await forge(votedByTwo(9n))).quorum.get(1n)).to.equal(false);
+  });
 });

@@ -6,14 +6,14 @@
 // that contradicts itself is refused, never replayed past.
 //
 // Usage, against any JSON-RPC endpoint:
-//   node scripts/replay.ts <rpc-url> <treasury> <governance> <membership-registry> <levy-ledger> [from-block]
+//   node scripts/replay.ts <rpc-url> <treasury> <governance> <membership-registry> <levy-ledger> <payee-registry> [from-block]
 // Node 22.18 or later strips the types by default; on an earlier Node, add
 // --experimental-strip-types.
 // test/replay.ts runs it against the in-process network and compares every
 // derived value with the contracts' own view functions.
 //
-// Not yet replayed, because the contracts that emit them are not built:
-// PayeeAdmitted, ProposalQueued and WorkAttested.
+// Not yet replayed, because the code that emits them is not built:
+// ProposalQueued (#56) and WorkAttested (#57).
 import { Interface, JsonRpcProvider, type Provider } from "ethers";
 import { pathToFileURL } from "node:url";
 
@@ -27,6 +27,7 @@ const events = new Interface([
   "event VoteCast(uint256 indexed proposalId, address indexed voter, bool inFavour, uint256 weight, uint256[] unitIds)",
   "event ChargeIssued(uint256 indexed chargeId, uint256 indexed unitId, uint256 amount, uint256 dueDate)",
   "event LevyPaid(uint256 indexed chargeId, uint256 indexed unitId, address indexed payer, uint256 amount)",
+  "event PayeeAdmitted(address indexed payee, uint256 indexed proposalId)",
   // OpenZeppelin AccessControl, emitted by Treasury at construction.
   "event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender)",
   "event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender)",
@@ -34,6 +35,9 @@ const events = new Interface([
 
 const OPERATING = 0n;
 const WORK = 1n; // Governance.ProposalKind.Work
+// Governance's quorum constants, copied like the signatures above.
+const QUORUM_UNIT_DIVISOR = 4n;
+const QUORUM_MIN_VOTERS = 2;
 
 export async function replay(
   provider: Pick<Provider, "getLogs">,
@@ -42,6 +46,7 @@ export async function replay(
     governance: string;
     membershipRegistry: string;
     levyLedger: string;
+    payeeRegistry: string;
   },
   fromBlock: number,
 ) {
@@ -57,7 +62,11 @@ export async function replay(
   const releasedByProposal = new Map<bigint, bigint>();
   const owners = new Map<bigint, string>();
   const proposalKinds = new Map<bigint, bigint>();
+  const principalUnits = new Map<bigint, bigint>();
   const votes = new Map<bigint, Map<bigint, boolean>>();
+  const voters = new Map<bigint, Set<string>>();
+  // Payee to the proposal that admitted it.
+  const payees = new Map<string, bigint>();
   // ponytail: roles are Treasury's alone; key them by contract address once a
   // second replayed contract uses AccessControl.
   const roles = new Map<string, Set<string>>();
@@ -89,6 +98,11 @@ export async function replay(
     }
     if (event.name === "ProposalCreated") {
       proposalKinds.set(a.proposalId, a.kind);
+      principalUnits.set(a.proposalId, a.principalUnits);
+    }
+    if (event.name === "PayeeAdmitted") {
+      if (payees.has(a.payee)) refuse(`payee ${a.payee} admitted twice`);
+      payees.set(a.payee, a.proposalId);
     }
     if (event.name === "UnitBound") owners.set(a.unitId, a.wallet);
     if (event.name === "ChargeIssued" || event.name === "LevyPaid") {
@@ -119,6 +133,7 @@ export async function replay(
       if (proposalKinds.get(a.proposalId) !== WORK) {
         refuse(`release names no work proposal ${a.proposalId}`);
       }
+      if (!payees.has(a.payee)) refuse(`release to unadmitted ${a.payee}`);
       if (a.fund === OPERATING) funds.operating -= a.amount;
       else funds.maintenance -= a.amount;
       releasedByProposal.set(
@@ -135,6 +150,8 @@ export async function replay(
       }
       const ballot = votes.get(a.proposalId) ?? new Map<bigint, boolean>();
       votes.set(a.proposalId, ballot);
+      const wallets = voters.get(a.proposalId) ?? new Set<string>();
+      voters.set(a.proposalId, wallets.add(a.voter));
       for (const unitId of a.unitIds as bigint[]) {
         // Checked against the bindings replayed so far, never the registry.
         if (owners.get(unitId) !== a.voter) {
@@ -157,12 +174,26 @@ export async function replay(
       againstVotes: BigInt(ballot.size - inFavour),
     });
   }
+  // Quorum as Governance.quorumReached decides it, for every proposal: units
+  // voted are at least a quarter of its principal units, rounded up, and at
+  // least two distinct wallets cast them.
+  const quorum = new Map<bigint, boolean>();
+  for (const [proposalId, units] of principalUnits) {
+    const unitsVoted = BigInt(votes.get(proposalId)?.size ?? 0);
+    const wallets = voters.get(proposalId)?.size ?? 0;
+    quorum.set(
+      proposalId,
+      unitsVoted * QUORUM_UNIT_DIVISOR >= units && wallets >= QUORUM_MIN_VOTERS,
+    );
+  }
 
   return {
     funds,
     releasedByProposal,
     tallies,
+    quorum,
     owners,
+    payees,
     roles,
     charges,
     transitions,
@@ -196,17 +227,18 @@ if (
     governance,
     membershipRegistry,
     levyLedger,
+    payeeRegistry,
     from = "0",
   ] = process.argv.slice(2);
-  if (!levyLedger) {
+  if (!payeeRegistry) {
     console.error(
-      "usage: node scripts/replay.ts <rpc-url> <treasury> <governance> <membership-registry> <levy-ledger> [from-block]",
+      "usage: node scripts/replay.ts <rpc-url> <treasury> <governance> <membership-registry> <levy-ledger> <payee-registry> [from-block]",
     );
     process.exit(1);
   }
   const derived = await replay(
     new JsonRpcProvider(url),
-    { treasury, governance, membershipRegistry, levyLedger },
+    { treasury, governance, membershipRegistry, levyLedger, payeeRegistry },
     Number(from),
   );
   console.dir(derived, { depth: null });
