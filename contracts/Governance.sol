@@ -14,14 +14,25 @@ import {IMembershipQuery} from "./interfaces/IMembershipQuery.sol";
 /// One function name, `propose`, overloaded for the two kinds — the name the
 /// spec, the views and the figures use throughout.
 ///
-/// Built so far: raising proposals (#53) and voting on them (#54). The window
-/// and quorum (#55), the timelock (#56) and attestation (#57) follow.
+/// Built so far: raising proposals (#53), voting on them (#54), and the voting
+/// window, quorum, extension and waiver that decide them (#55). The timelock
+/// (#56) and attestation (#57) follow.
 contract Governance {
     /// @notice The two kinds of proposal in the built loop. `Admit` puts a
     /// vendor on the approved list (FR16); `Work` spends against it (FR17).
     enum ProposalKind {
         Admit,
         Work
+    }
+
+    /// @notice Where a proposal stands (FR20). `Open` for the 14-day window;
+    /// `Extended` for the 7 days after it when the window closed without
+    /// quorum; then `Passed` or `Failed`, which never change.
+    enum ProposalState {
+        Open,
+        Extended,
+        Passed,
+        Failed
     }
 
     /// @notice Everything doc/design/decisions/views/information-view.md §2.1 lists
@@ -33,6 +44,10 @@ contract Governance {
         Fund fund;
         uint64 createdAt;
         uint256 limit;
+        /// The units bound when the proposal was created: the quorum
+        /// denominator for its whole life, so a unit bound later can vote but
+        /// does not move the bar (ADR-003, amendment of 30-09-2026).
+        uint256 principalUnits;
         bytes32 quoteHash;
         string description;
     }
@@ -42,6 +57,22 @@ contract Governance {
         uint256 forVotes;
         uint256 againstVotes;
     }
+
+    /// @notice The voting window: 14 days, mirroring the notice period for an
+    /// annual general meeting (Unit Titles Regulations 2011, reg 6(3)(b)).
+    uint256 public constant VOTING_PERIOD = 14 days;
+
+    /// @notice Failing quorum, the window extends by this much and quorum is
+    /// then waived (reg 13(2)). Composed with a majority of votes cast, one
+    /// owner's vote can pass a proposal after 21 days — the finding in
+    /// doc/design/sad.md §2.5, and deliberate, not a bug.
+    uint256 public constant EXTENSION = 7 days;
+
+    /// @notice Quorum's two halves (Unit Titles Act 2010, s 95(1), (1A)): the
+    /// units voted are at least one in `QUORUM_UNIT_DIVISOR` of the principal
+    /// units, and at least `QUORUM_MIN_VOTERS` distinct wallets cast them.
+    uint256 public constant QUORUM_UNIT_DIVISOR = 4;
+    uint256 public constant QUORUM_MIN_VOTERS = 2;
 
     /// @notice The management firm's key: the only address that may propose.
     /// Fixed at deployment — there is no admin to rotate it, so a stolen key
@@ -66,9 +97,22 @@ contract Governance {
     /// wallet, so a unit that changes hands mid-vote still votes only once.
     mapping(uint256 proposalId => mapping(uint256 unitId => bool)) public unitHasVoted;
 
+    /// @notice Whether a wallet has voted on a proposal, and how many distinct
+    /// wallets have. The one count kept per wallet, not per unit: quorum's
+    /// two-person minimum (doc/design/decisions/views/information-view.md §2.1).
+    mapping(uint256 proposalId => mapping(address wallet => bool)) public walletHasVoted;
+    mapping(uint256 proposalId => uint256) public voterCount;
+
+    /// @dev Set by the first vote cast in the extension, which is only ever
+    /// allowed when the window closed without quorum. Without it, a vote in
+    /// the extension that reaches quorum would make the proposal look as if it
+    /// had been decided when the window closed, and end the extension early.
+    mapping(uint256 proposalId => bool) private _votedInExtension;
+
     /// @notice Carries every stored field except `createdAt`, which is the
     /// block timestamp of this log, so a proposal can be rebuilt from the log
-    /// alone without a storage read (CLAUDE.md rule 6, QAS-4).
+    /// alone without a storage read (CLAUDE.md rule 6, QAS-4) — including
+    /// whether it reached quorum, which needs `principalUnits`.
     event ProposalCreated(
         uint256 indexed proposalId,
         ProposalKind kind,
@@ -76,7 +120,8 @@ contract Governance {
         uint256 limit,
         Fund fund,
         bytes32 quoteHash,
-        string description
+        string description,
+        uint256 principalUnits
     );
 
     /// @notice One event per `castVote` call, naming the units that voted in
@@ -105,6 +150,8 @@ contract Governance {
     error NotBoundOwner(address caller);
     /// Every unit the caller owns has already voted on this proposal.
     error AlreadyVoted(uint256 proposalId, address voter);
+    /// FR20: the window, and any extension, has closed.
+    error VotingClosed(uint256 proposalId);
 
     constructor(address firm_, IPayeeQuery payees_, IMembershipQuery members_) {
         if (firm_ == address(0)) revert FirmIsZero();
@@ -148,9 +195,13 @@ contract Governance {
     /// (ADR-003). Each call votes all such units the same way; a later call
     /// votes only units acquired since, in whichever direction it names.
     /// Eligibility is checked unit by unit against the register (B8).
+    /// Voting runs for the window and, if it closed without quorum, the
+    /// extension (FR20).
     /// @return weight The number of units this call voted with.
     function castVote(uint256 proposalId, bool inFavour) external returns (uint256 weight) {
-        if (_proposals[proposalId].createdAt == 0) revert UnknownProposal(proposalId);
+        ProposalState current = state(proposalId);
+        if (current == ProposalState.Extended) _votedInExtension[proposalId] = true;
+        else if (current != ProposalState.Open) revert VotingClosed(proposalId);
 
         uint256[] memory held = members.unitsOf(msg.sender);
         uint256[] memory voted = new uint256[](held.length);
@@ -173,7 +224,44 @@ contract Governance {
         if (inFavour) tally.forVotes += weight;
         else tally.againstVotes += weight;
 
+        if (!walletHasVoted[proposalId][msg.sender]) {
+            walletHasVoted[proposalId][msg.sender] = true;
+            ++voterCount[proposalId];
+        }
+
         emit VoteCast(proposalId, msg.sender, inFavour, weight, unitIds);
+    }
+
+    /// @notice FR20. Where `proposalId` stands now. Quorum decides only when
+    /// voting closes — at the end of the window if it was reached, at the end
+    /// of the extension if not, when it is waived. Either way the proposal
+    /// passes only on more units for than against, so a tie fails and a
+    /// proposal nobody voted on fails, even after the waiver (s 97(4)).
+    function state(uint256 proposalId) public view returns (ProposalState) {
+        Proposal storage stored = _proposals[proposalId];
+        if (stored.createdAt == 0) revert UnknownProposal(proposalId);
+
+        uint256 windowEnd = stored.createdAt + VOTING_PERIOD;
+        if (block.timestamp < windowEnd) return ProposalState.Open;
+        // No vote can be cast between the window closing and the first vote
+        // in the extension, so until then the tally is the tally at close.
+        bool extended = _votedInExtension[proposalId] || !quorumReached(proposalId);
+        if (extended && block.timestamp < windowEnd + EXTENSION) return ProposalState.Extended;
+
+        Tally storage tally = _tallies[proposalId];
+        return tally.forVotes > tally.againstVotes ? ProposalState.Passed : ProposalState.Failed;
+    }
+
+    /// @notice Whether the votes cast on `proposalId` so far meet both halves
+    /// of quorum: units for and against together are at least a quarter of
+    /// its principal units, rounded up, and at least two distinct wallets
+    /// cast them. False for an unknown id.
+    function quorumReached(uint256 proposalId) public view returns (bool) {
+        Tally storage tally = _tallies[proposalId];
+        uint256 unitsVoted = tally.forVotes + tally.againstVotes;
+        return
+            unitsVoted * QUORUM_UNIT_DIVISOR >= _proposals[proposalId].principalUnits &&
+            voterCount[proposalId] >= QUORUM_MIN_VOTERS;
     }
 
     /// @notice Votes cast on `proposalId` so far, by unit.
@@ -208,15 +296,26 @@ contract Governance {
         string memory description
     ) private returns (uint256 proposalId) {
         proposalId = ++proposalCount;
+        uint256 principalUnits = members.boundUnitCount();
         _proposals[proposalId] = Proposal({
             kind: kind,
             payee: payee,
             fund: fund,
             createdAt: uint64(block.timestamp),
             limit: limit,
+            principalUnits: principalUnits,
             quoteHash: quoteHash,
             description: description
         });
-        emit ProposalCreated(proposalId, kind, payee, limit, fund, quoteHash, description);
+        emit ProposalCreated(
+            proposalId,
+            kind,
+            payee,
+            limit,
+            fund,
+            quoteHash,
+            description,
+            principalUnits
+        );
     }
 }
