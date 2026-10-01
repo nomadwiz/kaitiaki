@@ -26,6 +26,12 @@ contract MembershipRegistry is IMembershipQuery {
 
     mapping(address wallet => uint256[] unitIds) private _unitsOf;
 
+    /// @notice The number of units bound — every principal unit, in the
+    /// prototype. Governance stores it on each proposal as the quorum
+    /// denominator (spec §5; ADR-003, amendment of 30-09-2026). A binding is
+    /// written once, so each unit adds one and none is ever taken away.
+    uint256 public boundUnitCount;
+
     /// @notice Every binding, so eligibility can be rebuilt from the log alone
     /// and each `VoteCast` checked against it without a storage read (spec §6).
     event UnitBound(uint256 indexed unitId, address indexed wallet);
@@ -52,6 +58,7 @@ contract MembershipRegistry is IMembershipQuery {
 
         ownerOf[unitId] = wallet;
         _unitsOf[wallet].push(unitId);
+        ++boundUnitCount;
 
         emit UnitBound(unitId, wallet);
     }
