@@ -37,8 +37,8 @@ in the build depends on them.
    moves value; a way to grant `RELEASER_ROLE` after deployment; or an admin
    function that pauses, reverses or redirects a payment.
    [ADR-001](../doc/design/decisions/adr/001-narrow-release-interface.md) explains why.
-2. **Never invent, round or change a parameter.** The values come from New
-   Zealand law ([`doc/design/spec.md` §5](../doc/design/spec.md#5-parameters--statutory-not-chosen)). If one looks wrong, raise an issue.
+2. **Never invent, round or change a parameter.** Each value and where it comes from
+   — New Zealand law, adapted from it, or a design choice — is in [`doc/design/spec.md` §5](../doc/design/spec.md#5-parameters--where-each-value-comes-from). If one looks wrong, raise an issue.
 3. **Never build what is designed but not built** — the `D` rows in
    [`doc/design/spec.md` §8](../doc/design/spec.md#8-requirements) and everything in §10. Say so on the issue instead.
 4. **Never reopen a settled decision in code.** If you think a decision record is
