@@ -105,10 +105,13 @@ contract LevyLedgerTest is Test {
 
     // --- issueCharges: FR5, FR6, B1 ---
 
-    function test_IssuingBeforeTheDueDateReverts() public {
-        vm.warp(DUE - 1);
+    /// Refusal B1 (spec §7): permissionless triggering is safe. Any caller, at
+    /// any moment before the due date, is refused with its own named error
+    /// (NFR9); `test_AnyCallerIssuesOnTheDueDate` is the other half.
+    function testFuzz_IssuingBeforeTheDueDateReverts(address caller, uint256 timestamp) public {
+        vm.warp(bound(timestamp, 0, DUE - 1));
         vm.expectRevert(abi.encodeWithSelector(LevyLedger.ChargeNotDue.selector, 0, DUE));
-        vm.prank(stranger);
+        vm.prank(caller);
         ledger.issueCharges(_ids(0));
     }
 
