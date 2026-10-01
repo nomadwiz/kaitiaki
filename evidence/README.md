@@ -216,3 +216,11 @@ The rule is not in the code: it is a repository setting, created by an admin
 through `POST /repos/nomadwiz/kaitiaki/rulesets`. A Claude review that finishes
 before CI has its merge refused and leaves the pull request open for its author
 to merge once CI passes.
+
+### Issue #60 — Refusal test B1
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `60-refusal-b1-tests.txt` | Refusal test B1 (spec §7), proving permissionless triggering is safe: `testFuzz_IssuingBeforeTheDueDateReverts` passes over 256 runs alongside the existing suites, 110 passing, with 100% line and statement coverage of `LevyLedger.sol`. Each run calls `LevyLedger.issueCharges` from a random caller at a random moment from zero up to one second before the due date, and the call reverts with `ChargeNotDue(chargeId, dueDate)`, a named error of its own (NFR9) — nobody may call early. `test_AnyCallerIssuesOnTheDueDate` is the other half: at the due date a stranger issues. The fuzz test replaces the single hand-picked `test_IssuingBeforeTheDueDateReverts` from #58 | `npm run test:coverage` |
+
+The test bites, checked on 02-10-2026. With the due-date check removed from `issueCharges`, the fuzz test and `test_OneChargeNotDueRevertsTheWholeBatch` fail with "next call did not revert as expected", and no other test fails. The check was restored before this output was captured.
