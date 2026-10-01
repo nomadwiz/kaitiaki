@@ -102,8 +102,14 @@ export async function replay(
           `charge ${a.chargeId} names units ${charge.unitId} and ${a.unitId}`,
         );
       }
-      if (event.name === "ChargeIssued") charge.dueDate = a.dueDate;
-      else charge.paid = true;
+      if (event.name === "ChargeIssued") {
+        if (charge.dueDate !== undefined)
+          refuse(`charge ${a.chargeId} issued twice`);
+        charge.dueDate = a.dueDate;
+      } else {
+        if (charge.paid) refuse(`charge ${a.chargeId} paid twice`);
+        charge.paid = true;
+      }
     }
     if (event.name === "Deposited") {
       funds.operating += a.operatingAmount;

@@ -256,6 +256,15 @@ describe("QAS-4 replay", () => {
       [issued, ["LevyPaid", [0n, 2n, alice, 100n]]],
       "charge 0 names units 1 and 2",
     ],
+    ["a charge issued twice", [issued, issued], "charge 0 issued twice"],
+    [
+      "a charge paid twice",
+      [
+        ["LevyPaid", [0n, 1n, alice, 100n]],
+        ["LevyPaid", [0n, 1n, alice, 100n]],
+      ],
+      "charge 0 paid twice",
+    ],
     [
       "a log from a replayed address with no known event",
       [["unknown", []]],

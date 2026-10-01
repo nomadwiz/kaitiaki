@@ -46,21 +46,23 @@ Running Mocha tests
 
 
   check-config-secrets
-    ✔ passes a clean tree (74ms)
-    ✔ fails on a tracked file holding a private-key-shaped value (74ms)
-    ✔ fails on a tracked .env (63ms)
-    ✔ fails when a line of .env.example has a value (65ms)
-    ✔ passes a committed Ignition journal, whose transaction hashes are key-shaped (71ms)
+    ✔ passes a clean tree (82ms)
+    ✔ fails on a tracked file holding a private-key-shaped value (76ms)
+    ✔ fails on a tracked .env (70ms)
+    ✔ fails when a line of .env.example has a value (57ms)
+    ✔ passes a committed Ignition journal, whose transaction hashes are key-shaped (65ms)
     ✔ fails closed outside a git repository
 
   QAS-4 replay
-    ✔ derives fund balances, role holders, tallies, eligibility and arrears from events alone (283ms)
+    ✔ derives fund balances, role holders, tallies, eligibility and arrears from events alone (294ms)
     ✔ refuses a VoteCast naming a unit no UnitBound gave the voter
     ✔ refuses a unit counted twice on one proposal
     ✔ refuses a VoteCast whose weight is not its number of units
     ✔ refuses a VoteCast on a proposal no ProposalCreated made
     ✔ refuses a release on an admission proposal
     ✔ refuses a charge paid for a unit other than the one it was issued to
+    ✔ refuses a charge issued twice
+    ✔ refuses a charge paid twice
     ✔ refuses a log from a replayed address with no known event
 
   toolchain
@@ -68,6 +70,6 @@ Running Mocha tests
     ✔ gives tests funded signers
 
 
-  16 passing (688ms)
+  18 passing (714ms)
 
 

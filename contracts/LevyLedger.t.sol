@@ -81,7 +81,6 @@ contract LevyLedgerTest is Test {
 
     function test_ReadsTheSettlementAssetFromTreasury() public view {
         assertEq(address(ledger.settlementAsset()), address(token));
-        assertEq(ledger.chargeCount(), 3);
         (uint256 unitId, uint256 amount, uint256 dueDate, bool issued, bool paid) = ledger.charges(
             2
         );

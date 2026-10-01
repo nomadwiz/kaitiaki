@@ -136,11 +136,6 @@ contract LevyLedger {
         return false;
     }
 
-    /// @notice The number of charges in the schedule.
-    function chargeCount() external view returns (uint256) {
-        return charges.length;
-    }
-
     function _charge(uint256 chargeId) private view returns (Charge storage) {
         if (chargeId >= charges.length) revert UnknownCharge(chargeId);
         return charges[chargeId];
