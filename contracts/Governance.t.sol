@@ -10,9 +10,9 @@ import {IMembershipQuery} from "./interfaces/IMembershipQuery.sol";
 import {PayeeRegistryStub} from "./stubs/PayeeRegistryStub.sol";
 import {MembershipRegistryStub} from "./stubs/MembershipRegistryStub.sol";
 
-/// @notice Issue #53. Raising proposals: FR16, FR17, FR18. The refusal test B2
-/// itself is issue #61 and is written by another member (doc/design/ownership.md);
-/// the unregistered-vendor case here only proves the guard exists.
+/// @notice Issue #53. Raising proposals: FR16, FR17, FR18. Refusal test B2 is
+/// the fuzz test in `GovernanceRefusals.t.sol` (#61); the unregistered-vendor
+/// case here is the guard's own test.
 contract GovernanceProposeTest is Test {
     Governance internal governance;
     PayeeRegistryStub internal payees;
