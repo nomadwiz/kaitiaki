@@ -173,6 +173,16 @@ With the fund check temporarily removed from `Treasury.release`, the same test
 fails: the fuzzer finds a counterexample whose release to the wrong fund does
 not revert. The check was restored before this output was captured.
 
+### Issue #64 — Refusal test B4
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `64-refusal-b4-tests.txt` | Refusal test B4, proving G3 and FR32: two fuzz tests pass over 256 runs each alongside the existing suites, 171 passing, with 100% line and statement coverage of `Treasury.sol`. `testFuzz_ReleaseRejectsAmountOverProposalLimit` approves any limit and asks `Treasury.release` for any amount above it, with the fund holding enough to pay, a registered, matching payee and the timelock as caller; the call reverts with `AmountExceedsLimit(proposalId, amount, 0, limit)` (NFR9) and nothing is released or paid. `testFuzz_CumulativeReleaseNeverExceedsLimit` approves any limit and makes two releases against it: the second succeeds only while the total stays within the limit, and otherwise reverts with `AmountExceedsLimit(proposalId, second, first, limit)`, so no sequence takes the total above the limit (ADR-014). `testFuzz_ReleaseRejectsAmountOverProposalLimit` replaces the single hand-picked `test_ReleaseRejectsAmountOverProposalLimit`, as spec §7 "Fuzz the value guards" asks; `testFuzz_CumulativeReleaseNeverExceedsLimit` already existed (#91, PR #104) and now fuzzes the limit too. The run also includes `test_TreasuryStubEmitsReleaseCall`, which brings `TreasuryStub.sol` to full coverage | `npm run test:coverage` |
+
+With the limit check temporarily removed from `Treasury.release`, both fuzz
+tests fail, as does `test_ReleaseRejectsCumulativeAmountOverProposalLimit`:
+checked on 03-10-2026. The check was restored before this output was captured.
+
 ### Issue #63 — Refusal test B3
 
 | File | What it shows | Reproduce with |
