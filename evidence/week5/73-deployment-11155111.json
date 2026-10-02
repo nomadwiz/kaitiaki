@@ -1,0 +1,66 @@
+{
+  "network": "sepolia",
+  "chainId": 11155111,
+  "fromBlock": 11831859,
+  "deployer": "0xC60ACBAEF64f0db5520083c1C54a5b7a9ef9b433",
+  "firm": "0xC60ACBAEF64f0db5520083c1C54a5b7a9ef9b433",
+  "adapter": "0xC60ACBAEF64f0db5520083c1C54a5b7a9ef9b433",
+  "addresses": {
+    "token": "0x9AC2b0Cab32c4C409e928F243C523dFc1F50cd82",
+    "payeeRegistry": "0xc06718941f0dfD4726D2B9c2CA26Abc63857C256",
+    "membershipRegistry": "0x9c35AfCd8E7A8cEC27b9003eA0FB8CaE233E4BF9",
+    "governance": "0xD9CC466313590793BD6004D69F981Ee371004AFf",
+    "treasury": "0x83f0DD7a74ec2dEc32b33796628c9De9ea87DF1D",
+    "levyLedger": "0x08Cce2751c3FA74564070554E2284E696b5b3D50",
+    "timelock": "0x836305b8e52934C013e60CDC4B8f4218B62c1887"
+  },
+  "contracts": {
+    "token": "MockNZD",
+    "payeeRegistry": "PayeeRegistry",
+    "membershipRegistry": "MembershipRegistry",
+    "governance": "Governance",
+    "treasury": "Treasury",
+    "levyLedger": "LevyLedger",
+    "timelock": "TimelockController"
+  },
+  "constructorArgs": {
+    "token": [],
+    "payeeRegistry": [
+      "0x836305b8e52934C013e60CDC4B8f4218B62c1887"
+    ],
+    "membershipRegistry": [
+      "0xC60ACBAEF64f0db5520083c1C54a5b7a9ef9b433"
+    ],
+    "governance": [
+      "0xC60ACBAEF64f0db5520083c1C54a5b7a9ef9b433",
+      "0xc06718941f0dfD4726D2B9c2CA26Abc63857C256",
+      "0x9c35AfCd8E7A8cEC27b9003eA0FB8CaE233E4BF9",
+      "0x836305b8e52934C013e60CDC4B8f4218B62c1887",
+      "0x83f0DD7a74ec2dEc32b33796628c9De9ea87DF1D"
+    ],
+    "treasury": [
+      8000,
+      "0xD9CC466313590793BD6004D69F981Ee371004AFf",
+      "0x836305b8e52934C013e60CDC4B8f4218B62c1887",
+      "0x08Cce2751c3FA74564070554E2284E696b5b3D50",
+      "0xc06718941f0dfD4726D2B9c2CA26Abc63857C256",
+      "0x9AC2b0Cab32c4C409e928F243C523dFc1F50cd82"
+    ],
+    "levyLedger": [
+      "0x83f0DD7a74ec2dEc32b33796628c9De9ea87DF1D",
+      [],
+      [],
+      []
+    ],
+    "timelock": [
+      "604800",
+      [
+        "0xD9CC466313590793BD6004D69F981Ee371004AFf"
+      ],
+      [
+        "0xD9CC466313590793BD6004D69F981Ee371004AFf"
+      ],
+      "0x0000000000000000000000000000000000000000"
+    ]
+  }
+}

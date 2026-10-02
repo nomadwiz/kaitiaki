@@ -47,21 +47,24 @@ npm run typecheck
 
 ## Deploy
 
-To Hardhat's in-process network, printing each deployed address. What it deploys is described at the top of [`scripts/deploy.ts`](scripts/deploy.ts):
+[`scripts/deploy.ts`](scripts/deploy.ts) deploys the real system (#73): the seven contracts, wired as spec §4 and ADR-015 set out, with each address precomputed from the deployer's nonce. It then reads the wiring back and refuses a deployment in which any role holder or reference is wrong. To dry-run it on Hardhat's in-process network:
 
 ```
 npx hardhat run scripts/deploy.ts
 ```
 
-To Sepolia, `hardhat.config.ts` reads `SEPOLIA_RPC_URL` and `SEPOLIA_PRIVATE_KEY` through `configVariable`. Store both in the encrypted Hardhat keystore, never in a committed file, and check that the account holds enough:
+To Sepolia, `hardhat.config.ts` reads `SEPOLIA_RPC_URL`, `SEPOLIA_PRIVATE_KEY` and `ETHERSCAN_API_KEY` through `configVariable`. Store them in the encrypted Hardhat keystore, never in a committed file, and check that the account holds enough:
 
 ```
 npx hardhat keystore set SEPOLIA_RPC_URL
 npx hardhat keystore set SEPOLIA_PRIVATE_KEY
+npx hardhat keystore set ETHERSCAN_API_KEY
 npm run check:sepolia-account
+npx hardhat run scripts/deploy.ts --network sepolia   # writes evidence/week5/73-deployment-11155111.json
+npx hardhat run scripts/verify.ts --network sepolia   # verifies each contract on Etherscan
 ```
 
-The check prints the deployer address, its balance and the balance required, and exits 1 if it is short. The account must be a throwaway test-network account.
+The check prints the deployer address, its balance and the balance required, and exits 1 if it is short. The account must be a throwaway test-network account, and must send nothing else while the deployment runs. On the test network that one account is also the firm and the land-title adapter, so it binds units with `MembershipRegistry.bindUnit`. The deployment is for readability (#100): it uses the real parameters, so the loop itself is shown on the local network. Sepolia is a public test network, not the permissioned national chain the design assumes.
 
 ## Read interface
 

@@ -335,3 +335,23 @@ The tests bite, checked on 03-10-2026, one change at a time. Rendering a date be
 
 The seeded building's proposal 2 also received one vote from bob, cast through the same `castVote` call the form makes and signed by the local node, before the screenshots were taken.
 
+### Issue #73 — Deploy to a public test network
+
+**A public test network, not the permissioned national chain the design assumes.** The deployment is for readability, as decided on #100: it uses the real parameters (spec §5), so the loop is not run here in real time; it is demonstrated on the local network, where time can be advanced.
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `73-deployment-11155111.json` | The seven contracts deployed to Sepolia (chain 11155111) from block 11831859 by one throwaway account, which is also the firm and the land-title adapter: their addresses and each contract's constructor arguments. `scripts/deploy.ts` precomputed every address from the deployer's nonce and checked each one as it landed, then read the wiring back from the chain, and writes this file only when all 23 checks pass — among them the Timelock as the sole `RELEASER_ROLE` member, `LevyLedger` as the sole `DEPOSITOR_ROLE` member and no member of Treasury's `DEFAULT_ADMIN_ROLE`, all checked before any deposit (spec §4, ADR-015). `LevyLedger`'s charge schedule is empty, because the reference building's levy schedule is a recorded gap in the design and no value is invented (CLAUDE.md rule 2) | `npx hardhat run scripts/deploy.ts --network sepolia` |
+| `73-sepolia-verification.txt` | All seven contracts verified on Etherscan, with their source and constructor arguments, so anyone can read the deployed code against this repository | `npx hardhat run scripts/verify.ts --network sepolia` |
+
+| Contract | Address on Sepolia |
+| --- | --- |
+| `MockNZD` | [`0x9AC2b0Cab32c4C409e928F243C523dFc1F50cd82`](https://sepolia.etherscan.io/address/0x9AC2b0Cab32c4C409e928F243C523dFc1F50cd82#code) |
+| `PayeeRegistry` | [`0xc06718941f0dfD4726D2B9c2CA26Abc63857C256`](https://sepolia.etherscan.io/address/0xc06718941f0dfD4726D2B9c2CA26Abc63857C256#code) |
+| `MembershipRegistry` | [`0x9c35AfCd8E7A8cEC27b9003eA0FB8CaE233E4BF9`](https://sepolia.etherscan.io/address/0x9c35AfCd8E7A8cEC27b9003eA0FB8CaE233E4BF9#code) |
+| `Governance` | [`0xD9CC466313590793BD6004D69F981Ee371004AFf`](https://sepolia.etherscan.io/address/0xD9CC466313590793BD6004D69F981Ee371004AFf#code) |
+| `Treasury` | [`0x83f0DD7a74ec2dEc32b33796628c9De9ea87DF1D`](https://sepolia.etherscan.io/address/0x83f0DD7a74ec2dEc32b33796628c9De9ea87DF1D#code) |
+| `LevyLedger` | [`0x08Cce2751c3FA74564070554E2284E696b5b3D50`](https://sepolia.etherscan.io/address/0x08Cce2751c3FA74564070554E2284E696b5b3D50#code) |
+| `TimelockController` | [`0x836305b8e52934C013e60CDC4B8f4218B62c1887`](https://sepolia.etherscan.io/address/0x836305b8e52934C013e60CDC4B8f4218B62c1887#code) |
+
+That the contracts can be read by anyone is a property of the public test network, not evidence about the national permissioned chain, which is described rather than stood up: FR42 stays designed, not built (`sad.md` §6.2).
