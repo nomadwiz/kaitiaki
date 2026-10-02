@@ -40,32 +40,17 @@ Warning: "at" will be promoted to keyword in the future and will not be allowed 
 858 |     function at(BytesSet storage set, uint256 index) internal view returns (bytes memory) {
     |     ^ (Relevant source part starts here and spans across multiple lines).
 
-Compiled 31 Solidity files with solc 0.8.36 (evm target: prague)
+Compiled 2 Solidity files with solc 0.8.36 (evm target: prague)
 
 Running Solidity tests
-
-  contracts/GovernanceFalseAttestation.t.sol:GovernanceFalseAttestationTest
-    ✔ test_FalseAttestationReleasesPaymentAndTheRecordNamesEveryone()
 
   contracts/Toolchain.t.sol:ToolchainTest
     ✔ test_RunnerExecutes()
     ✔ test_ExpectRevertIsAvailable()
     ✔ test_CheatcodesAreAvailable()
 
-  contracts/GovernanceVote.t.sol:GovernanceVoteTest
-    ✔ test_WeightIsUnitsHeld()
-    ✔ test_WalletMayVoteBothWaysWithDifferentUnits()
-    ✔ test_VotesAreSeparatePerProposal()
-    ✔ test_VoteCastCarriesWalletDirectionAndUnits()
-    ✔ test_UnknownProposalRefused()
-    ✔ test_UnitRebindMovesTheVote()
-    ✔ test_UnboundWalletRefused()
-    ✔ test_TransferredUnitCannotVoteTwice()
-    ✔ test_SecondVoteRefused()
-    ✔ test_NewlyAcquiredUnitVotesOnce()
-    ✔ test_LiveAndStaleEntriesVoteOnlyTheLiveUnit()
-    ✔ test_DuplicateUnitEntryCountsOnce()
-    ✔ test_BoundOwnerVotes()
+  contracts/GovernanceFalseAttestation.t.sol:GovernanceFalseAttestationTest
+    ✔ test_FalseAttestationReleasesPaymentAndTheRecordNamesEveryone()
 
   contracts/PayeeRegistry.t.sol:PayeeRegistryTest
     ✔ test_IsRegisteredIsReadableByAnyCaller()
@@ -106,6 +91,21 @@ Running Solidity tests
     ✔ test_AChargeMayBePaidBeforeItIsIssued()
     ✔ testFuzz_IssuingBeforeTheDueDateReverts(address,uint256) (runs: 256)
 
+  contracts/GovernanceVote.t.sol:GovernanceVoteTest
+    ✔ test_WeightIsUnitsHeld()
+    ✔ test_WalletMayVoteBothWaysWithDifferentUnits()
+    ✔ test_VotesAreSeparatePerProposal()
+    ✔ test_VoteCastCarriesWalletDirectionAndUnits()
+    ✔ test_UnknownProposalRefused()
+    ✔ test_UnitRebindMovesTheVote()
+    ✔ test_UnboundWalletRefused()
+    ✔ test_TransferredUnitCannotVoteTwice()
+    ✔ test_SecondVoteRefused()
+    ✔ test_NewlyAcquiredUnitVotesOnce()
+    ✔ test_LiveAndStaleEntriesVoteOnlyTheLiveUnit()
+    ✔ test_DuplicateUnitEntryCountsOnce()
+    ✔ test_BoundOwnerVotes()
+
   contracts/GovernanceRefusals.t.sol:GovernanceRefusalsTest
     ✔ test_ProposeWorkAcceptsVendorOnceAdmissionExecutes()
     ✔ testFuzz_ProposeWorkWithUnapprovedVendorReverts(address,uint256,uint8,uint8) (runs: 256)
@@ -131,72 +131,6 @@ Running Solidity tests
     ✔ test_ExtensionRunsItsCourseOnceQuorumReachedInIt()
     ✔ testFuzz_OpenThroughoutWindow(uint256) (runs: 256)
     ✔ testFuzz_OneUnitPassesAfterExtension(uint256) (runs: 256)
-
-  contracts/GovernanceAttest.t.sol:GovernanceAttestTest
-    ✔ test_PaymentNeedsNoWaitAfterAttestation()
-    ✔ test_AttestThenAnyoneExecutesPaysTheWholeLimit()
-    ✔ test_AttestRefusesZeroEvidenceHash()
-    ✔ test_AttestRefusesUnknownProposal()
-    ✔ test_AttestRefusesSecondAttestation()
-    ✔ test_AttestRefusesPassedProposalNotYetQueued()
-    ✔ test_AttestRefusesAdmitProposal()
-    ✔ testFuzz_AttestRefusesNonFirm(address) (runs: 256)
-    ✔ testFuzz_AttestRefusesBeforeTheDelayElapses(uint256) (runs: 256)
-    ✔ testFuzz_AttestOnProposalNeverPassedReverts(uint8,uint256) (runs: 256)
-
-  contracts/Governance.t.sol:GovernanceProposeTest
-    ✔ test_UnknownIdIsZeroed()
-    ✔ test_ProposeWorkEmitsProposalCreated()
-    ✔ test_ProposeAdmitRefusesZeroVendor()
-    ✔ test_ProposeAdmitEmitsProposalCreated()
-    ✔ test_ProposeAdmitDoesNotRegisterVendor()
-    ✔ test_IdsIncreaseFromOne()
-    ✔ test_FirmProposesWork()
-    ✔ test_FirmProposesAdmit()
-    ✔ test_ConstructorRefusesZeroTreasury()
-    ✔ test_ConstructorRefusesZeroTimelock()
-    ✔ test_ConstructorRefusesZeroRegistry()
-    ✔ test_ConstructorRefusesZeroMembershipRegistry()
-    ✔ test_ConstructorRefusesZeroFirm()
-    ✔ test_ConstructorRecordsFirmAndRegistry()
-    ✔ test_ApprovedSpendReturnsWorkTerms()
-    ✔ test_ApprovedSpendRejectsAdmitAndUnknownIds()
-    ✔ testFuzz_ProposeWorkRefusesNonFirm(address) (runs: 256)
-    ✔ testFuzz_ProposeAdmitRefusesNonFirm(address) (runs: 256)
-
-  contracts/GovernanceTimelock.t.sol:GovernanceTimelockTest
-    ✔ test_WorkSchedulesOneReleaseOfTheWholeLimit()
-    ✔ test_TimelockRolesAreGovernanceAloneWithNoExternalAdmin()
-    ✔ test_TimelockIsSoleReleaserAndPayeeExecutor()
-    ✔ test_QueueRefusesUnknownProposal()
-    ✔ test_QueueRefusesSecondSchedule()
-    ✔ test_QueueRefusesOpenProposal()
-    ✔ test_QueueRefusesFailedProposal()
-    ✔ test_OperationOfUnknownProposalReverts()
-    ✔ test_ExecuteRefusesUnqueuedProposal()
-    ✔ test_ExecuteRefusesUnattestedWork()
-    ✔ test_ExecuteRefusesSecondRun()
-    ✔ test_AnyoneQueuesAPassedProposal()
-    ✔ test_AnyoneExecutesAnAdmissionOnceReady()
-    ✔ test_AdmitSchedulesTheAdmission()
-    ✔ testFuzz_OperationNeverTargetsTimelock(bool) (runs: 256)
-    ✔ testFuzz_OnlyGovernanceSchedules(address) (runs: 256)
-    ✔ testFuzz_OnlyGovernanceExecutesOnTimelock(address) (runs: 256)
-    ✔ testFuzz_ExecuteBeforeDelayReverts(uint256) (runs: 256)
-
-  contracts/MembershipRegistry.t.sol:MembershipRegistryTest
-    ✔ test_UnboundWalletIsNotOwner()
-    ✔ test_UnboundUnitHasNoOwner()
-    ✔ test_ConstructorRefusesZeroAdapter()
-    ✔ test_ConstructorRecordsAdapter()
-    ✔ test_BindRefusesZeroWallet()
-    ✔ test_BindRefusesUnitBoundToSameWallet()
-    ✔ test_BindRefusesUnitBoundToAnotherWallet()
-    ✔ test_BindEmitsUnitBound()
-    ✔ test_AdapterBindsUnit()
-    ✔ testFuzz_WeightIsUnitCount(uint8) (runs: 256)
-    ✔ testFuzz_BoundUnitCountCountsEachUnitOnce(uint8) (runs: 256)
-    ✔ testFuzz_BindRefusesNonAdapter(address) (runs: 256)
 
   contracts/Treasury.t.sol:TreasuryTest
     ✔ test_TreasuryReadsTermsFromGovernance()
@@ -232,8 +166,75 @@ Running Solidity tests
     ✔ testFuzz_NoAddressCanGrantReleaser(address) (runs: 256)
     ✔ testFuzz_CumulativeReleaseNeverExceedsLimit(uint256,uint256) (runs: 256)
 
+  contracts/GovernanceTimelock.t.sol:GovernanceTimelockTest
+    ✔ test_WorkSchedulesOneReleaseOfTheWholeLimit()
+    ✔ test_TimelockRolesAreGovernanceAloneWithNoExternalAdmin()
+    ✔ test_TimelockIsSoleReleaserAndPayeeExecutor()
+    ✔ test_QueueRefusesUnknownProposal()
+    ✔ test_QueueRefusesSecondSchedule()
+    ✔ test_QueueRefusesOpenProposal()
+    ✔ test_QueueRefusesFailedProposal()
+    ✔ test_OperationOfUnknownProposalReverts()
+    ✔ test_ExecuteRefusesUnqueuedProposal()
+    ✔ test_ExecuteRefusesUnattestedWork()
+    ✔ test_ExecuteRefusesSecondRun()
+    ✔ test_AnyoneQueuesAPassedProposal()
+    ✔ test_AnyoneExecutesAnAdmissionOnceReady()
+    ✔ test_AdmitSchedulesTheAdmission()
+    ✔ testFuzz_OperationNeverTargetsTimelock(bool) (runs: 256)
+    ✔ testFuzz_OnlyGovernanceSchedules(address) (runs: 256)
+    ✔ testFuzz_OnlyGovernanceExecutesOnTimelock(address) (runs: 256)
+    ✔ testFuzz_ExecuteBeforeDelayReverts(uint256) (runs: 256)
 
-  162 passing
+  contracts/Governance.t.sol:GovernanceProposeTest
+    ✔ test_UnknownIdIsZeroed()
+    ✔ test_ProposeWorkRefusesUnregisteredVendor()
+    ✔ test_ProposeWorkEmitsProposalCreated()
+    ✔ test_ProposeAdmitRefusesZeroVendor()
+    ✔ test_ProposeAdmitEmitsProposalCreated()
+    ✔ test_ProposeAdmitDoesNotRegisterVendor()
+    ✔ test_IdsIncreaseFromOne()
+    ✔ test_FirmProposesWork()
+    ✔ test_FirmProposesAdmit()
+    ✔ test_ConstructorRefusesZeroTreasury()
+    ✔ test_ConstructorRefusesZeroTimelock()
+    ✔ test_ConstructorRefusesZeroRegistry()
+    ✔ test_ConstructorRefusesZeroMembershipRegistry()
+    ✔ test_ConstructorRefusesZeroFirm()
+    ✔ test_ConstructorRecordsFirmAndRegistry()
+    ✔ test_ApprovedSpendReturnsWorkTerms()
+    ✔ test_ApprovedSpendRejectsAdmitAndUnknownIds()
+    ✔ testFuzz_ProposeWorkRefusesNonFirm(address) (runs: 256)
+    ✔ testFuzz_ProposeAdmitRefusesNonFirm(address) (runs: 256)
+
+  contracts/GovernanceAttest.t.sol:GovernanceAttestTest
+    ✔ test_PaymentNeedsNoWaitAfterAttestation()
+    ✔ test_AttestThenAnyoneExecutesPaysTheWholeLimit()
+    ✔ test_AttestRefusesZeroEvidenceHash()
+    ✔ test_AttestRefusesUnknownProposal()
+    ✔ test_AttestRefusesSecondAttestation()
+    ✔ test_AttestRefusesPassedProposalNotYetQueued()
+    ✔ test_AttestRefusesAdmitProposal()
+    ✔ testFuzz_AttestRefusesNonFirm(address) (runs: 256)
+    ✔ testFuzz_AttestRefusesBeforeTheDelayElapses(uint256) (runs: 256)
+    ✔ testFuzz_AttestOnProposalNeverPassedReverts(uint8,uint256) (runs: 256)
+
+  contracts/MembershipRegistry.t.sol:MembershipRegistryTest
+    ✔ test_UnboundWalletIsNotOwner()
+    ✔ test_UnboundUnitHasNoOwner()
+    ✔ test_ConstructorRefusesZeroAdapter()
+    ✔ test_ConstructorRecordsAdapter()
+    ✔ test_BindRefusesZeroWallet()
+    ✔ test_BindRefusesUnitBoundToSameWallet()
+    ✔ test_BindRefusesUnitBoundToAnotherWallet()
+    ✔ test_BindEmitsUnitBound()
+    ✔ test_AdapterBindsUnit()
+    ✔ testFuzz_WeightIsUnitCount(uint8) (runs: 256)
+    ✔ testFuzz_BoundUnitCountCountsEachUnitOnce(uint8) (runs: 256)
+    ✔ testFuzz_BindRefusesNonAdapter(address) (runs: 256)
+
+
+  163 passing
 Saved html report to C:\Users\SOKHOUR\OneDrive\Documents\Master_AUT\03_Courses\S2_COMP842_AppliedBlockchainsAndCryptocurrencies\Assignments\A01_BlockchainProject\Kaitiaki\code\coverage\html
 ╔═════════════════════════════════════════════════════════════════════════════════════╗
 ║                                   Coverage Report                                   ║

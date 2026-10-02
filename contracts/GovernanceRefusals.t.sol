@@ -40,8 +40,8 @@ contract GovernanceRefusalsTest is GovernanceLoopSetup {
     /// proposal is refused with `PayeeNotRegistered`, a named error of its own
     /// (NFR9), and no proposal is created. Nearly approved is not approved: a
     /// vendor is on the list only once the owners' admission has executed.
-    /// `Treasury.release` checks again at payment time (B2′). Replaces the
-    /// hand-picked `test_ProposeWorkRefusesUnregisteredVendor` from #53.
+    /// `Treasury.release` checks again at payment time (B2′). The hand-picked
+    /// `test_ProposeWorkRefusesUnregisteredVendor` from #53 stays as the guard's own test.
     function testFuzz_ProposeWorkWithUnapprovedVendorReverts(
         address candidate,
         uint256 limit,
