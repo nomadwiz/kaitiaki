@@ -16,10 +16,10 @@ import {IMembershipQuery} from "./interfaces/IMembershipQuery.sol";
 /// One function name, `propose`, overloaded for the two kinds — the name the
 /// spec, the views and the figures use throughout.
 ///
-/// Built so far: raising proposals (#53), voting on them (#54), the voting
-/// window, quorum, extension and waiver that decide them (#55), and queueing
-/// and executing a passed proposal through the timelock (#56). Attestation
-/// (#57) follows; until then `execute` refuses every `Work` proposal.
+/// Built: raising proposals (#53), voting on them (#54), the voting window,
+/// quorum, extension and waiver that decide them (#55), queueing and executing
+/// a passed proposal through the timelock (#56), and the firm's attestation
+/// that lets a `Work` proposal's release run (#57).
 ///
 /// The only calls this contract builds are `PayeeRegistry.admit` and
 /// `Treasury.release`, against addresses fixed at construction, so it can
@@ -136,8 +136,8 @@ contract Governance {
     mapping(uint256 proposalId => bool) private _votedInExtension;
 
     /// @notice Whether the firm has attested a `Work` proposal's completion,
-    /// which `execute` requires (FR25). Written by `attest`, which is #57:
-    /// until it is built nothing sets this, so no `Work` proposal executes.
+    /// which `execute` requires (FR25). Set once, by `attest`; the evidence
+    /// hash lives in `WorkAttested`, not in storage.
     mapping(uint256 proposalId => bool) public attested;
 
     /// @notice Carries every stored field except `createdAt`, which is the
@@ -174,6 +174,11 @@ contract Governance {
     /// importing the delay (doc/design/spec.md §6).
     event ProposalQueued(uint256 indexed proposalId, uint256 eta);
 
+    /// @notice The firm asserts a `Work` proposal's work is complete. The
+    /// evidence stays off the chain, committed by `evidenceHash`; `attester`
+    /// identifies who made the claim (FR25, QAS-11; information view §2.1).
+    event WorkAttested(uint256 indexed proposalId, address indexed attester, bytes32 evidenceHash);
+
     error FirmIsZero();
     error PayeeRegistryIsZero();
     error MembershipRegistryIsZero();
@@ -190,17 +195,24 @@ contract Governance {
     error AlreadyVoted(uint256 proposalId, address voter);
     /// FR20: the window, and any extension, has closed.
     error VotingClosed(uint256 proposalId);
-    /// FR22: only a passed proposal is queued.
+    /// Only a passed proposal is queued (FR22) or attested (FR26, B6).
     error NotPassed(uint256 proposalId, ProposalState state);
     /// A proposal is scheduled once (ADR-015, amendment of 02-10-2026).
     error AlreadyQueued(uint256 proposalId);
-    /// Only a queued proposal is executed.
+    /// Only a queued proposal is executed or attested.
     error NotQueued(uint256 proposalId, ProposalState state);
-    /// FR21: the timelock's delay has not elapsed; the operation runs from `eta`.
+    /// FR21: the timelock's delay has not elapsed; the operation runs from
+    /// `eta`. Attestation waits for it too (behavioural view, R2).
     error NotReady(uint256 proposalId, uint256 eta);
     error AlreadyExecuted(uint256 proposalId);
     /// FR25: a `Work` proposal pays only once the firm has attested it.
     error NotAttested(uint256 proposalId);
+    /// Only a `Work` proposal has work to attest.
+    error NotWorkProposal(uint256 proposalId);
+    /// A proposal is attested once: it has one release (ADR-015, amendment of 02-10-2026).
+    error AlreadyAttested(uint256 proposalId);
+    /// FR25: an attestation carries an evidence hash; zero commits to nothing.
+    error EvidenceHashIsZero();
 
     /// @dev `timelock_` is named before it exists: it takes this contract's
     /// address as its proposer and executor, so deployment precomputes one of
@@ -348,13 +360,43 @@ contract Governance {
         if (current != ProposalState.Queued) revert NotQueued(proposalId, current);
 
         (address target, bytes memory data, bytes32 operationId) = operation(proposalId);
-        if (!timelock.isOperationReady(operationId)) {
-            revert NotReady(proposalId, timelock.getTimestamp(operationId));
-        }
+        _requireReady(proposalId, operationId);
         if (_proposals[proposalId].kind == ProposalKind.Work && !attested[proposalId]) {
             revert NotAttested(proposalId);
         }
         timelock.execute(target, 0, data, bytes32(0), bytes32(proposalId));
+    }
+
+    /// @notice FR25, FR26. The firm asserts that a passed `Work` proposal's
+    /// work is complete, committing its evidence by hash. Nothing sits between
+    /// this and payment: no owner approval and no further wait (ADR-011).
+    /// It pays nothing by itself — anyone may then call `execute`, which
+    /// releases the whole limit (behavioural view, phase 4).
+    ///
+    /// Refused for a proposal that never passed (B6), so an attestation cannot
+    /// manufacture an approval; and before the timelock's delay has elapsed,
+    /// because attestation sits after the timelock (R2). No contract can check
+    /// the claim itself: a false attestation still releases payment, the
+    /// limit QAS-11 states.
+    function attest(uint256 proposalId, bytes32 evidenceHash) external onlyFirm {
+        if (evidenceHash == bytes32(0)) revert EvidenceHashIsZero();
+        ProposalState current = state(proposalId);
+        if (_proposals[proposalId].kind != ProposalKind.Work) revert NotWorkProposal(proposalId);
+        if (attested[proposalId]) revert AlreadyAttested(proposalId);
+        if (current == ProposalState.Passed) revert NotQueued(proposalId, current);
+        if (current != ProposalState.Queued) revert NotPassed(proposalId, current);
+
+        (, , bytes32 operationId) = operation(proposalId);
+        _requireReady(proposalId, operationId);
+
+        attested[proposalId] = true;
+        emit WorkAttested(proposalId, msg.sender, evidenceHash);
+    }
+
+    function _requireReady(uint256 proposalId, bytes32 operationId) private view {
+        if (!timelock.isOperationReady(operationId)) {
+            revert NotReady(proposalId, timelock.getTimestamp(operationId));
+        }
     }
 
     /// @notice The one operation a proposal schedules (ADR-015, amendment of
