@@ -9,8 +9,8 @@ import {Fund} from "./interfaces/IRelease.sol";
 /// ADR-011. The firm attests a passed `Work` proposal once the timelock's 7
 /// days have elapsed (behavioural view, R2), and anyone may then execute,
 /// which releases the whole limit with no owner step in between (R3, R4).
-/// Refusal test B6 itself is issue #66, and QAS-11 is #93; the never-passed
-/// cases here only prove the guard. Every contract here is the real one.
+/// Refusal test B6 (#66) is here too; QAS-11 is #93. Every contract here is
+/// the real one.
 contract GovernanceAttestTest is GovernanceLoopSetup {
     bytes32 internal constant EVIDENCE = keccak256("photos and invoice: roof repair");
 
@@ -77,36 +77,49 @@ contract GovernanceAttestTest is GovernanceLoopSetup {
         governance.attest(proposalId, EVIDENCE);
     }
 
-    // --- FR26: attestation cannot manufacture an approval (B6's guard) -------
+    // --- Refusal test B6: attestation cannot manufacture an approval --------
 
-    function test_AttestRefusesProposalStillOpen() public {
+    /// B6 (spec §7), FR26. However a work proposal fails to pass — nobody
+    /// votes, a majority votes against, the vote ties, or a majority is for it
+    /// but the window is still open — and at any moment from its creation to
+    /// more than a year later, the firm's attestation is refused with
+    /// `NotPassed`, a named error of its own (NFR9), and nothing is paid. It
+    /// replaces the two hand-picked never-passed tests from #57.
+    function testFuzz_AttestOnProposalNeverPassedReverts(uint8 outcome, uint256 elapsed) public {
         uint256 proposalId = _workProposal();
+        outcome = uint8(bound(outcome, 0, 3));
+        if (outcome == 1) {
+            // Majority against: alice's 2 units against, bob's 1 for.
+            _vote(proposalId, alice, false);
+            _vote(proposalId, bob, true);
+        } else if (outcome == 2) {
+            // A tie: alice's 2 units for, bob's and carol's 2 against.
+            _vote(proposalId, alice, true);
+            _vote(proposalId, bob, false);
+            _vote(proposalId, carol, false);
+        } else if (outcome == 3) {
+            // A majority for, asked before the 14-day window has closed.
+            _vote(proposalId, alice, true);
+            _vote(proposalId, bob, true);
+        }
+        uint256 latest = outcome == 3 ? 14 days - 1 : 400 days;
+        vm.warp(block.timestamp + bound(elapsed, 0, latest));
+
+        Governance.ProposalState current = governance.state(proposalId);
+        assertTrue(current != Governance.ProposalState.Passed);
 
         vm.prank(firm);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Governance.NotPassed.selector,
-                proposalId,
-                Governance.ProposalState.Open
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(Governance.NotPassed.selector, proposalId, current));
         governance.attest(proposalId, EVIDENCE);
+
+        assertFalse(governance.attested(proposalId));
+        assertEq(token.balanceOf(vendor), 0);
+        assertEq(treasury.released(proposalId), 0);
     }
 
-    function test_AttestRefusesFailedProposal() public {
-        uint256 proposalId = _workProposal();
-        vm.warp(block.timestamp + 21 days);
-
-        vm.prank(firm);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                Governance.NotPassed.selector,
-                proposalId,
-                Governance.ProposalState.Failed
-            )
-        );
-        governance.attest(proposalId, EVIDENCE);
-        assertFalse(governance.attested(proposalId));
+    function _vote(uint256 proposalId, address voter, bool inFavour) internal {
+        vm.prank(voter);
+        governance.castVote(proposalId, inFavour);
     }
 
     // --- R2: attestation sits after the timelock -----------------------------
