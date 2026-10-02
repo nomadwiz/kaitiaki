@@ -39,25 +39,21 @@ npm run test:coverage         # Solidity tests with a coverage report
 npm run test:gas              # Solidity tests with gas statistics
 ```
 
-The checks CI runs on every pull request:
+CI runs the steps in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) on every pull request; each is an `npm run` script in `package.json`. To type-check the TypeScript as well:
 
 ```
-npm run check:config-secrets
-npm run lint
-npm run format:check
-npm run build
 npm run typecheck
 ```
 
 ## Deploy
 
-To Hardhat's in-process network, printing each deployed address:
+To Hardhat's in-process network, printing each deployed address. What it deploys is described at the top of [`scripts/deploy.ts`](scripts/deploy.ts):
 
 ```
 npx hardhat run scripts/deploy.ts
 ```
 
-To Sepolia, `hardhat.config.ts` reads `SEPOLIA_RPC_URL` and `SEPOLIA_PRIVATE_KEY` through `configVariable`. Store both in the encrypted Hardhat keystore, never in a committed file, and check the account holds enough before deploying:
+To Sepolia, `hardhat.config.ts` reads `SEPOLIA_RPC_URL` and `SEPOLIA_PRIVATE_KEY` through `configVariable`. Store both in the encrypted Hardhat keystore, never in a committed file, and check that the account holds enough:
 
 ```
 npx hardhat keystore set SEPOLIA_RPC_URL
@@ -67,14 +63,6 @@ npm run check:sepolia-account
 
 The check prints the deployer address, its balance and the balance required, and exits 1 if it is short. The account must be a throwaway test-network account.
 
-## Replay the record
-
-Anyone can rebuild the building's balances, votes and payments from the event log alone, against any JSON-RPC endpoint:
-
-```
-node scripts/replay.ts <rpc-url> <treasury> <governance> <membership-registry> <levy-ledger> <payee-registry> [from-block]
-```
-
 ## Where things belong
 
 | Path | What belongs here |
@@ -82,7 +70,7 @@ node scripts/replay.ts <rpc-url> <treasury> <governance> <membership-registry> <
 | `contracts/` | Solidity sources, each with its Solidity tests (`*.t.sol`) beside it; `interfaces/` for the interfaces contracts call each other through, `stubs/` for stand-ins used before a real contract exists |
 | `test/` | TypeScript tests, only for claims that are off-chain by definition |
 | `scripts/` | Scripts run with `hardhat run` or `node`: deployment, the event-log replay, and configuration checks |
-| `evidence/` | Test output, gas tables and screenshots the report cites, one folder per week, named `<issue>-<slug>`; its `README.md` says what each file shows |
+| `evidence/` | Test output, gas tables and screenshots the report cites: one folder per week (`week1/`, `week2/`, …), each file named `<issue>-<slug>.<ext>`; its `README.md` says what each file shows |
 | `ignition/deployments/` | Records of test-network deployments, which are committed as evidence |
 | `.github/workflows/` | CI, run on every pull request, and the automated review |
 | `artifacts/`, `cache/`, `coverage/`, `types/` | Build output; generated, never committed |
