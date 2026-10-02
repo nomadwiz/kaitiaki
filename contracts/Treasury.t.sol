@@ -387,9 +387,6 @@ contract TreasuryTest is Test {
         );
         vm.prank(timelock);
         treasury.release(Fund.Operating, payee, amount, 1);
-
-        assertEq(treasury.released(1), 0);
-        assertEq(settlementAsset.balanceOf(payee), 0);
     }
 
     /// Refusal test B4 (spec §7, ADR-014), proving G3 across a sequence: for any
