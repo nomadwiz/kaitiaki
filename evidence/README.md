@@ -305,6 +305,14 @@ The test bites, checked on 02-10-2026. With the bound-owner check removed from `
 
 The scenarios bite, checked on 02-10-2026, one change at a time. Letting a proposal with no more units for than against pass fails the rejected-proposal scenario, alongside seven quorum, timelock and B6 tests. Counting a paid charge as arrears fails the levy-cycle scenario, alongside two `LevyLedger` tests. Scheduling a release one wei short of the limit fails the draft-to-payment, unbound-wallet and single-owner scenarios, alongside four #56, #57 and QAS-11 tests. Each change was reverted before this output was captured.
 
+### Issue #70 — QAS-8: the attacker path under a stolen firm key
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `70-qas8-stolen-firm-key-tests.txt` | QAS-8, proving NFR3: `testFuzz_StolenFirmKeyReachesNoNewAddress` passes over 256 runs alongside the existing suites, 172 passing, with 100% line and statement coverage of `Governance.sol`, `Treasury.sol` and `PayeeRegistry.sol`. Every contract is the real one. The attacker holds the firm's key and inherits one vendor the owners admitted and one passed work proposal for it, ready to attest. Each run picks any new address the owners never admitted and tries every path to it: calling `Treasury.release` directly (`UnauthorizedReleaser`), granting itself `RELEASER_ROLE` and scheduling on the timelock directly (`AccessControlUnauthorizedAccount`), admitting the address directly (`UnauthorizedExecutor`), proposing work that pays it (`PayeeNotRegistered`, B2), and proposing its admission, which the key may raise but neither it nor the address can vote on (`NotBoundOwner`, B8), so after the window and the extension it fails and cannot be queued (`NotPassed`) or executed (`NotQueued`). Last, the key attests the inherited work and executes it. Funds reachable at the new address = 0, and it is never registered; the loss is bounded by one approved limit paid to the admitted vendor from the approved fund | `npm run test:coverage` |
+
+The test bites, checked on 03-10-2026, one change at a time. With the executor check removed from `PayeeRegistry.admit`, this test fails, as do three `PayeeRegistry` tests. With `Governance.state` letting a proposal with no votes for it pass, this test fails, as do five `Governance` tests. Both were restored before this output was captured.
+
 ### Issue #71 — Gas per owner per levy cycle
 
 | File | What it shows | Reproduce with |

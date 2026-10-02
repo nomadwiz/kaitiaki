@@ -1,0 +1,237 @@
+# npm run test:coverage
+
+npm notice run kaitiaki@0.1.0 test:coverage
+npm notice run hardhat test solidity --coverage
+
+Compiled 34 Solidity files with solc 0.8.36 (evm target: prague)
+
+Running Solidity tests
+
+  contracts/Toolchain.t.sol:ToolchainTest
+    ✔ test_RunnerExecutes()
+    ✔ test_ExpectRevertIsAvailable()
+    ✔ test_CheatcodesAreAvailable()
+
+  contracts/GovernanceVote.t.sol:GovernanceVoteTest
+    ✔ test_WeightIsUnitsHeld()
+    ✔ test_WalletMayVoteBothWaysWithDifferentUnits()
+    ✔ test_VotesAreSeparatePerProposal()
+    ✔ test_VoteCastCarriesWalletDirectionAndUnits()
+    ✔ test_UnknownProposalRefused()
+    ✔ test_UnitRebindMovesTheVote()
+    ✔ test_UnboundWalletRefused()
+    ✔ test_TransferredUnitCannotVoteTwice()
+    ✔ test_SecondVoteRefused()
+    ✔ test_NewlyAcquiredUnitVotesOnce()
+    ✔ test_LiveAndStaleEntriesVoteOnlyTheLiveUnit()
+    ✔ test_DuplicateUnitEntryCountsOnce()
+    ✔ test_BoundOwnerVotes()
+
+  contracts/MockNZD.t.sol:MockNZDTest
+    ✔ test_NoGovernanceSurface()
+    ✔ test_NameSymbolAndDecimals()
+    ✔ test_MintOnSepolia()
+    ✔ test_MintOnHardhatNetwork()
+    ✔ test_AnyAddressMayMint()
+    ✔ testFuzz_MintRefusedOffTestChains(uint256) (runs: 256)
+
+  contracts/LevyLedger.t.sol:LevyLedgerTest
+    ✔ test_ThirdPartyPaymentCreditsTheUnitAndSplitsAcrossFunds()
+    ✔ test_RejectsZeroTreasury()
+    ✔ test_RejectsScheduleOfUnequalLengths()
+    ✔ test_ReadsTheSettlementAssetFromTreasury()
+    ✔ test_PaymentRejectsAFailedTransfer()
+    ✔ test_PaymentRejectsAFailedApproval()
+    ✔ test_PayingTwiceReverts()
+    ✔ test_PayingAnUnknownChargeReverts()
+    ✔ test_OneUnpaidChargeKeepsTheUnitInArrears()
+    ✔ test_OneChargeNotDueRevertsTheWholeBatch()
+    ✔ test_IssuingTwiceReverts()
+    ✔ test_IssuingAnUnknownChargeReverts()
+    ✔ test_ArrearsBeginsOnlyAfterTheDueDate()
+    ✔ test_AnyCallerIssuesOnTheDueDate()
+    ✔ test_AChargeNobodyIssuedIsNeverInArrears()
+    ✔ test_AChargeMayBePaidBeforeItIsIssued()
+    ✔ testFuzz_IssuingBeforeTheDueDateReverts(address,uint256) (runs: 256)
+
+  contracts/LoopScenarios.t.sol:LoopScenariosTest
+    ✔ test_UnboundWalletCannotVoteAndTheLoopCarriesOn()
+    ✔ test_SingleOwnerPassesAPaymentAfterTheExtension()
+    ✔ test_RejectedProposalIsNeverPaid()
+    ✔ test_ProposalFromDraftToPaymentWithNoOwnerActionAfterTheVotes()
+    ✔ test_FullLevyCycle()
+
+  contracts/PayeeRegistry.t.sol:PayeeRegistryTest
+    ✔ test_IsRegisteredIsReadableByAnyCaller()
+    ✔ test_ExecutorAdmissionRegistersPayeeAndEmitsProposal()
+    ✔ test_DirectAdmissionFromFirmReverts()
+    ✔ test_ConstructorRejectsZeroExecutor()
+    ✔ test_ConstructorRecordsExecutor()
+    ✔ test_AdmissionUnderNewProposalRejectedWithFirstId()
+    ✔ test_AdmissionRejectsZeroProposalId()
+    ✔ test_AdmissionRejectsZeroPayee()
+    ✔ test_AdmissionRejectsDuplicateAndKeepsFirstAdmission()
+    ✔ testFuzz_AdmissionFromAnyNonExecutorReverts(address) (runs: 256)
+
+  contracts/GovernanceFalseAttestation.t.sol:GovernanceFalseAttestationTest
+    ✔ test_FalseAttestationReleasesPaymentAndTheRecordNamesEveryone()
+
+  contracts/GovernanceQuorum.t.sol:GovernanceQuorumTest
+    ✔ test_WindowExtendsWithoutQuorum()
+    ✔ test_WalletCountsOnceTowardsTwoPersons()
+    ✔ test_VotingClosesWhenWindowEndsWithQuorum()
+    ✔ test_VotingClosesWhenExtensionEnds()
+    ✔ test_VotesAgainstCountTowardsQuorum()
+    ✔ test_UnknownProposalHasNoQuorum()
+    ✔ test_UnitBoundLaterVotesButDoesNotMoveDenominator()
+    ✔ test_TieFailsAfterWaiver()
+    ✔ test_TieFails()
+    ✔ test_StateOfUnknownProposalReverts()
+    ✔ test_QuorumNeedsTwoWallets()
+    ✔ test_QuorumNeedsAQuarterOfPrincipalUnits()
+    ✔ test_PrincipalUnitsStoredAtCreation()
+    ✔ test_PassesWhenWindowClosesWithQuorumAndMajority()
+    ✔ test_ParametersAreTheStatutoryValues()
+    ✔ test_NoVotesFailsAfterWaiver()
+    ✔ test_FailsWhenMajorityAgainst()
+    ✔ test_ExtensionRunsItsCourseOnceQuorumReachedInIt()
+    ✔ testFuzz_OpenThroughoutWindow(uint256) (runs: 256)
+    ✔ testFuzz_OneUnitPassesAfterExtension(uint256) (runs: 256)
+
+  contracts/GovernanceRefusals.t.sol:GovernanceRefusalsTest
+    ✔ test_ProposeWorkAcceptsVendorOnceAdmissionExecutes()
+    ✔ test_BoundOwnerVotesWithEveryUnitItHolds()
+    ✔ testFuzz_ProposeWorkWithUnapprovedVendorReverts(address,uint256,uint8,uint8) (runs: 256)
+    ✔ testFuzz_CastVoteFromUnboundWalletReverts(address,bool,uint256) (runs: 256)
+
+  contracts/GovernanceStolenFirmKey.t.sol:GovernanceStolenFirmKeyTest
+    ✔ testFuzz_StolenFirmKeyReachesNoNewAddress(address) (runs: 256)
+
+  contracts/Governance.t.sol:GovernanceProposeTest
+    ✔ test_UnknownIdIsZeroed()
+    ✔ test_ProposeWorkRefusesUnregisteredVendor()
+    ✔ test_ProposeWorkEmitsProposalCreated()
+    ✔ test_ProposeAdmitRefusesZeroVendor()
+    ✔ test_ProposeAdmitEmitsProposalCreated()
+    ✔ test_ProposeAdmitDoesNotRegisterVendor()
+    ✔ test_IdsIncreaseFromOne()
+    ✔ test_FirmProposesWork()
+    ✔ test_FirmProposesAdmit()
+    ✔ test_ConstructorRefusesZeroTreasury()
+    ✔ test_ConstructorRefusesZeroTimelock()
+    ✔ test_ConstructorRefusesZeroRegistry()
+    ✔ test_ConstructorRefusesZeroMembershipRegistry()
+    ✔ test_ConstructorRefusesZeroFirm()
+    ✔ test_ConstructorRecordsFirmAndRegistry()
+    ✔ test_ApprovedSpendReturnsWorkTerms()
+    ✔ test_ApprovedSpendRejectsAdmitAndUnknownIds()
+    ✔ testFuzz_ProposeWorkRefusesNonFirm(address) (runs: 256)
+    ✔ testFuzz_ProposeAdmitRefusesNonFirm(address) (runs: 256)
+
+  contracts/GovernanceAttest.t.sol:GovernanceAttestTest
+    ✔ test_PaymentNeedsNoWaitAfterAttestation()
+    ✔ test_AttestThenAnyoneExecutesPaysTheWholeLimit()
+    ✔ test_AttestRefusesZeroEvidenceHash()
+    ✔ test_AttestRefusesUnknownProposal()
+    ✔ test_AttestRefusesSecondAttestation()
+    ✔ test_AttestRefusesPassedProposalNotYetQueued()
+    ✔ test_AttestRefusesAdmitProposal()
+    ✔ testFuzz_AttestRefusesNonFirm(address) (runs: 256)
+    ✔ testFuzz_AttestRefusesBeforeTheDelayElapses(uint256) (runs: 256)
+    ✔ testFuzz_AttestOnProposalNeverPassedReverts(uint8,uint256) (runs: 256)
+
+  contracts/Treasury.t.sol:TreasuryTest
+    ✔ test_TreasuryStubEmitsReleaseCall()
+    ✔ test_TreasuryReadsTermsFromGovernance()
+    ✔ test_RolesHeldOnlyByConstructorArguments()
+    ✔ test_ReleaseRejectsUnregisteredPayee()
+    ✔ test_ReleaseRejectsUnknownProposal()
+    ✔ test_ReleaseRejectsSettlementTransferFailure()
+    ✔ test_ReleaseRejectsInsufficientBalance()
+    ✔ test_ReleaseRejectsCumulativeAmountOverProposalLimit()
+    ✔ test_ReleaseRefusesAdmitProposal()
+    ✔ test_ReleasePaysSettlementAssetAndUpdatesBalance()
+    ✔ test_ReleaseMayUseExactCumulativeProposalLimit()
+    ✔ test_ReleaseLimitsAreTrackedPerProposal()
+    ✔ test_ReleaseEmitsPaymentDetails()
+    ✔ test_ReleaseAtLimitLeavesOtherFundUntouched()
+    ✔ test_RejectsZeroGovernance()
+    ✔ test_RejectsOutOfRangeSplit()
+    ✔ test_ReceiptsAccumulateAcrossACycle()
+    ✔ test_NoRoleAdminAfterDeployment()
+    ✔ test_NoOtherValueOrRedirectSurface()
+    ✔ test_DepositSplitsReceiptAcrossBothFunds()
+    ✔ test_DepositRejectsSettlementTransferFailure()
+    ✔ test_DepositOnlyByLevyLedger()
+    ✔ test_DepositEmitsTheSplit()
+    ✔ test_DeployerCannotGrantReleaser()
+    ✔ test_ConstructorRejectsZeroConfigurationAddresses()
+    ✔ test_BoundaryRatiosAreAccepted()
+    ✔ test_AdminCannotRelease()
+    ✔ testFuzz_SplitConservesEveryReceipt(uint256,uint256) (runs: 256)
+    ✔ testFuzz_ReleaseRejectsWrongFund(uint8,uint256) (runs: 256)
+    ✔ testFuzz_ReleaseRejectsAmountOverProposalLimit(uint256,uint256) (runs: 256)
+    ✔ testFuzz_ReleaseRefusesNonTimelock(address) (runs: 256)
+    ✔ testFuzz_NoAddressCanGrantReleaser(address) (runs: 256)
+    ✔ testFuzz_CumulativeReleaseNeverExceedsLimit(uint256,uint256,uint256) (runs: 256)
+
+  contracts/GovernanceTimelock.t.sol:GovernanceTimelockTest
+    ✔ test_WorkSchedulesOneReleaseOfTheWholeLimit()
+    ✔ test_TimelockRolesAreGovernanceAloneWithNoExternalAdmin()
+    ✔ test_TimelockIsSoleReleaserAndPayeeExecutor()
+    ✔ test_QueueRefusesUnknownProposal()
+    ✔ test_QueueRefusesSecondSchedule()
+    ✔ test_QueueRefusesOpenProposal()
+    ✔ test_QueueRefusesFailedProposal()
+    ✔ test_OperationOfUnknownProposalReverts()
+    ✔ test_ExecuteRefusesUnqueuedProposal()
+    ✔ test_ExecuteRefusesUnattestedWork()
+    ✔ test_ExecuteRefusesSecondRun()
+    ✔ test_AnyoneQueuesAPassedProposal()
+    ✔ test_AnyoneExecutesAnAdmissionOnceReady()
+    ✔ test_AdmitSchedulesTheAdmission()
+    ✔ testFuzz_OperationNeverTargetsTimelock(bool) (runs: 256)
+    ✔ testFuzz_OnlyGovernanceSchedules(address) (runs: 256)
+    ✔ testFuzz_OnlyGovernanceExecutesOnTimelock(address) (runs: 256)
+    ✔ testFuzz_ExecuteBeforeDelayReverts(uint256) (runs: 256)
+
+  contracts/MembershipRegistry.t.sol:MembershipRegistryTest
+    ✔ test_UnboundWalletIsNotOwner()
+    ✔ test_UnboundUnitHasNoOwner()
+    ✔ test_ConstructorRefusesZeroAdapter()
+    ✔ test_ConstructorRecordsAdapter()
+    ✔ test_BindRefusesZeroWallet()
+    ✔ test_BindRefusesUnitBoundToSameWallet()
+    ✔ test_BindRefusesUnitBoundToAnotherWallet()
+    ✔ test_BindEmitsUnitBound()
+    ✔ test_AdapterBindsUnit()
+    ✔ testFuzz_WeightIsUnitCount(uint8) (runs: 256)
+    ✔ testFuzz_BoundUnitCountCountsEachUnitOnce(uint8) (runs: 256)
+    ✔ testFuzz_BindRefusesNonAdapter(address) (runs: 256)
+
+
+  172 passing
+Saved html report to coverage/html
+╔═════════════════════════════════════════════════════════════════════════════════════╗
+║                                   Coverage Report                                   ║
+╚═════════════════════════════════════════════════════════════════════════════════════╝
+╔═════════════════════════════════════════════════════════════════════════════════════╗
+║ File Coverage                                                                       ║
+╟────────────────────────────────────────────┬────────┬─────────────┬─────────────────╢
+║ File Path                                  │ Line % │ Statement % │ Uncovered Lines ║
+╟────────────────────────────────────────────┼────────┼─────────────┼─────────────────╢
+║ contracts/MockNZD.sol                      │ 100.00 │ 100.00      │ -               ║
+║ contracts/MembershipRegistry.sol           │ 100.00 │ 100.00      │ -               ║
+║ contracts/PayeeRegistry.sol                │ 100.00 │ 100.00      │ -               ║
+║ contracts/stubs/MembershipRegistryStub.sol │ 100.00 │ 100.00      │ -               ║
+║ contracts/stubs/PayeeRegistryStub.sol      │ 100.00 │ 100.00      │ -               ║
+║ contracts/stubs/TreasuryStub.sol           │ 100.00 │ 100.00      │ -               ║
+║ contracts/Governance.sol                   │ 100.00 │ 100.00      │ -               ║
+║ contracts/stubs/GovernanceStub.sol         │ 100.00 │ 100.00      │ -               ║
+║ contracts/LevyLedger.sol                   │ 100.00 │ 100.00      │ -               ║
+║ contracts/Treasury.sol                     │ 100.00 │ 100.00      │ -               ║
+╟────────────────────────────────────────────┼────────┼─────────────┼─────────────────╢
+║ Total                                      │ 100.00 │ 100.00      │                 ║
+╚════════════════════════════════════════════╧════════╧═════════════╧═════════════════╝
+
+
