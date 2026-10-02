@@ -11,9 +11,6 @@
 // --experimental-strip-types.
 // test/replay.ts runs it against the in-process network and compares every
 // derived value with the contracts' own view functions.
-//
-// Not yet replayed, because the code that emits them is not built:
-// ProposalQueued (#56) and WorkAttested (#57).
 import { Interface, JsonRpcProvider, type Provider } from "ethers";
 import { pathToFileURL } from "node:url";
 
@@ -28,6 +25,8 @@ const events = new Interface([
   "event ChargeIssued(uint256 indexed chargeId, uint256 indexed unitId, uint256 amount, uint256 dueDate)",
   "event LevyPaid(uint256 indexed chargeId, uint256 indexed unitId, address indexed payer, uint256 amount)",
   "event PayeeAdmitted(address indexed payee, uint256 indexed proposalId)",
+  "event ProposalQueued(uint256 indexed proposalId, uint256 eta)",
+  "event WorkAttested(uint256 indexed proposalId, address indexed attester, bytes32 evidenceHash)",
   // OpenZeppelin AccessControl, emitted by Treasury at construction.
   "event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender)",
   "event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender)",
@@ -67,6 +66,13 @@ export async function replay(
   const voters = new Map<bigint, Set<string>>();
   // Payee to the proposal that admitted it.
   const payees = new Map<string, bigint>();
+  // Proposal to the time its operation may run from, and to who attested its
+  // work with what evidence.
+  const queued = new Map<bigint, bigint>();
+  const attested = new Map<
+    bigint,
+    { attester: string; evidenceHash: string }
+  >();
   // ponytail: roles are Treasury's alone; key them by contract address once a
   // second replayed contract uses AccessControl.
   const roles = new Map<string, Set<string>>();
@@ -103,6 +109,35 @@ export async function replay(
     if (event.name === "PayeeAdmitted") {
       if (payees.has(a.payee)) refuse(`payee ${a.payee} admitted twice`);
       payees.set(a.payee, a.proposalId);
+    }
+    if (event.name === "ProposalQueued") {
+      // Governance.queue refuses an unknown proposal (UnknownProposal) and
+      // one already scheduled (AlreadyQueued).
+      if (!proposalKinds.has(a.proposalId)) {
+        refuse(`queued unknown proposal ${a.proposalId}`);
+      }
+      if (queued.has(a.proposalId)) {
+        refuse(`proposal ${a.proposalId} queued twice`);
+      }
+      queued.set(a.proposalId, a.eta);
+    }
+    if (event.name === "WorkAttested") {
+      // Governance.attest refuses anything but a work proposal
+      // (NotWorkProposal), a second attestation (AlreadyAttested), and a
+      // proposal not queued (NotQueued, NotPassed).
+      if (proposalKinds.get(a.proposalId) !== WORK) {
+        refuse(`attestation names no work proposal ${a.proposalId}`);
+      }
+      if (attested.has(a.proposalId)) {
+        refuse(`proposal ${a.proposalId} attested twice`);
+      }
+      if (!queued.has(a.proposalId)) {
+        refuse(`proposal ${a.proposalId} attested before it was queued`);
+      }
+      attested.set(a.proposalId, {
+        attester: a.attester,
+        evidenceHash: a.evidenceHash,
+      });
     }
     if (event.name === "UnitBound") owners.set(a.unitId, a.wallet);
     if (event.name === "ChargeIssued" || event.name === "LevyPaid") {
@@ -194,6 +229,8 @@ export async function replay(
     quorum,
     owners,
     payees,
+    queued,
+    attested,
     roles,
     charges,
     transitions,
