@@ -31,3 +31,8 @@
 .vscode/
 *.log
 npm-debug.log*
+
+# Read interface (#72): its build, and the config scripts/demo.ts writes for a
+# local node
+/interface/dist
+/interface/public/deployment.json

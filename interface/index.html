@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kaitiaki</title>
+    <style>
+      :root {
+        --bg: #f7f7f5;
+        --fg: #1d1d1b;
+        --muted: #66655f;
+        --card: #ffffff;
+        --line: #deddd8;
+        --ok: #1f6f43;
+        --late: #9a3412;
+        --accent: #1e4e8c;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font:
+          16px/1.5 system-ui,
+          sans-serif;
+      }
+      header,
+      main {
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 0 16px;
+      }
+      header {
+        padding-top: 24px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 1.6rem;
+      }
+      h2 {
+        font-size: 1.1rem;
+        margin: 0 0 8px;
+      }
+      .lede,
+      .note {
+        color: var(--muted);
+      }
+      label {
+        display: block;
+        margin: 12px 0 4px;
+        font-size: 0.9rem;
+      }
+      select {
+        max-width: 100%;
+        font: inherit;
+        padding: 4px;
+      }
+      section {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 16px;
+        margin: 16px 0;
+      }
+      ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .proposals > li,
+      .units > li {
+        padding: 8px 0;
+        border-top: 1px solid var(--line);
+      }
+      .proposals > li:first-child,
+      .units > li:first-child {
+        border-top: 0;
+      }
+      .funds {
+        display: grid;
+        grid-template-columns: max-content 1fr;
+        gap: 4px 16px;
+        margin: 0;
+      }
+      .funds dd {
+        margin: 0;
+        font-variant-numeric: tabular-nums;
+      }
+      code {
+        font-size: 0.85em;
+        overflow-wrap: anywhere;
+      }
+      .badge {
+        display: inline-block;
+        font-size: 0.75rem;
+        padding: 1px 8px;
+        border-radius: 99px;
+        background: var(--line);
+        margin-right: 6px;
+      }
+      .badge.open,
+      .badge.extended {
+        background: #dbe7f6;
+        color: var(--accent);
+      }
+      .badge.executed,
+      .badge.passed,
+      .badge.queued {
+        background: #dcefe3;
+        color: var(--ok);
+      }
+      .badge.failed {
+        background: #f6e0d6;
+        color: var(--late);
+      }
+      .tally {
+        display: block;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      .unit {
+        display: inline-block;
+        min-width: 5em;
+        font-weight: 600;
+      }
+      .status.ok {
+        color: var(--ok);
+      }
+      .status.late {
+        color: var(--late);
+        font-weight: 600;
+      }
+      .overdue {
+        margin: 4px 0 0 5em;
+        color: var(--late);
+        font-size: 0.9rem;
+      }
+      .vote {
+        margin-top: 6px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .vote button {
+        font: inherit;
+        padding: 4px 12px;
+        border-radius: 6px;
+        border: 1px solid var(--accent);
+        background: var(--card);
+        color: var(--accent);
+        cursor: pointer;
+      }
+      .vote button[value="true"] {
+        background: var(--accent);
+        color: #fff;
+      }
+      #notice:empty {
+        display: none;
+      }
+      #notice {
+        background: #fff8e1;
+        border-color: #ecd9a0;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Kaitiaki</h1>
+      <p class="lede">
+        The building's treasury, read from the chain's event log. This page
+        holds no key and no role; a vote is signed by your own wallet.
+      </p>
+      <label for="viewer">Viewing as</label>
+      <select id="viewer"></select>
+    </header>
+    <main>
+      <section id="notice" aria-live="polite"></section>
+      <div id="app"><p>Reading the event log…</p></div>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

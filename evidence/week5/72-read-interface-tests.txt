@@ -1,0 +1,52 @@
+# npm run test:mocha
+
+npm notice run kaitiaki@0.1.0 test:mocha
+npm notice run hardhat test mocha
+No contracts to compile
+
+Running Mocha tests
+
+
+  check-config-secrets
+    ✔ passes a clean tree (90ms)
+    ✔ fails on a tracked file holding a private-key-shaped value (79ms)
+    ✔ fails on a tracked .env (78ms)
+    ✔ fails when a line of .env.example has a value (79ms)
+    ✔ passes a committed Ignition journal, whose transaction hashes are key-shaped (82ms)
+    ✔ fails closed outside a git repository (44ms)
+
+  Read interface (#72)
+    ✔ NFR10: for a unit other than the viewer's own, renders exactly one of {current, in arrears} and no digit (398ms)
+    ✔ shows the viewer's own arrears, and stops surfacing a resolved arrear (R4) (130ms)
+    ✔ shows fund balances and proposals in the state Governance gives them (63ms)
+    ✔ offers a vote only to a unit that has not voted, and only while voting is open (54ms)
+    ✔ FR41: holds no key, and knows no contract function but castVote
+
+  QAS-4 replay
+    ✔ derives fund balances, role holders, tallies, quorum, eligibility, payees, queueing, attestation and arrears from events alone (56ms)
+    ✔ refuses a VoteCast naming a unit no UnitBound gave the voter
+    ✔ refuses a unit counted twice on one proposal
+    ✔ refuses a VoteCast whose weight is not its number of units
+    ✔ refuses a VoteCast on a proposal no ProposalCreated made
+    ✔ refuses a payee admitted twice
+    ✔ refuses a release to a payee no PayeeAdmitted admitted
+    ✔ refuses a release on an admission proposal
+    ✔ refuses a charge paid for a unit other than the one it was issued to
+    ✔ refuses a charge issued twice
+    ✔ refuses a charge paid twice
+    ✔ refuses a ProposalQueued on a proposal no ProposalCreated made
+    ✔ refuses a proposal queued twice
+    ✔ refuses a WorkAttested on an admission proposal
+    ✔ refuses a WorkAttested on a proposal never queued
+    ✔ refuses a proposal attested twice
+    ✔ refuses a log from a replayed address with no known event
+    ✔ derives quorum's unit half, rounded up, from principal units
+
+  toolchain
+    ✔ connects to the in-process simulated network
+    ✔ gives tests funded signers
+
+
+  31 passing (1s)
+
+
