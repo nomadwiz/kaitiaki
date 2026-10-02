@@ -1,0 +1,57 @@
+# npx hardhat run scripts/gas-per-cycle.ts
+
+# Gas per step, per owner and per cycle — 40-unit reference building
+
+Gas is the units each transaction used, read from its receipt.
+
+## Each step
+
+| Phase | Step | Sent by | Times | Gas, lowest | Gas, highest |
+| --- | --- | --- | --- | --- | --- |
+| levy | issueCharges (all 40 charges, one batch) | anyone | 1 | 1,280,744 | 1,280,744 |
+| levy | approve (the ledger, once per cycle) | owner | 5 | 46,366 | 46,378 |
+| levy | payLevy (one charge, one unit) | owner | 40 | 101,002 | 142,032 |
+| admission | propose (admit a vendor) | firm | 1 | 105,610 | 105,610 |
+| admission | castVote (8 units) | owner | 1 | 331,026 | 331,026 |
+| admission | castVote (10 units) | owner | 1 | 354,387 | 354,387 |
+| admission | queue | anyone | 1 | 81,783 | 81,783 |
+| admission | execute (admits the vendor) | anyone | 1 | 90,138 | 90,138 |
+| work | propose (work, from the maintenance fund) | firm | 1 | 155,854 | 155,854 |
+| work | castVote (8 units) | owner | 1 | 331,026 | 331,026 |
+| work | castVote (10 units) | owner | 1 | 354,387 | 354,387 |
+| work | queue | anyone | 1 | 84,973 | 84,973 |
+| work | attest | firm | 1 | 76,421 | 76,421 |
+| work | execute (pays the vendor) | anyone | 1 | 144,518 | 144,518 |
+
+## One levy cycle, per owner
+
+| Owner | Units | Gas, levy cycle | Gas per unit |
+| --- | --- | --- | --- |
+| alice | 8 | 895,412 | 111,926 |
+| bob | 1 | 147,368 | 147,368 |
+| carol | 1 | 147,368 | 147,368 |
+| dave | 10 | 1,056,398 | 105,639 |
+| others | 20 | 2,066,418 | 103,320 |
+
+## One levy cycle, the whole building
+
+| Measure | Gas |
+| --- | --- |
+| Issuing the charges (anyone, once) | 1,280,744 |
+| All owners' approvals and payments | 4,312,964 |
+| Total for the building | 5,593,708 |
+| Per unit (÷ 40) | 139,842 |
+| Per owner (÷ 5) | 1,118,741 |
+
+## One full loop: admit a vendor, then pay it
+
+| Measure | Value |
+| --- | --- |
+| Calls, vendor admission | 5 |
+| Calls, work proposal to payment | 6 |
+| Calls, the full loop | 11 |
+| Gas, sent by owners (votes) | 1,370,826 |
+| Gas, sent by the firm | 337,885 |
+| Gas, sent by anyone (queue, execute) | 401,412 |
+| Gas, the full loop | 2,110,123 |
+| Time from work proposal to payment | 21.00 days — the 14-day window and the 7-day timelock, set by the design; this run attests and executes the moment each is allowed |
