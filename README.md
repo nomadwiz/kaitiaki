@@ -1,52 +1,59 @@
 # Kaitiaki
 
-A body corporate treasury on a permissioned national housing chain. Owners vote
-on what levy money buys; a contract releases it.
+Smart contracts for a New Zealand body corporate's treasury, in which unit owners vote on what levy money buys and a contract pays for it — the prototype for COMP842 Applied Blockchain and Cryptocurrency, Assignment 1.
 
-The treasury has exactly one function that sends money out, and it checks four
-things itself before moving anything. No proposal can carry an instruction —
-there is no general execution path anywhere in these contracts, deliberately.
-`doc/design/spec.md` §2 states the four guarantees that rest on it.
+## The documents
 
-## The paper
-
-**COMP842 — Applied Blockchain and Cryptocurrency. Assignment 1.**
-
-This repository is the assignment's prototype source. The report carries key
-contract snippets only, never the full source.
-
-## The group
-
-| Member      | GitHub                 | Vertical                                                                     |
-| ----------- | ---------------------- | ---------------------------------------------------------------------------- |
-| Nicholas Ng | `@nomadwiz`            | **Money in** — `MembershipRegistry`, `LevyLedger`, the mock settlement token |
-|             | `@tutd-work`           | **Money out** — `Treasury`, `PayeeRegistry`                                  |
-|             | `@laysokhour-computer` | **Decisions** — `Governance`, `Timelock`                                     |
-
-`doc/design/ownership.md` says who writes which tests: each owner writes the refusal tests for their own contracts.
-
-## Getting started
-
-Node 22.13 or newer — Hardhat 3 refuses to start below that. The exact version
-this was built on is pinned in `.nvmrc`.
+The design this build implements — the requirements, the decisions, who owns what, and why each tool was chosen — is in `doc/design/` of the documents repository, [`nomadwiz/kaitiki-doc`](https://github.com/nomadwiz/kaitiki-doc). Clone it first, then this repository inside it as `code/`:
 
 ```
-nvm use          # or install Node 22.23.2 by any other means
-npm install
-npx hardhat test
+git clone https://github.com/nomadwiz/kaitiki-doc.git comp842-a1
+git clone https://github.com/nomadwiz/kaitiaki.git comp842-a1/code
 ```
 
-Contract tests are written in Solidity; TypeScript is kept for the claims that
-are off-chain by definition. The two suites can be run separately:
+Paths written `doc/design/…` in this repository's source comments resolve from the documents repository's root; from inside `code/` they are `../doc/design/…`. Start with:
+
+- [`doc/design/spec.md`](https://github.com/nomadwiz/kaitiki-doc/blob/master/doc/design/spec.md) — what is built, and the stack (§9)
+- [`doc/design/ownership.md`](https://github.com/nomadwiz/kaitiki-doc/blob/master/doc/design/ownership.md) — the group, and who owns and tests what
+- [`CLAUDE.md`](CLAUDE.md) — the rules for working in this repository
+
+## Prerequisites
+
+- Node 22.13 or newer. The exact version is pinned in `.nvmrc`; `nvm use` selects it.
+- npm and git.
+
+## Setup
 
 ```
-npx hardhat test solidity
-npx hardhat test mocha
+nvm use
+npm ci
 ```
 
-## Sepolia deployment account
+## Test
 
-`hardhat.config.ts` resolves `SEPOLIA_RPC_URL` and `SEPOLIA_PRIVATE_KEY` through `configVariable`. Store both in the encrypted Hardhat keystore, never in a committed file, then check the account's balance:
+```
+npx hardhat test              # every test: Solidity, then TypeScript
+npm run test:solidity         # the Solidity tests (*.t.sol) only
+npm run test:mocha            # the TypeScript tests only
+npm run test:coverage         # Solidity tests with a coverage report
+npm run test:gas              # Solidity tests with gas statistics
+```
+
+CI runs the steps in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) on every pull request; each is an `npm run` script in `package.json`. To type-check the TypeScript as well:
+
+```
+npm run typecheck
+```
+
+## Deploy
+
+To Hardhat's in-process network, printing each deployed address. What it deploys is described at the top of [`scripts/deploy.ts`](scripts/deploy.ts):
+
+```
+npx hardhat run scripts/deploy.ts
+```
+
+To Sepolia, `hardhat.config.ts` reads `SEPOLIA_RPC_URL` and `SEPOLIA_PRIVATE_KEY` through `configVariable`. Store both in the encrypted Hardhat keystore, never in a committed file, and check that the account holds enough:
 
 ```
 npx hardhat keystore set SEPOLIA_RPC_URL
@@ -54,48 +61,20 @@ npx hardhat keystore set SEPOLIA_PRIVATE_KEY
 npm run check:sepolia-account
 ```
 
-The check prints the deployer address, its balance and the required balance, and exits 1 if the balance is short. The required balance, and how it was worked out, is at the top of `scripts/check-sepolia-account.ts`. The account must be a throwaway test-network account.
+The check prints the deployer address, its balance and the balance required, and exits 1 if it is short. The account must be a throwaway test-network account.
 
-`npm run check:config-secrets` runs in CI on every pull request. It exits 1 if a `.env` file is tracked, if `.env.example` has a value filled in, or if any tracked file outside `ignition/deployments/` holds a private-key-shaped value.
+## Where things belong
 
-## Stack
-
-| Piece      | Choice                                                                                                                                                                                                                      |
-| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Contracts  | Solidity 0.8.36, fixed pragma; optimiser on, 200 runs; `prague` EVM target                                                                                                                                                  |
-| Libraries  | OpenZeppelin Contracts 5.6.1 — `AccessControl`, `TimelockController`, `ERC20`, and nothing else                                                                                                                             |
-| Toolchain  | Hardhat 3.15 with `@nomicfoundation/hardhat-toolbox-mocha-ethers`                                                                                                                                                           |
-| Testing    | Solidity tests (`.t.sol`) with `forge-std` assertions and cheatcodes. Coverage and gas statistics are built into Hardhat 3                                                                                                  |
-| Settlement | `MockNZD` (`contracts/MockNZD.sol`) — a **mock** ERC-20 standing in for an NZD-pegged stablecoin. Anyone may mint it, but only on the Hardhat network or Sepolia. This project issues nothing, and holding it gives no vote |
-
-The compiler version and the EVM target are pinned rather than floating because
-the report publishes gas measurements, and a measurement is only meaningful if
-the bytecode behind it can be reproduced. The reasoning for every row is in
-`doc/design/product.md` §16.2.
-
-## The documents
-
-The design this build implements is in `doc/design/` of the documents
-repository, `nomadwiz/kaitiki-doc`. Clone that first, then the build
-inside it as `code/`:
-
-```
-git clone https://github.com/nomadwiz/kaitiki-doc.git comp842-a1
-git clone https://github.com/nomadwiz/kaitiaki.git comp842-a1/code
-```
-
-Paths written `doc/design/…` in the build's source comments resolve from the
-documents repository's root; from inside `code/` they are `../doc/design/…`.
-
-## Where things are
-
-| Path                | What is in it                                                                                                                    |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `contracts/`        | Solidity sources, and the `.t.sol` tests that run against them                                                                   |
-| `test/`             | TypeScript tests, for the claims that are off-chain by definition                                                                |
-| `CLAUDE.md`         | The working agreement, for people and their assistants                                                                           |
-| `evidence/`         | Screenshots, test listings and gas tables the report cites                                                                       |
+| Path | What belongs here |
+| --- | --- |
+| `contracts/` | Solidity sources, each with its Solidity tests (`*.t.sol`) beside it; `interfaces/` for the interfaces contracts call each other through, `stubs/` for stand-ins used before a real contract exists |
+| `test/` | TypeScript tests, only for claims that are off-chain by definition |
+| `scripts/` | Scripts run with `hardhat run` or `node`: deployment, the event-log replay, and configuration checks |
+| `evidence/` | Test output, gas tables and screenshots the report cites: one folder per week (`week1/`, `week2/`, …), each file named `<issue>-<slug>.<ext>`; its `README.md` says what each file shows |
+| `ignition/deployments/` | Records of test-network deployments, which are committed as evidence |
+| `.github/workflows/` | CI, run on every pull request, and the automated review |
+| `artifacts/`, `cache/`, `coverage/`, `types/` | Build output; generated, never committed |
 
 ## Licence
 
-MIT. See `LICENSE`.
+MIT. See [`LICENSE`](LICENSE).

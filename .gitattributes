@@ -1,0 +1,3 @@
+# Check every text file out with LF line endings, on every platform, so the
+# Prettier format check gives the same answer on Windows as it does in CI.
+* text=auto eol=lf
