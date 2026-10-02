@@ -6,7 +6,7 @@ import {GovernanceLoopSetup} from "./GovernanceLoopSetup.t.sol";
 import {Fund} from "./interfaces/IRelease.sol";
 
 /// @notice Refusal tests on `Governance`'s own checks (spec §7), on the real
-/// contracts: B2 (#61). B6 sits with the attestation tests in
+/// contracts: B2 (#61) and B8 (#67). B6 sits with the attestation tests in
 /// `GovernanceAttest.t.sol`.
 contract GovernanceRefusalsTest is GovernanceLoopSetup {
     bytes32 internal constant QUOTE = keccak256("quote: roof repair");
@@ -79,5 +79,56 @@ contract GovernanceRefusalsTest is GovernanceLoopSetup {
 
         assertEq(governance.proposal(proposalId).payee, vendor);
         assertEq(uint8(governance.proposal(proposalId).kind), uint8(Governance.ProposalKind.Work));
+    }
+
+    // --- Refusal test B8: the voter is not a bound owner wallet -------------
+
+    /// B8 (spec §7), FR2. Any wallet that owns no unit in the register —
+    /// voting either way, at any moment while the vote is open, in the 14-day
+    /// window or the 7-day extension — is refused with `NotBoundOwner`, a
+    /// named error of its own (NFR9), and nothing is counted: no units, no
+    /// voter. `castVote` takes no unit ids from the caller; it reads them from
+    /// the register, so eligibility comes from the register, not the
+    /// interface. The hand-picked `test_UnboundWalletRefused` from #54, on a
+    /// stub register, stays as the guard's own test.
+    function testFuzz_CastVoteFromUnboundWalletReverts(
+        address caller,
+        bool inFavour,
+        uint256 elapsed
+    ) public {
+        vm.assume(caller != alice && caller != bob && caller != carol);
+        vm.prank(firm);
+        uint256 proposalId = governance.propose(vendor);
+        // Nobody votes, so quorum is never met and voting stays open for the
+        // window and the extension.
+        vm.warp(block.timestamp + bound(elapsed, 0, 21 days - 1));
+        Governance.ProposalState current = governance.state(proposalId);
+        assertTrue(
+            current == Governance.ProposalState.Open || current == Governance.ProposalState.Extended
+        );
+
+        vm.prank(caller);
+        vm.expectRevert(abi.encodeWithSelector(Governance.NotBoundOwner.selector, caller));
+        governance.castVote(proposalId, inFavour);
+
+        assertEq(governance.tallyOf(proposalId).forVotes, 0);
+        assertEq(governance.tallyOf(proposalId).againstVotes, 0);
+        assertEq(governance.voterCount(proposalId), 0);
+        assertFalse(governance.walletHasVoted(proposalId, caller));
+    }
+
+    /// The other half: a bound owner votes, with every unit the register
+    /// gives it.
+    function test_BoundOwnerVotesWithEveryUnitItHolds() public {
+        vm.prank(firm);
+        uint256 proposalId = governance.propose(vendor);
+
+        vm.prank(alice);
+        assertEq(governance.castVote(proposalId, true), 2);
+
+        assertEq(governance.tallyOf(proposalId).forVotes, 2);
+        assertTrue(governance.unitHasVoted(proposalId, 1));
+        assertTrue(governance.unitHasVoted(proposalId, 2));
+        assertEq(governance.voterCount(proposalId), 1);
     }
 }
