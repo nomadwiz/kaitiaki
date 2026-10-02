@@ -2,8 +2,9 @@
 pragma solidity 0.8.36;
 
 import {Test} from "forge-std/Test.sol";
+import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 import {Governance} from "./Governance.sol";
-import {Fund} from "./interfaces/IRelease.sol";
+import {Fund, IRelease} from "./interfaces/IRelease.sol";
 import {PayeeRegistryStub} from "./stubs/PayeeRegistryStub.sol";
 import {MembershipRegistryStub} from "./stubs/MembershipRegistryStub.sol";
 
@@ -34,7 +35,19 @@ contract GovernanceVoteTest is Test {
     function setUp() public {
         payees = new PayeeRegistryStub();
         members = new MembershipRegistryStub();
-        governance = new Governance(firm, payees, members);
+        TimelockController timelock = new TimelockController(
+            7 days,
+            new address[](0),
+            new address[](0),
+            address(0)
+        );
+        governance = new Governance(
+            firm,
+            payees,
+            members,
+            timelock,
+            IRelease(makeAddr("treasury"))
+        );
 
         members.bindUnit(1, alice);
         members.bindUnit(2, alice);

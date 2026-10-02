@@ -33,10 +33,18 @@ describe("QAS-4 replay", () => {
     const registry = await ethers.deployContract("MembershipRegistry", [
       adapter.address,
     ]);
+    // Governance names the Treasury deployed straight after it. This replay
+    // queues nothing, so a signer stands in for the Timelock here too.
+    const treasuryAddress = getCreateAddress({
+      from: firm.address,
+      nonce: (await firm.getNonce()) + 1,
+    });
     const governance = await ethers.deployContract("Governance", [
       firm.address,
       payees.target,
       registry.target,
+      timelock.address,
+      treasuryAddress,
     ]);
     // Treasury and LevyLedger name each other: Treasury takes the ledger's
     // address before it exists (spec §4).
@@ -52,6 +60,7 @@ describe("QAS-4 replay", () => {
       payees.target,
       token.target,
     ]);
+    expect(treasury.target).to.equal(treasuryAddress);
     // Three charges, all due at `due`: unit 1's is paid early, unit 3's
     // late, and unit 4's never. 333 does not split evenly, so rounding is
     // exercised.

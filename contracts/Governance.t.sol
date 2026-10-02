@@ -2,8 +2,9 @@
 pragma solidity 0.8.36;
 
 import {Test} from "forge-std/Test.sol";
+import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 import {Governance} from "./Governance.sol";
-import {Fund} from "./interfaces/IRelease.sol";
+import {Fund, IRelease} from "./interfaces/IRelease.sol";
 import {IPayeeQuery} from "./interfaces/IPayeeQuery.sol";
 import {IMembershipQuery} from "./interfaces/IMembershipQuery.sol";
 import {PayeeRegistryStub} from "./stubs/PayeeRegistryStub.sol";
@@ -35,10 +36,14 @@ contract GovernanceProposeTest is Test {
         uint256 principalUnits
     );
 
+    TimelockController internal timelock;
+    IRelease internal treasury = IRelease(makeAddr("treasury"));
+
     function setUp() public {
         payees = new PayeeRegistryStub();
         members = new MembershipRegistryStub();
-        governance = new Governance(firm, payees, members);
+        timelock = new TimelockController(7 days, new address[](0), new address[](0), address(0));
+        governance = new Governance(firm, payees, members, timelock, treasury);
     }
 
     // --- Deployment ----------------------------------------------------------
@@ -47,22 +52,34 @@ contract GovernanceProposeTest is Test {
         assertEq(governance.firm(), firm);
         assertEq(address(governance.payees()), address(payees));
         assertEq(address(governance.members()), address(members));
+        assertEq(address(governance.timelock()), address(timelock));
+        assertEq(address(governance.treasury()), address(treasury));
         assertEq(governance.proposalCount(), 0);
     }
 
     function test_ConstructorRefusesZeroFirm() public {
         vm.expectRevert(Governance.FirmIsZero.selector);
-        new Governance(address(0), payees, members);
+        new Governance(address(0), payees, members, timelock, treasury);
     }
 
     function test_ConstructorRefusesZeroRegistry() public {
         vm.expectRevert(Governance.PayeeRegistryIsZero.selector);
-        new Governance(firm, IPayeeQuery(address(0)), members);
+        new Governance(firm, IPayeeQuery(address(0)), members, timelock, treasury);
     }
 
     function test_ConstructorRefusesZeroMembershipRegistry() public {
         vm.expectRevert(Governance.MembershipRegistryIsZero.selector);
-        new Governance(firm, payees, IMembershipQuery(address(0)));
+        new Governance(firm, payees, IMembershipQuery(address(0)), timelock, treasury);
+    }
+
+    function test_ConstructorRefusesZeroTimelock() public {
+        vm.expectRevert(Governance.TimelockIsZero.selector);
+        new Governance(firm, payees, members, TimelockController(payable(address(0))), treasury);
+    }
+
+    function test_ConstructorRefusesZeroTreasury() public {
+        vm.expectRevert(Governance.TreasuryIsZero.selector);
+        new Governance(firm, payees, members, timelock, IRelease(address(0)));
     }
 
     // --- FR16: the firm may propose admitting a vendor -----------------------

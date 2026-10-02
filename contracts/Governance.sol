@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.36;
 
-import {Fund} from "./interfaces/IRelease.sol";
+import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import {Fund, IRelease} from "./interfaces/IRelease.sol";
+import {IAdmit} from "./interfaces/IAdmit.sol";
 import {IPayeeQuery} from "./interfaces/IPayeeQuery.sol";
 import {IMembershipQuery} from "./interfaces/IMembershipQuery.sol";
 
@@ -14,9 +16,15 @@ import {IMembershipQuery} from "./interfaces/IMembershipQuery.sol";
 /// One function name, `propose`, overloaded for the two kinds — the name the
 /// spec, the views and the figures use throughout.
 ///
-/// Built so far: raising proposals (#53), voting on them (#54), and the voting
-/// window, quorum, extension and waiver that decide them (#55). The timelock
-/// (#56) and attestation (#57) follow.
+/// Built so far: raising proposals (#53), voting on them (#54), the voting
+/// window, quorum, extension and waiver that decide them (#55), and queueing
+/// and executing a passed proposal through the timelock (#56). Attestation
+/// (#57) follows; until then `execute` refuses every `Work` proposal.
+///
+/// The only calls this contract builds are `PayeeRegistry.admit` and
+/// `Treasury.release`, against addresses fixed at construction, so it can
+/// never schedule an operation on the timelock itself, and no role there can
+/// change (ADR-015, FR31).
 contract Governance {
     /// @notice The two kinds of proposal in the built loop. `Admit` puts a
     /// vendor on the approved list (FR16); `Work` spends against it (FR17).
@@ -25,14 +33,19 @@ contract Governance {
         Work
     }
 
-    /// @notice Where a proposal stands (FR20). `Open` for the 14-day window;
+    /// @notice Where a proposal stands. `Open` for the 14-day window;
     /// `Extended` for the 7 days after it when the window closed without
-    /// quorum; then `Passed` or `Failed`, which never change.
+    /// quorum; then `Passed` or `Failed` (FR20). A passed proposal becomes
+    /// `Queued` when its operation is scheduled on the timelock, and
+    /// `Executed` once that operation has run. `Failed` and `Executed` never
+    /// change.
     enum ProposalState {
         Open,
         Extended,
         Passed,
-        Failed
+        Failed,
+        Queued,
+        Executed
     }
 
     /// @notice Everything doc/design/decisions/views/information-view.md §2.1 lists
@@ -74,6 +87,11 @@ contract Governance {
     uint256 public constant QUORUM_UNIT_DIVISOR = 4;
     uint256 public constant QUORUM_MIN_VOTERS = 2;
 
+    /// @notice The wait between a proposal being queued and its operation
+    /// running: 7 days, matched to the one-week adjournment in reg 13(2)
+    /// (doc/design/spec.md §5, FR21). A design choice, not statute.
+    uint256 public constant TIMELOCK_DELAY = 7 days;
+
     /// @notice The management firm's key: the only address that may propose.
     /// Fixed at deployment — there is no admin to rotate it, so a stolen key
     /// is bounded by the guards downstream rather than by revocation (QAS-8).
@@ -85,6 +103,14 @@ contract Governance {
     /// @notice The unit register. Voting eligibility is read from here, never
     /// from anything the voter supplies (FR2, B8).
     IMembershipQuery public immutable members;
+
+    /// @notice OpenZeppelin's `TimelockController`, unchanged, with this
+    /// contract as its only proposer and only executor and no external admin
+    /// (ADR-015). It holds `RELEASER_ROLE` on the treasury alone.
+    TimelockController public immutable timelock;
+
+    /// @notice The treasury a passed `Work` proposal is paid from.
+    IRelease public immutable treasury;
 
     /// @notice The number of proposals raised. Ids run from 1, so 0 never
     /// names a real proposal.
@@ -108,6 +134,11 @@ contract Governance {
     /// the extension that reaches quorum would make the proposal look as if it
     /// had been decided when the window closed, and end the extension early.
     mapping(uint256 proposalId => bool) private _votedInExtension;
+
+    /// @notice Whether the firm has attested a `Work` proposal's completion,
+    /// which `execute` requires (FR25). Written by `attest`, which is #57:
+    /// until it is built nothing sets this, so no `Work` proposal executes.
+    mapping(uint256 proposalId => bool) public attested;
 
     /// @notice Carries every stored field except `createdAt`, which is the
     /// block timestamp of this log, so a proposal can be rebuilt from the log
@@ -138,9 +169,16 @@ contract Governance {
         uint256[] unitIds
     );
 
+    /// @notice The proposal's operation is on the timelock, and runs from
+    /// `eta`. Carries `eta` so FR21 can be checked from the log without
+    /// importing the delay (doc/design/spec.md §6).
+    event ProposalQueued(uint256 indexed proposalId, uint256 eta);
+
     error FirmIsZero();
     error PayeeRegistryIsZero();
     error MembershipRegistryIsZero();
+    error TimelockIsZero();
+    error TreasuryIsZero();
     error VendorIsZero();
     error NotFirm(address caller);
     /// B2: a work proposal names a vendor the owners have not admitted.
@@ -152,14 +190,38 @@ contract Governance {
     error AlreadyVoted(uint256 proposalId, address voter);
     /// FR20: the window, and any extension, has closed.
     error VotingClosed(uint256 proposalId);
+    /// FR22: only a passed proposal is queued.
+    error NotPassed(uint256 proposalId, ProposalState state);
+    /// A proposal is scheduled once (ADR-015, amendment of 02-10-2026).
+    error AlreadyQueued(uint256 proposalId);
+    /// Only a queued proposal is executed.
+    error NotQueued(uint256 proposalId, ProposalState state);
+    /// FR21: the timelock's delay has not elapsed; the operation runs from `eta`.
+    error NotReady(uint256 proposalId, uint256 eta);
+    error AlreadyExecuted(uint256 proposalId);
+    /// FR25: a `Work` proposal pays only once the firm has attested it.
+    error NotAttested(uint256 proposalId);
 
-    constructor(address firm_, IPayeeQuery payees_, IMembershipQuery members_) {
+    /// @dev `timelock_` is named before it exists: it takes this contract's
+    /// address as its proposer and executor, so deployment precomputes one of
+    /// the two (ADR-015).
+    constructor(
+        address firm_,
+        IPayeeQuery payees_,
+        IMembershipQuery members_,
+        TimelockController timelock_,
+        IRelease treasury_
+    ) {
         if (firm_ == address(0)) revert FirmIsZero();
         if (address(payees_) == address(0)) revert PayeeRegistryIsZero();
         if (address(members_) == address(0)) revert MembershipRegistryIsZero();
+        if (address(timelock_) == address(0)) revert TimelockIsZero();
+        if (address(treasury_) == address(0)) revert TreasuryIsZero();
         firm = firm_;
         payees = payees_;
         members = members_;
+        timelock = timelock_;
+        treasury = treasury_;
     }
 
     modifier onlyFirm() {
@@ -249,7 +311,74 @@ contract Governance {
         if (extended && block.timestamp < windowEnd + EXTENSION) return ProposalState.Extended;
 
         Tally storage tally = _tallies[proposalId];
-        return tally.forVotes > tally.againstVotes ? ProposalState.Passed : ProposalState.Failed;
+        if (tally.forVotes <= tally.againstVotes) return ProposalState.Failed;
+
+        (, , bytes32 operationId) = operation(proposalId);
+        if (timelock.isOperationDone(operationId)) return ProposalState.Executed;
+        if (timelock.isOperation(operationId)) return ProposalState.Queued;
+        return ProposalState.Passed;
+    }
+
+    /// @notice FR22. Schedule a passed proposal's one operation on the
+    /// timelock. Anyone may call it. The operation runs no sooner than
+    /// `TIMELOCK_DELAY` later (FR21), and only through `execute`.
+    /// @return eta The time from which the operation may run.
+    function queue(uint256 proposalId) external returns (uint256 eta) {
+        ProposalState current = state(proposalId);
+        if (current == ProposalState.Queued || current == ProposalState.Executed) {
+            revert AlreadyQueued(proposalId);
+        }
+        if (current != ProposalState.Passed) revert NotPassed(proposalId, current);
+
+        (address target, bytes memory data, ) = operation(proposalId);
+        timelock.schedule(target, 0, data, bytes32(0), bytes32(proposalId), TIMELOCK_DELAY);
+        eta = block.timestamp + TIMELOCK_DELAY;
+        emit ProposalQueued(proposalId, eta);
+    }
+
+    /// @notice FR22. Run a queued proposal's operation once the timelock's
+    /// delay has elapsed. Anyone may call it; the timelock accepts it from
+    /// this contract alone, so the checks here cannot be bypassed — a `Work`
+    /// proposal also needs the firm's attestation (FR25, ADR-015). Emits none
+    /// of the ten events itself: its effect is `PayeeAdmitted` or
+    /// `PaymentReleased` (doc/design/spec.md §6).
+    function execute(uint256 proposalId) external {
+        ProposalState current = state(proposalId);
+        if (current == ProposalState.Executed) revert AlreadyExecuted(proposalId);
+        if (current != ProposalState.Queued) revert NotQueued(proposalId, current);
+
+        (address target, bytes memory data, bytes32 operationId) = operation(proposalId);
+        if (!timelock.isOperationReady(operationId)) {
+            revert NotReady(proposalId, timelock.getTimestamp(operationId));
+        }
+        if (_proposals[proposalId].kind == ProposalKind.Work && !attested[proposalId]) {
+            revert NotAttested(proposalId);
+        }
+        timelock.execute(target, 0, data, bytes32(0), bytes32(proposalId));
+    }
+
+    /// @notice The one operation a proposal schedules (ADR-015, amendment of
+    /// 02-10-2026): `PayeeRegistry.admit` for an `Admit` proposal, and
+    /// `Treasury.release` of the whole limit for a `Work` proposal. Salted with
+    /// the proposal id, so the timelock schedules it once. `target` is never
+    /// the timelock.
+    function operation(
+        uint256 proposalId
+    ) public view returns (address target, bytes memory data, bytes32 operationId) {
+        Proposal storage stored = _proposals[proposalId];
+        if (stored.createdAt == 0) revert UnknownProposal(proposalId);
+
+        if (stored.kind == ProposalKind.Admit) {
+            target = address(payees);
+            data = abi.encodeCall(IAdmit.admit, (stored.payee, proposalId));
+        } else {
+            target = address(treasury);
+            data = abi.encodeCall(
+                IRelease.release,
+                (stored.fund, stored.payee, stored.limit, proposalId)
+            );
+        }
+        operationId = timelock.hashOperation(target, 0, data, bytes32(0), bytes32(proposalId));
     }
 
     /// @notice Whether the votes cast on `proposalId` so far meet both halves
