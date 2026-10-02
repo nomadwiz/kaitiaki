@@ -15,7 +15,9 @@ import { network } from "hardhat";
 
 const { ethers } = await network.getOrCreate();
 
-const membershipRegistry = await ethers.deployContract("MembershipRegistryStub");
+const membershipRegistry = await ethers.deployContract(
+  "MembershipRegistryStub",
+);
 await membershipRegistry.waitForDeployment();
 console.log(`MembershipRegistryStub deployed to ${membershipRegistry.target}`);
 
@@ -27,6 +29,12 @@ const payeeRegistry = await ethers.deployContract("PayeeRegistryStub");
 await payeeRegistry.waitForDeployment();
 console.log(`PayeeRegistryStub deployed to ${payeeRegistry.target}`);
 
+// A stub here; the real TimelockController takes Governance's address as its
+// proposer and executor, so #73 precomputes one of the two (ADR-015).
+const timelock = await ethers.deployContract("TimelockStub");
+await timelock.waitForDeployment();
+console.log(`TimelockStub deployed to ${timelock.target}`);
+
 // The firm's key is fixed at deployment (doc/design/spec.md §4). Locally that is
 // the first funded signer; the week-5 deployment names the real one.
 const [firm] = await ethers.getSigners();
@@ -34,13 +42,13 @@ const governance = await ethers.deployContract("Governance", [
   firm.address,
   payeeRegistry.target,
   membershipRegistry.target,
+  timelock.target,
+  treasury.target,
 ]);
 await governance.waitForDeployment();
-console.log(`Governance deployed to ${governance.target} (firm ${firm.address})`);
-
-const timelock = await ethers.deployContract("TimelockStub");
-await timelock.waitForDeployment();
-console.log(`TimelockStub deployed to ${timelock.target}`);
+console.log(
+  `Governance deployed to ${governance.target} (firm ${firm.address})`,
+);
 
 const levyLedger = await ethers.deployContract("LevyLedgerStub");
 await levyLedger.waitForDeployment();

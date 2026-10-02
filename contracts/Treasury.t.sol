@@ -2,8 +2,9 @@
 pragma solidity 0.8.36;
 
 import {Test} from "forge-std/Test.sol";
+import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 import {Governance} from "./Governance.sol";
-import {Fund} from "./interfaces/IRelease.sol";
+import {Fund, IRelease} from "./interfaces/IRelease.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 import {Treasury} from "./Treasury.sol";
@@ -424,7 +425,7 @@ contract TreasuryTest is Test {
     }
 
     function test_TreasuryReadsTermsFromGovernance() public {
-        Governance realGovernance = new Governance(address(this), payeeRegistry, members);
+        Governance realGovernance = _governanceReadingTerms();
         Treasury configured = new Treasury(
             8000,
             address(realGovernance),
@@ -459,9 +460,23 @@ contract TreasuryTest is Test {
         assertEq(settlementAsset.balanceOf(payee), 1e18);
     }
 
+    /// A real Governance for reading proposal terms. These tests call
+    /// `release` as the timelock directly, so Governance's own timelock and
+    /// treasury are never reached and stand-in addresses will do.
+    function _governanceReadingTerms() internal returns (Governance) {
+        return
+            new Governance(
+                address(this),
+                payeeRegistry,
+                members,
+                TimelockController(payable(timelock)),
+                IRelease(makeAddr("governance-treasury"))
+            );
+    }
+
     /// An Admit proposal carries no spending terms, so no payment can cite it.
     function test_ReleaseRefusesAdmitProposal() public {
-        Governance realGovernance = new Governance(address(this), payeeRegistry, members);
+        Governance realGovernance = _governanceReadingTerms();
         Treasury configured = new Treasury(
             8000,
             address(realGovernance),
