@@ -12,9 +12,11 @@ import {MockNZD} from "./MockNZD.sol";
 import {GovernanceStub} from "./stubs/GovernanceStub.sol";
 import {PayeeRegistryStub} from "./stubs/PayeeRegistryStub.sol";
 import {MembershipRegistryStub} from "./stubs/MembershipRegistryStub.sol";
+import {TreasuryStub} from "./stubs/TreasuryStub.sol";
 
 contract TreasuryTest is Test {
     event Deposited(uint256 amount, uint256 operatingAmount, uint256 maintenanceAmount);
+    event Released(Fund fund, address payee, uint256 amount, uint256 proposalId);
 
     Treasury internal treasury;
     GovernanceStub internal governance;
@@ -45,6 +47,13 @@ contract TreasuryTest is Test {
         assertEq(treasury.balanceOf(Fund.Operating), 800e18);
         assertEq(treasury.balanceOf(Fund.LongTermMaintenance), 200e18);
         assertEq(settlementAsset.balanceOf(address(treasury)), 1_000e18);
+    }
+
+    function test_TreasuryStubEmitsReleaseCall() public {
+        TreasuryStub stub = new TreasuryStub();
+        vm.expectEmit(address(stub));
+        emit Released(Fund.LongTermMaintenance, payee, 7e18, 42);
+        stub.release(Fund.LongTermMaintenance, payee, 7e18, 42);
     }
 
     function test_DepositOnlyByLevyLedger() public {
@@ -255,18 +264,6 @@ contract TreasuryTest is Test {
         treasury.release(Fund.Operating, payee, 1e18, 1);
     }
 
-    function test_ReleaseRejectsAmountOverProposalLimit() public {
-        _configureProposal(Fund.Operating, 1_000e18);
-        payeeRegistry.admit(payee);
-        _deposit(1_000e18);
-
-        vm.expectRevert(
-            abi.encodeWithSelector(Treasury.AmountExceedsLimit.selector, 1, 1_001e18, 0, 1_000e18)
-        );
-        vm.prank(timelock);
-        treasury.release(Fund.Operating, payee, 1_001e18, 1);
-    }
-
     /// Refusal test B5, proving G4: a release drawing on any fund other than the
     /// approved one reverts with `FundMismatch`, whichever fund was approved and
     /// for any non-zero amount up to the limit.
@@ -374,15 +371,43 @@ contract TreasuryTest is Test {
         assertEq(settlementAsset.balanceOf(payee), 800e18);
     }
 
-    /// Refusal test B4, proving G3 across a sequence: two releases against one
-    /// proposal succeed together only while their total stays within its limit.
-    function testFuzz_CumulativeReleaseNeverExceedsLimit(uint256 first, uint256 second) public {
-        uint256 limit = 1_000e18;
+    /// Refusal test B4 (spec §7), proving G3 and FR32: for any approved limit, a
+    /// single release above it reverts with `AmountExceedsLimit` (NFR9), though
+    /// the fund holds enough to pay it, and nothing is released or paid.
+    function testFuzz_ReleaseRejectsAmountOverProposalLimit(uint256 limit, uint256 amount) public {
+        limit = bound(limit, 1, 1e30);
+        amount = bound(amount, limit + 1, type(uint128).max);
+        _configureProposal(Fund.Operating, limit);
+        payeeRegistry.admit(payee);
+        settlementAsset.mint(ledger, 2 * amount);
+        _deposit(2 * amount);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(Treasury.AmountExceedsLimit.selector, 1, amount, 0, limit)
+        );
+        vm.prank(timelock);
+        treasury.release(Fund.Operating, payee, amount, 1);
+
+        assertEq(treasury.released(1), 0);
+        assertEq(settlementAsset.balanceOf(payee), 0);
+    }
+
+    /// Refusal test B4 (spec §7, ADR-014), proving G3 across a sequence: for any
+    /// approved limit, two releases against one proposal succeed together only
+    /// while their total stays within it; the one that would take the total
+    /// above it reverts with `AmountExceedsLimit` (NFR9).
+    function testFuzz_CumulativeReleaseNeverExceedsLimit(
+        uint256 limit,
+        uint256 first,
+        uint256 second
+    ) public {
+        limit = bound(limit, 1, 1e30);
         first = bound(first, 0, limit);
         second = bound(second, 0, limit);
         _configureProposal(Fund.Operating, limit);
         payeeRegistry.admit(payee);
-        _deposit(2_000e18);
+        settlementAsset.mint(ledger, 2 * limit);
+        _deposit(2 * limit);
 
         vm.startPrank(timelock);
         treasury.release(Fund.Operating, payee, first, 1);
