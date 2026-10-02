@@ -321,3 +321,17 @@ The test bites, checked on 03-10-2026, one change at a time. With the executor c
 | `71-coverage.txt` | The coverage listing captured alongside the measurement: 170 passing, 100% line and statement coverage of all six contracts | `npm run test:coverage` |
 
 **What this measures, and what it does not.** The figures are gas units, not money: for a pinned compiler and the same inputs they are the same on any network, and only the price per unit differs, so no money figure is given here. They were measured on Hardhat's in-process network. NFR11 asks for the measurement on the test network, which needs the Sepolia deployment (#73); there, the levy and voting steps can be run again for real, but queueing and execution wait for the real 14-day window and 7-day timelock, which only a local network can skip. `hardhat.config.ts` lists OpenZeppelin's `TimelockController` under `npmFilesToBuild`, so that a script can deploy it unchanged.
+
+### Issue #72 — Minimal read interface
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `72-read-interface-tests.txt` | The five interface tests pass alongside the existing TypeScript suites, 31 passing. They render the page to the same markup the browser receives, from the event log of a building on the real contracts. **NFR10**, by its stated method: for each of four viewers, every row for a unit other than the viewer's own holds exactly one status, `current` or `in arrears`, and no digit beyond the unit's own name; another unit's status carries no amount or date even before rendering. **R4**: a charge paid late is surfaced nowhere, and once alice pays her overdue charge it leaves her page and others'. Fund balances match `Treasury.balanceOf`, and each proposal's state matches `Governance.state` while open, extended and passed. A vote form is offered only while voting is open and one of the viewer's units has not voted. **FR41**: the interface's source holds no key and knows no contract function but `castVote` | `npm run test:mocha` |
+| `72-interface-as-alice.png` | Alice (units 1 and 2) on the seeded local building. Her own unit 2 is in arrears, with its amount and due date; unit 3, whose charge was paid late, shows `current`, and unit 4 shows `in arrears` with nothing more. She has voted on proposal 2 with both units, so no vote form is offered | `npx hardhat node`, `npm run demo`, `npm run interface`, open `?as=<alice>` |
+| `72-interface-as-bob.png` | Bob (unit 3), who paid late: his own unit shows `current` and no history of the late payment | as above, `?as=<bob>` |
+| `72-interface-as-carol.png` | Carol (unit 4): her own arrear with its amount and due date, the others as status only, and the vote form on the open proposal | as above, `?as=<carol>` |
+
+The tests bite, checked on 03-10-2026, one change at a time. Rendering a date beside another unit's `in arrears` fails the NFR10 test and no other. Listing paid charges as overdue fails the R4 test and no other. Both were restored before this output was captured.
+
+The seeded building's proposal 2 also received one vote from bob, cast through the same `castVote` call the form makes and signed by the local node, before the screenshots were taken.
+

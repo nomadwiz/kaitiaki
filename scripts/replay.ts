@@ -12,7 +12,6 @@
 // test/replay.ts runs it against the in-process network and compares every
 // derived value with the contracts' own view functions.
 import { Interface, JsonRpcProvider, type Provider } from "ethers";
-import { pathToFileURL } from "node:url";
 
 // The contracts' event signatures, copied from contracts/*.sol. A drifted
 // signature decodes nothing, which the replay test catches as a mismatch.
@@ -254,9 +253,12 @@ export function arrearsAt(
   );
 }
 
+// The read interface (#72) loads this module in a browser, where there is no
+// `process` and no `node:url`, so both are reached only under Node.
 if (
-  process.argv[1] &&
-  import.meta.url === pathToFileURL(process.argv[1]).href
+  globalThis.process?.argv[1] &&
+  import.meta.url ===
+    (await import("node:url")).pathToFileURL(process.argv[1]).href
 ) {
   const [
     url,

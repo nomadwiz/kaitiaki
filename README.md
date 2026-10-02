@@ -63,12 +63,25 @@ npm run check:sepolia-account
 
 The check prints the deployer address, its balance and the balance required, and exits 1 if it is short. The account must be a throwaway test-network account.
 
+## Read interface
+
+A thin page that reads the event log and holds no key and no role (FR41). It shows the fund balances, the proposals and their state, and the viewer's own units with any overdue charge; for every other unit it shows only `current` or `in arrears` (NFR10). Its one form casts a vote, signed by the viewer's wallet. To run it against a local node seeded with a small building ([`scripts/building.ts`](scripts/building.ts)):
+
+```
+npx hardhat node              # terminal 1
+npm run demo                  # terminal 2: deploys, seeds, writes interface/public/deployment.json
+npm run interface             # then open the URL it prints
+```
+
+Without a browser wallet, "Viewing as" lists the bound wallets and a vote is signed by the local node's own unlocked account. `?as=<wallet>` in the URL picks the viewer.
+
 ## Where things belong
 
 | Path | What belongs here |
 | --- | --- |
 | `contracts/` | Solidity sources, each with its Solidity tests (`*.t.sol`) beside it; `interfaces/` for the interfaces contracts call each other through, `stubs/` for stand-ins used before a real contract exists |
 | `test/` | TypeScript tests, only for claims that are off-chain by definition |
+| `interface/` | The read interface: Vite and `ethers`, reading events only (FR41) |
 | `scripts/` | Scripts run with `hardhat run` or `node`: deployment, the event-log replay, and configuration checks |
 | `evidence/` | Test output, gas tables and screenshots the report cites: one folder per week (`week1/`, `week2/`, …), each file named `<issue>-<slug>.<ext>`; its `README.md` says what each file shows |
 | `ignition/deployments/` | Records of test-network deployments, which are committed as evidence |
