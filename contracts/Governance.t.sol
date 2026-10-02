@@ -10,9 +10,8 @@ import {IMembershipQuery} from "./interfaces/IMembershipQuery.sol";
 import {PayeeRegistryStub} from "./stubs/PayeeRegistryStub.sol";
 import {MembershipRegistryStub} from "./stubs/MembershipRegistryStub.sol";
 
-/// @notice Issue #53. Raising proposals: FR16, FR17, FR18. The refusal test B2
-/// itself is issue #61 and is written by another member (doc/design/ownership.md);
-/// the unregistered-vendor case here only proves the guard exists.
+/// @notice Issue #53. Raising proposals: FR16, FR17. FR18's refusal of an
+/// unapproved vendor is refusal test B2, in `GovernanceRefusals.t.sol` (#61).
 contract GovernanceProposeTest is Test {
     Governance internal governance;
     PayeeRegistryStub internal payees;
@@ -221,14 +220,8 @@ contract GovernanceProposeTest is Test {
         governance.propose("Repaint stairwell", 1e18, Fund.Operating, vendor, QUOTE_HASH);
     }
 
-    // --- FR18: an unapproved vendor is refused at creation -------------------
-
-    function test_ProposeWorkRefusesUnregisteredVendor() public {
-        vm.prank(firm);
-        vm.expectRevert(abi.encodeWithSelector(Governance.PayeeNotRegistered.selector, stranger));
-        governance.propose("Repaint stairwell", 1e18, Fund.Operating, stranger, QUOTE_HASH);
-        assertEq(governance.proposalCount(), 0);
-    }
+    // FR18, an unapproved vendor refused at creation, is refusal test B2 in
+    // GovernanceRefusals.t.sol (#61), on the real PayeeRegistry.
 
     // --- Ids -----------------------------------------------------------------
 
