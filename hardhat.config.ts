@@ -19,6 +19,10 @@ const solcSettings = {
 export default defineConfig({
   plugins: [hardhatToolboxMochaEthersPlugin],
   solidity: {
+    // OpenZeppelin's TimelockController is deployed unchanged (ADR-015), so a
+    // script that deploys the system needs its artifact; Hardhat builds an
+    // artifact for a dependency only when it is listed here.
+    npmFilesToBuild: ["@openzeppelin/contracts/governance/TimelockController.sol"],
     profiles: {
       default: { version: "0.8.36", settings: solcSettings },
       production: { version: "0.8.36", settings: solcSettings },
