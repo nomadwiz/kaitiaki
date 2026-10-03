@@ -12,7 +12,12 @@ import { network } from "hardhat";
 import { deployBuilding } from "./building.js";
 
 const { ethers } = await network.getOrCreate();
-const { fromBlock, addresses } = await deployBuilding(ethers);
+const { fromBlock, addresses, signers, contracts } =
+  await deployBuilding(ethers);
+// Bob's vote on proposal 2, so the page shows the state the report's
+// Figures 6 to 8 do: 3 units for, quorum reached. scripts/building.ts leaves
+// it out because test/interface.ts needs alice's vote alone.
+await contracts.governance.connect(signers.bob).castVote(2, true);
 
 const out = new URL("../interface/public/deployment.json", import.meta.url);
 // interface/public/ holds only this git-ignored file, so a fresh clone lacks it.
