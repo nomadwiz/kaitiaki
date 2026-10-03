@@ -1,0 +1,30 @@
+Deployment gas, Sepolia against the local network — issue #73, ADR-017
+=====================================================================
+
+Sepolia   gasUsed from the receipts of the seven deployment transactions
+          (blocks 11831860-11831866, sender 0xC60ACBAEF64f0db5520083c1C54a5b7a9ef9b433),
+          read through ethereum-sepolia-rpc.publicnode.com on 03-10-2026
+Local     gasUsed from `npx hardhat run scripts/deploy.ts` on Hardhat's
+          in-process network, which simulates the latest stable hardfork,
+          Osaka, because hardhat.config.ts names none
+
+Contract              Sepolia      Local    Difference
+------------------   ---------   ---------   ----------
+MockNZD                528,465     528,465            0
+PayeeRegistry          198,603     198,603            0
+MembershipRegistry     291,121     291,133          -12
+Governance           1,914,377   1,914,389          -12
+Treasury             1,279,294   1,279,306          -12
+LevyLedger             458,955     458,943          +12
+TimelockController   1,608,964   1,608,988          -24
+------------------   ---------   ---------   ----------
+Total                6,279,779   6,279,827          -48
+
+Reading. MockNZD takes no constructor argument and costs the same on both
+networks to the unit. Every other difference is a multiple of 12 gas, the
+price gap between a non-zero and a zero calldata byte (16 against 4): the
+constructor arguments are addresses, and the two deployments' addresses have
+different bytes. The code executed charged the same gas on both networks, so
+they charge by the same gas schedule for these contracts. A call's gas can
+differ between the networks only by the calldata bytes of the addresses it
+carries, a few dozen gas at most.
