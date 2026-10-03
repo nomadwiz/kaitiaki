@@ -78,7 +78,7 @@ npm run interface             # then open the URL it prints
 npm run demo:loop             # later: queue, attest and pay proposal 2, then reload
 ```
 
-Without a browser wallet, "Viewing as" lists the bound wallets and a vote is signed by the local node's own unlocked account. `?as=<wallet>` in the URL picks the viewer.
+Without a browser wallet, "Viewing as" lists the bound wallets and a vote is signed by the selected viewer's wallet, which the local node keeps unlocked. `?as=<wallet>` in the URL picks the viewer.
 
 ## Where things belong
 
@@ -87,10 +87,10 @@ Without a browser wallet, "Viewing as" lists the bound wallets and a vote is sig
 | `contracts/` | Solidity sources, each with its Solidity tests (`*.t.sol`) beside it; `interfaces/` for the interfaces contracts call each other through, `stubs/` for stand-ins used before a real contract exists |
 | `test/` | TypeScript tests, only for claims that are off-chain by definition |
 | `interface/` | The read interface |
-| `scripts/` | Scripts run with `hardhat run` or `node`: deployment, the event-log replay, and configuration checks |
+| `scripts/` | Scripts run with `hardhat run` or `node`: deployment, the demo seeding, the event-log replay, and configuration checks |
 | `evidence/` | Test output, gas tables and screenshots the report cites: one folder per week (`week1/`, `week2/`, …), each file named `<issue>-<slug>.<ext>`; its `README.md` says what each file shows |
 | `.github/workflows/` | CI, run on every pull request, and the automated review |
-| `artifacts/`, `cache/`, `coverage/`, `types/` | Build output; generated, never committed |
+| `artifacts/`, `cache/`, `coverage/`, `types/`, `interface/dist/`, `interface/public/deployment.json` | Build output; generated, never committed |
 
 ## Licence
 
