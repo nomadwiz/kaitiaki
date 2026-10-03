@@ -1,9 +1,10 @@
 /// <reference lib="dom" />
 // The read interface (#72, FR41): reads events only and holds no key and no
-// role. It reads through `replay`, which asks the node for logs and nothing
-// else, plus block timestamps. Its one write is a vote, signed by the
-// viewer's own wallet — a browser wallet if one is present, otherwise an
-// account the local node itself unlocks. The interface never sees a key.
+// role. It reads through `replay`, which asks the node for logs and their
+// blocks' headers and nothing else, plus the latest block's timestamp. Its
+// one write is a vote, signed by the viewer's own wallet — a browser wallet
+// if one is present, otherwise an account the local node itself unlocks. The
+// interface never sees a key.
 import {
   BrowserProvider,
   Contract,
@@ -47,11 +48,6 @@ async function viewerSigner(): Promise<Signer> {
 
 async function load() {
   const derived = await replay(reader, config.addresses, config.fromBlock);
-
-  const times = new Map<number, bigint>();
-  for (const n of new Set(derived.transitions.map((t) => t.blockNumber))) {
-    times.set(n, BigInt((await reader.getBlock(n))!.timestamp));
-  }
   const now = BigInt((await reader.getBlock("latest"))!.timestamp);
 
   if (browserWallet) {
@@ -75,12 +71,7 @@ async function load() {
     if (as) viewerSelect.value = as;
   }
 
-  const view = buildView(
-    derived,
-    (n) => times.get(n)!,
-    now,
-    viewerSelect.value || undefined,
-  );
+  const view = buildView(derived, now, viewerSelect.value || undefined);
   app.innerHTML = renderBuilding(view);
 }
 

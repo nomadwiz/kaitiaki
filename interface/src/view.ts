@@ -7,17 +7,16 @@
 // amount or date for it ever reaches the renderer. A paid charge is never
 // listed, so a resolved arrear stops being surfaced. This is presentation,
 // not protection — anyone with a node reads the whole log.
-import { arrearsAt, type replay } from "../../scripts/replay.js";
+import {
+  arrearsAt,
+  stateAt,
+  type ProposalState,
+  type replay,
+} from "../../scripts/replay.js";
 
 type Derived = Awaited<ReturnType<typeof replay>>;
 
-// Governance's window and extension, copied like replay.ts's quorum constants.
-const VOTING_PERIOD = 14n * 86_400n;
-const EXTENSION = 7n * 86_400n;
 const WORK = 1n; // Governance.ProposalKind.Work
-
-export type ProposalState =
-  "Open" | "Extended" | "Passed" | "Failed" | "Queued" | "Executed";
 
 export type Status = "current" | "in arrears";
 
@@ -47,13 +46,11 @@ export type View = {
 };
 
 /**
- * @param timeOf the timestamp of each block a transition sits in
  * @param now the latest block's timestamp
  * @param viewer the wallet viewing, if any; its bound units are its own
  */
 export function buildView(
   derived: Derived,
-  timeOf: (blockNumber: number) => bigint,
   now: bigint,
   viewer: string | undefined,
 ): View {
@@ -65,18 +62,14 @@ export function buildView(
     fund: bigint;
     description: string;
   };
-  const created: (Created & { at: bigint })[] = [];
-  const voteTimes = new Map<bigint, bigint[]>();
+  const created: Created[] = [];
   const votedUnits = new Map<bigint, Set<bigint>>();
   const issued = new Map<bigint, { amount: bigint }>();
   for (const t of derived.transitions) {
     const a = t.args as Record<string, unknown>;
-    if (t.name === "ProposalCreated") {
-      created.push({ ...(a as Created), at: timeOf(t.blockNumber) });
-    }
+    if (t.name === "ProposalCreated") created.push(a as Created);
     if (t.name === "VoteCast") {
       const id = a.proposalId as bigint;
-      voteTimes.set(id, [...(voteTimes.get(id) ?? []), timeOf(t.blockNumber)]);
       const units = votedUnits.get(id) ?? new Set<bigint>();
       // `replay` keeps args via toObject(true), which turns an array into an
       // object keyed by index.
@@ -89,28 +82,6 @@ export function buildView(
       issued.set(a.chargeId as bigint, { amount: a.amount as bigint });
     }
   }
-  const admittedBy = new Set(derived.payees.values());
-
-  // Governance.state, from the log.
-  const stateOf = (p: Created & { at: bigint }): ProposalState => {
-    const windowEnd = p.at + VOTING_PERIOD;
-    if (now < windowEnd) return "Open";
-    const votedInExtension = (voteTimes.get(p.proposalId) ?? []).some(
-      (time) => time >= windowEnd,
-    );
-    const extended = votedInExtension || !derived.quorum.get(p.proposalId);
-    if (extended && now < windowEnd + EXTENSION) return "Extended";
-    const tally = derived.tallies.get(p.proposalId);
-    if ((tally?.forVotes ?? 0n) <= (tally?.againstVotes ?? 0n)) return "Failed";
-    const executed =
-      p.kind === WORK
-        ? derived.releasedByProposal.has(p.proposalId)
-        : admittedBy.has(p.proposalId);
-    if (executed) return "Executed";
-    if (derived.queued.has(p.proposalId)) return "Queued";
-    return "Passed";
-  };
-
   const isViewer = (wallet: string) =>
     viewer !== undefined && wallet.toLowerCase() === viewer.toLowerCase();
   const statusOf = (unitId: bigint): Status =>
@@ -126,7 +97,7 @@ export function buildView(
     viewer,
     funds: derived.funds,
     proposals: created.map((p) => {
-      const state = stateOf(p);
+      const state = stateAt(derived, p.proposalId, now);
       const voted = votedUnits.get(p.proposalId) ?? new Set<bigint>();
       return {
         id: p.proposalId,
