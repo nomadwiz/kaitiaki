@@ -1,55 +1,148 @@
-// Deploys the six-contract stub set in the build order fixed by
-// doc/design/spec.md §4:
-//   MembershipRegistry -> Treasury + PayeeRegistry -> Governance + Timelock -> LevyLedger
+// Deploys the real system (issue #73): MockNZD, PayeeRegistry,
+// MembershipRegistry, Governance, Treasury, LevyLedger and OpenZeppelin's
+// TimelockController, wired as spec §4 and ADR-015 set out. Then it checks the
+// role holders and references, and refuses to record a deployment whose
+// wiring is wrong: a wrong address cannot be fixed afterwards.
 //
-// Every contract here is a stub (see contracts/stubs/) except Governance
-// (#53, #54). This script exists so the deployment order is
-// exercised end to end now, rather than assembled for the first time once
-// every real contract lands. Real deployment (week 5, issue #73) replaces
-// each stub with its real contract one at a time. The order above is the
-// implementation order, not a transaction order: the real Treasury takes the
-// Governance, Timelock and LevyLedger addresses at construction and nothing can
-// change them later, so #73 must precompute those addresses (CREATE2 or one
-// factory) and check the role holders after deployment.
+//   npx hardhat run scripts/deploy.ts                    # in-process, a dry run
+//   npx hardhat run scripts/deploy.ts --network sepolia  # the test network
+//
+// On a public network it writes the addresses, the deployment block and each
+// contract's constructor arguments to evidence/week5/73-deployment-<chain>.json,
+// which scripts/verify.ts reads. No transaction hash is written: it has the
+// shape of a private key, which check:config-secrets refuses.
+//
+// This deployment is for readability (ADR-017, deciding #100). It uses the
+// real parameters (spec §5), so the loop is not run here in real time; it is
+// demonstrated on the local network, where time can be advanced. The levy
+// schedule is empty because its values are a gap, recorded on #73 ("[GAP: the
+// reference building's levy schedule for the test-network deployment]"), and
+// no value is invented (CLAUDE.md rule 2).
+//
+// It is a public test network, not the permissioned national chain the
+// design assumes, and the report says so.
+import { mkdir, writeFile } from "node:fs/promises";
+import { ZeroAddress, getCreateAddress } from "ethers";
 import { network } from "hardhat";
 
-const { ethers } = await network.getOrCreate();
+import { OPERATING_BPS, TIMELOCK_DELAY, checkWiring } from "./wiring.js";
 
-const membershipRegistry = await ethers.deployContract(
-  "MembershipRegistryStub",
-);
-await membershipRegistry.waitForDeployment();
-console.log(`MembershipRegistryStub deployed to ${membershipRegistry.target}`);
+const { ethers, networkName } = await network.getOrCreate();
+const [deployer] = await ethers.getSigners();
+const { chainId } = await ethers.provider.getNetwork();
+const fromBlock = await ethers.provider.getBlockNumber();
 
-const treasury = await ethers.deployContract("TreasuryStub");
-await treasury.waitForDeployment();
-console.log(`TreasuryStub deployed to ${treasury.target}`);
+// On a test network one key plays the firm and the land-title adapter, both
+// fixed at deployment (spec §4). The firm's key is the attacker's prize in
+// QAS-8; it holds no role that moves money either way.
+const firm = deployer.address;
+const adapter = deployer.address;
 
-const payeeRegistry = await ethers.deployContract("PayeeRegistryStub");
-await payeeRegistry.waitForDeployment();
-console.log(`PayeeRegistryStub deployed to ${payeeRegistry.target}`);
+// Governance names Treasury and the Timelock, Treasury names LevyLedger, and
+// PayeeRegistry names the Timelock, each before it exists. Each address is
+// the deployer's nonce plus its place in this list, so nothing else may send
+// from this account until the script ends; each is checked as it lands.
+const CONTRACTS = [
+  ["token", "MockNZD"],
+  ["payeeRegistry", "PayeeRegistry"],
+  ["membershipRegistry", "MembershipRegistry"],
+  ["governance", "Governance"],
+  ["treasury", "Treasury"],
+  ["levyLedger", "LevyLedger"],
+  ["timelock", "TimelockController"],
+] as const;
+type Key = (typeof CONTRACTS)[number][0];
 
-// A stub here; the real TimelockController takes Governance's address as its
-// proposer and executor, so #73 precomputes one of the two (ADR-015).
-const timelock = await ethers.deployContract("TimelockStub");
-await timelock.waitForDeployment();
-console.log(`TimelockStub deployed to ${timelock.target}`);
+const nonce = await deployer.getNonce();
+const expected = Object.fromEntries(
+  CONTRACTS.map(([key], i) => [
+    key,
+    getCreateAddress({ from: deployer.address, nonce: nonce + i }),
+  ]),
+) as Record<Key, string>;
+const delay = TIMELOCK_DELAY;
 
-// The firm's key is fixed at deployment (doc/design/spec.md §4). Locally that is
-// the first funded signer; the week-5 deployment names the real one.
-const [firm] = await ethers.getSigners();
-const governance = await ethers.deployContract("Governance", [
-  firm.address,
-  payeeRegistry.target,
-  membershipRegistry.target,
-  timelock.target,
-  treasury.target,
-]);
-await governance.waitForDeployment();
-console.log(
-  `Governance deployed to ${governance.target} (firm ${firm.address})`,
-);
+const constructorArgs: Record<Key, unknown[]> = {
+  token: [],
+  payeeRegistry: [expected.timelock],
+  membershipRegistry: [adapter],
+  governance: [
+    firm,
+    expected.payeeRegistry,
+    expected.membershipRegistry,
+    expected.timelock,
+    expected.treasury,
+  ],
+  treasury: [
+    OPERATING_BPS,
+    expected.governance,
+    expected.timelock,
+    expected.levyLedger,
+    expected.payeeRegistry,
+    expected.token,
+  ],
+  // No charges: the schedule is a gap recorded on #73, and it is fixed at
+  // construction (spec §4), so no levy cycle runs on this deployment. The
+  // loop and NFR11's gas are shown on the local network instead (ADR-017).
+  levyLedger: [expected.treasury, [], [], []],
+  timelock: [delay, [expected.governance], [expected.governance], ZeroAddress],
+};
+const deployed = {} as Record<Key, string>;
+let gasUsed = 0n;
+for (const [key, name] of CONTRACTS) {
+  const contract = await ethers.deployContract(name, constructorArgs[key]);
+  await contract.waitForDeployment();
+  gasUsed += (await contract.deploymentTransaction()!.wait())!.gasUsed;
+  const address = await contract.getAddress();
+  if (address !== expected[key]) {
+    throw new Error(
+      `${name} landed at ${address}, not ${expected[key]}: ` +
+        "another transaction used the deployer's nonce. Nothing is recorded; deploy again.",
+    );
+  }
+  deployed[key] = address;
+  console.log(`${name.padEnd(20)} ${address}`);
+}
 
-const levyLedger = await ethers.deployContract("LevyLedgerStub");
-await levyLedger.waitForDeployment();
-console.log(`LevyLedgerStub deployed to ${levyLedger.target}`);
+console.log(`Gas used by the seven deployments: ${gasUsed}`);
+
+const failed = await checkWiring(ethers, {
+  deployer: deployer.address,
+  firm,
+  adapter,
+  operatingBps: OPERATING_BPS,
+  timelockDelay: delay,
+  addresses: deployed,
+});
+if (failed > 0) {
+  throw new Error(
+    `${failed} wiring check(s) failed; do not use this deployment.`,
+  );
+}
+
+if (chainId !== 31337n) {
+  const out = new URL(
+    `../evidence/week5/73-deployment-${chainId}.json`,
+    import.meta.url,
+  );
+  await mkdir(new URL(".", out), { recursive: true });
+  await writeFile(
+    out,
+    JSON.stringify(
+      {
+        network: networkName,
+        chainId: Number(chainId),
+        fromBlock,
+        deployer: deployer.address,
+        firm,
+        adapter,
+        addresses: deployed,
+        contracts: Object.fromEntries(CONTRACTS),
+        constructorArgs,
+      },
+      (_, value) => (typeof value === "bigint" ? value.toString() : value),
+      2,
+    ) + "\n",
+  );
+  console.log(`Recorded in evidence/week5/73-deployment-${chainId}.json`);
+}

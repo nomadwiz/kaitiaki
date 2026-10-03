@@ -335,3 +335,17 @@ The tests bite, checked on 03-10-2026, one change at a time. Rendering a date be
 
 The seeded building's proposal 2 also received one vote from bob, cast through the same `castVote` call the form makes and signed by the local node, before the screenshots were taken.
 
+### Issue #73 — Deploy to a public test network
+
+**A public test network, not the permissioned national chain the design assumes.** The deployment is for readability ([ADR-017](https://github.com/nomadwiz/kaitiki-doc/blob/master/doc/design/decisions/adr/017-test-network-for-readability.md), deciding #100): it uses the real parameters (spec §5), so the loop is not run here in real time; it is demonstrated on the local network, where time can be advanced.
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `73-deployment-11155111.json` | The seven contracts deployed to Sepolia (chain 11155111) from block 11831859 by one throwaway account, which is also the firm and the land-title adapter: their addresses and each contract's constructor arguments. `scripts/deploy.ts` precomputed every address from the deployer's nonce and checked each one as it landed, then read the wiring back from the chain, and writes this file only when all 23 checks pass — among them the Timelock as the sole `RELEASER_ROLE` member, `LevyLedger` as the sole `DEPOSITOR_ROLE` member and no member of Treasury's `DEFAULT_ADMIN_ROLE`, all checked before any deposit (spec §4, ADR-015). `LevyLedger`'s charge schedule is empty, because the reference building's levy schedule is a gap, recorded on #73, and no value is invented (CLAUDE.md rule 2) | `npx hardhat run scripts/deploy.ts --network sepolia` |
+| `73-sepolia-wiring-check.txt` | The deployed wiring read back from Sepolia afterwards by `scripts/check-deployment.ts`, sending nothing: 24 of 24 checks pass. The 24th, added since the deployment, reads Treasury's operating split back against the recorded constructor argument | `npx hardhat run scripts/check-deployment.ts --network sepolia` |
+| `73-sepolia-vs-local-gas.txt` | The seven deployment transactions' gas on Sepolia, from their receipts, against the local dry run, contract by contract; the reading is in the file. It supports ADR-017's assumption that NFR11, measured locally, holds on the test network | Sepolia receipts, and `npx hardhat run scripts/deploy.ts` |
+| `73-sepolia-verification.txt` | All seven contracts verified on Etherscan, with their source and constructor arguments, so anyone can read the deployed code against this repository | `npx hardhat run scripts/verify.ts --network sepolia` |
+
+The addresses are in `73-deployment-11155111.json`, which `scripts/verify.ts`, `scripts/bind-unit.ts` and `scripts/check-deployment.ts` read; `73-sepolia-verification.txt` links each to its Etherscan page.
+
+That the contracts can be read by anyone is a property of the public test network, not evidence about the national permissioned chain, which is described rather than stood up: FR42 stays designed, not built (`sad.md` §6.2).

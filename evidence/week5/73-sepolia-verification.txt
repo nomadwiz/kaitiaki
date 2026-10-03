@@ -1,0 +1,52 @@
+Etherscan source verification — issue #73
+==========================================
+
+Network   Sepolia (chain 11155111)
+Command   npx hardhat run scripts/verify.ts --network sepolia
+Input     evidence/week5/73-deployment-11155111.json (addresses and constructor arguments)
+Date      03-10-2026
+Result    7 of 7 contracts verified successfully on Etherscan
+
+#    Contract             Address                                      Result
+--   ------------------   ------------------------------------------   --------
+1    MockNZD              0x9AC2b0Cab32c4C409e928F243C523dFc1F50cd82   verified
+2    PayeeRegistry        0xc06718941f0dfD4726D2B9c2CA26Abc63857C256   verified
+3    MembershipRegistry   0x9c35AfCd8E7A8cEC27b9003eA0FB8CaE233E4BF9   verified
+4    Governance           0xD9CC466313590793BD6004D69F981Ee371004AFf   verified
+5    Treasury             0x83f0DD7a74ec2dEc32b33796628c9De9ea87DF1D   verified
+6    LevyLedger           0x08Cce2751c3FA74564070554E2284E696b5b3D50   verified
+7    TimelockController   0x836305b8e52934C013e60CDC4B8f4218B62c1887   verified
+
+Source files and Etherscan pages
+--------------------------------
+1. MockNZD
+   Source:   contracts/MockNZD.sol:MockNZD
+   Explorer: https://sepolia.etherscan.io/address/0x9AC2b0Cab32c4C409e928F243C523dFc1F50cd82#code
+
+2. PayeeRegistry
+   Source:   contracts/PayeeRegistry.sol:PayeeRegistry
+   Explorer: https://sepolia.etherscan.io/address/0xc06718941f0dfD4726D2B9c2CA26Abc63857C256#code
+
+3. MembershipRegistry
+   Source:   contracts/MembershipRegistry.sol:MembershipRegistry
+   Explorer: https://sepolia.etherscan.io/address/0x9c35AfCd8E7A8cEC27b9003eA0FB8CaE233E4BF9#code
+
+4. Governance
+   Source:   contracts/Governance.sol:Governance
+   Explorer: https://sepolia.etherscan.io/address/0xD9CC466313590793BD6004D69F981Ee371004AFf#code
+
+5. Treasury
+   Source:   contracts/Treasury.sol:Treasury
+   Explorer: https://sepolia.etherscan.io/address/0x83f0DD7a74ec2dEc32b33796628c9De9ea87DF1D#code
+
+6. LevyLedger
+   Source:   contracts/LevyLedger.sol:LevyLedger
+   Explorer: https://sepolia.etherscan.io/address/0x08Cce2751c3FA74564070554E2284E696b5b3D50#code
+
+7. TimelockController
+   Source:   @openzeppelin/contracts/governance/TimelockController.sol:TimelockController
+   Explorer: https://sepolia.etherscan.io/address/0x836305b8e52934C013e60CDC4B8f4218B62c1887#code
+
+TimelockController is OpenZeppelin's contract, deployed unchanged (ADR-015).
+Each contract was submitted to Etherscan, which compiled the source with the
+recorded constructor arguments and matched it to the deployed bytecode.

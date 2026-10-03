@@ -28,6 +28,11 @@ export default defineConfig({
       production: { version: "0.8.36", settings: solcSettings },
     },
   },
+  // Verifying the #73 deployment (scripts/verify.ts). Resolved only when a
+  // verification runs, so nothing else needs the key.
+  verify: {
+    etherscan: { apiKey: configVariable("ETHERSCAN_API_KEY") },
+  },
   networks: {
     hardhatMainnet: {
       type: "edr-simulated",
