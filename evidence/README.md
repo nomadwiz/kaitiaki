@@ -341,7 +341,7 @@ The tests bite, checked on 03-10-2026, one change at a time. Rendering a date be
   --screenshot=72-interface-as-alice.png 'http://localhost:5173/?as=<alice>'
 ```
 
-The heights are 1100 for alice, 1075 for bob and 1140 for carol. The local node's accounts 2, 3 and 4 are alice, bob and carol.
+Any Chrome or Chromium binary takes the same flags. The heights are 1100 for alice, 1075 for bob and 1140 for carol. The local node's accounts 2, 3 and 4 are alice, bob and carol.
 
 ### Issue #73 — Deploy to a public test network
 

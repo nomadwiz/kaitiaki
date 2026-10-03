@@ -1,8 +1,9 @@
 // A small building on the real contracts, for the read interface (#72): its
-// test (test/interface.ts) and its local demo (scripts/demo.ts) both run on
-// this state. Every contract is the real one, wired as ADR-015 sets out:
-// Governance is the Timelock's only proposer and executor, the Timelock is
-// the Treasury's sole releaser and the only address that admits payees.
+// test (test/interface.ts) and its local demo (scripts/demo.ts) both start
+// from this state; the demo adds bob's vote on proposal 2. Every contract is
+// the real one, wired as ADR-015 sets out: Governance is the Timelock's only
+// proposer and executor, the Timelock is the Treasury's sole releaser and the
+// only address that admits payees.
 //
 // The state it leaves, chosen so each thing the interface shows has a case:
 //   units 1 and 2 are alice's, 3 bob's, 4 carol's
