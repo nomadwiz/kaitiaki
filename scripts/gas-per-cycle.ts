@@ -17,6 +17,8 @@ import { getCreateAddress, keccak256, toUtf8Bytes } from "ethers";
 import type { BaseContract, ContractTransactionResponse } from "ethers";
 import { network } from "hardhat";
 
+import { advance } from "./building.js";
+
 const { ethers } = await network.getOrCreate();
 const [deployer, adapter, firm, alice, bob, carol, dave, others, roofer, stranger] =
   await ethers.getSigners();
@@ -51,11 +53,6 @@ async function measure(
   const receipt = (await (await sent).wait())!;
   steps.push({ phase, step, sender, role, gas: receipt.gasUsed });
   return receipt;
-}
-
-async function advance(seconds: number) {
-  await ethers.provider.send("evm_increaseTime", [seconds]);
-  await ethers.provider.send("evm_mine", []);
 }
 
 const call = (contract: BaseContract, signer: (typeof owners)[number]["signer"], sig: string) =>
@@ -115,7 +112,7 @@ for (const owner of owners) {
 
 // --- One levy cycle ---------------------------------------------------------
 
-await advance(DAY);
+await advance(ethers, DAY);
 await measure(
   "levy",
   "issueCharges (all 40 charges, one batch)",
@@ -171,7 +168,7 @@ const admitReceipt = await measure(
 );
 const admitId = BigInt(admitReceipt.logs[0].topics[1]);
 await vote("admission", admitId);
-await advance(14 * DAY);
+await advance(ethers, 14 * DAY);
 await measure(
   "admission",
   "queue",
@@ -179,7 +176,7 @@ await measure(
   "anyone",
   call(governance, stranger, "queue(uint256)")(admitId),
 );
-await advance(7 * DAY);
+await advance(ethers, 7 * DAY);
 await measure(
   "admission",
   "execute (admits the vendor)",
@@ -204,9 +201,9 @@ const workReceipt = await measure(
 const workId = BigInt(workReceipt.logs[0].topics[1]);
 const proposedAt = (await workReceipt.getBlock()).timestamp;
 await vote("work", workId);
-await advance(14 * DAY);
+await advance(ethers, 14 * DAY);
 await measure("work", "queue", "stranger", "anyone", call(governance, stranger, "queue(uint256)")(workId));
-await advance(7 * DAY);
+await advance(ethers, 7 * DAY);
 await measure(
   "work",
   "attest",
