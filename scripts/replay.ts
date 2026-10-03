@@ -1,9 +1,13 @@
 // Rebuilds the building's state from the event log alone (QAS-4, FR40, NFR2;
-// issue #69). No contract call and no storage read: the only thing asked of the
-// node is `eth_getLogs`, and the `provider` parameter's type admits nothing
-// else. So anyone running their own node — an insurer, a lender or an audit
-// firm (deployment-view.md §2.1) — gets the same answer as the operator. A log
-// that contradicts itself is refused, never replayed past.
+// issue #69). No contract call and no storage read: the only things asked of
+// the node are `eth_getLogs` and the headers of the blocks those logs sit in,
+// and the `provider` parameter's type admits nothing else. A header carries
+// the block's timestamp, which FR21's eta and a proposal's state depend on; it
+// is neither a contract call nor a storage read, and any node serves it
+// (project owner's decision on #138, 03-10-2026). So anyone running their own
+// node — an insurer, a lender or an audit firm (deployment-view.md §2.1) —
+// gets the same answer as the operator. A log that contradicts itself is
+// refused, never replayed past.
 //
 // Usage, against any JSON-RPC endpoint:
 //   node scripts/replay.ts <rpc-url> <treasury> <governance> <membership-registry> <levy-ledger> <payee-registry> [from-block]
@@ -33,12 +37,18 @@ const events = new Interface([
 
 const OPERATING = 0n;
 const WORK = 1n; // Governance.ProposalKind.Work
-// Governance's quorum constants, copied like the signatures above.
+// Governance's quorum and voting-window constants, copied like the signatures
+// above.
 const QUORUM_UNIT_DIVISOR = 4n;
 const QUORUM_MIN_VOTERS = 2;
+const VOTING_PERIOD = 14n * 86_400n;
+const EXTENSION = 7n * 86_400n;
+
+export type ProposalState =
+  "Open" | "Extended" | "Passed" | "Failed" | "Queued" | "Executed";
 
 export async function replay(
-  provider: Pick<Provider, "getLogs">,
+  provider: Pick<Provider, "getLogs" | "getBlock">,
   addresses: {
     treasury: string;
     governance: string;
@@ -59,7 +69,12 @@ export async function replay(
   const funds = { operating: 0n, maintenance: 0n };
   const releasedByProposal = new Map<bigint, bigint>();
   const owners = new Map<bigint, string>();
-  const proposalKinds = new Map<bigint, bigint>();
+  // createdAt is the ProposalCreated block's timestamp, as Governance stores
+  // it; votedInExtension is set by a vote cast after the window closed.
+  const proposals = new Map<
+    bigint,
+    { kind: bigint; createdAt: bigint; votedInExtension: boolean }
+  >();
   const principalUnits = new Map<bigint, bigint>();
   const votes = new Map<bigint, Map<bigint, boolean>>();
   const voters = new Map<bigint, Set<string>>();
@@ -80,11 +95,19 @@ export async function replay(
   type Charge = { unitId: bigint; dueDate?: bigint; paid: boolean };
   const charges = new Map<bigint, Charge>();
   const transitions = [];
+  // The logs are in block order, so each header is fetched once.
+  let blockNumber = -1;
+  let time = 0n;
 
   for (const log of logs) {
     const refuse = (why: string) => {
       throw new Error(`log ${log.index} of block ${log.blockNumber}: ${why}`);
     };
+    if (log.blockNumber !== blockNumber) {
+      blockNumber = log.blockNumber;
+      const block = await provider.getBlock(blockNumber);
+      time = BigInt(block?.timestamp ?? refuse("no header for its block"));
+    }
     // Every log from a replayed address must decode: a new event is never
     // skipped in silence.
     const event = events.parseLog(log) ?? refuse("unrecognised log");
@@ -102,17 +125,34 @@ export async function replay(
       else holders.delete(a.account);
     }
     if (event.name === "ProposalCreated") {
-      proposalKinds.set(a.proposalId, a.kind);
+      proposals.set(a.proposalId, {
+        kind: a.kind,
+        createdAt: time,
+        votedInExtension: false,
+      });
       principalUnits.set(a.proposalId, a.principalUnits);
     }
     if (event.name === "PayeeAdmitted") {
       if (payees.has(a.payee)) refuse(`payee ${a.payee} admitted twice`);
+      // FR21 (spec §6): an admission is the operation of a proposal queued
+      // earlier, run at or after its eta. Governance.execute refuses one not
+      // queued (NotQueued), and the Timelock one before its eta (NotReady).
+      const eta = queued.get(a.proposalId);
+      if (eta === undefined) {
+        refuse(
+          `proposal ${a.proposalId} admitted a payee before it was queued`,
+        );
+      } else if (time < eta) {
+        refuse(
+          `proposal ${a.proposalId} admitted a payee at ${time}, before its eta ${eta}`,
+        );
+      }
       payees.set(a.payee, a.proposalId);
     }
     if (event.name === "ProposalQueued") {
       // Governance.queue refuses an unknown proposal (UnknownProposal) and
       // one already scheduled (AlreadyQueued).
-      if (!proposalKinds.has(a.proposalId)) {
+      if (!proposals.has(a.proposalId)) {
         refuse(`queued unknown proposal ${a.proposalId}`);
       }
       if (queued.has(a.proposalId)) {
@@ -124,7 +164,7 @@ export async function replay(
       // Governance.attest refuses anything but a work proposal
       // (NotWorkProposal), a second attestation (AlreadyAttested), and a
       // proposal not queued (NotQueued, NotPassed).
-      if (proposalKinds.get(a.proposalId) !== WORK) {
+      if (proposals.get(a.proposalId)?.kind !== WORK) {
         refuse(`attestation names no work proposal ${a.proposalId}`);
       }
       if (attested.has(a.proposalId)) {
@@ -164,10 +204,19 @@ export async function replay(
       funds.maintenance += a.maintenanceAmount;
     }
     if (event.name === "PaymentReleased") {
-      if (proposalKinds.get(a.proposalId) !== WORK) {
+      if (proposals.get(a.proposalId)?.kind !== WORK) {
         refuse(`release names no work proposal ${a.proposalId}`);
       }
       if (!payees.has(a.payee)) refuse(`release to unadmitted ${a.payee}`);
+      // FR21, as for an admission above.
+      const eta = queued.get(a.proposalId);
+      if (eta === undefined) {
+        refuse(`proposal ${a.proposalId} paid before it was queued`);
+      } else if (time < eta) {
+        refuse(
+          `proposal ${a.proposalId} paid at ${time}, before its eta ${eta}`,
+        );
+      }
       if (a.fund === OPERATING) funds.operating -= a.amount;
       else funds.maintenance -= a.amount;
       releasedByProposal.set(
@@ -176,8 +225,12 @@ export async function replay(
       );
     }
     if (event.name === "VoteCast") {
-      if (!proposalKinds.has(a.proposalId)) {
-        refuse(`vote on unknown proposal ${a.proposalId}`);
+      const voted = proposals.get(a.proposalId);
+      if (!voted) refuse(`vote on unknown proposal ${a.proposalId}`);
+      // Governance accepts a vote after the window only in the extension,
+      // and marks it so.
+      else if (time >= voted.createdAt + VOTING_PERIOD) {
+        voted.votedInExtension = true;
       }
       if (a.weight !== BigInt(a.unitIds.length)) {
         refuse(`weight ${a.weight} for ${a.unitIds.length} units`);
@@ -226,6 +279,7 @@ export async function replay(
     releasedByProposal,
     tallies,
     quorum,
+    proposals,
     owners,
     payees,
     queued,
@@ -251,6 +305,36 @@ export function arrearsAt(
       !c.paid &&
       timestamp > c.dueDate,
   );
+}
+
+// FR20, #138: where a proposal stands at `timestamp`, decided as
+// Governance.state decides it, from the replayed log and block times alone.
+// A state moves with time even when no log does, so `timestamp` is an
+// argument — the chain head's, say — but never earlier than the last
+// replayed block, whose votes and executions the replay already counts.
+export function stateAt(
+  derived: Awaited<ReturnType<typeof replay>>,
+  proposalId: bigint,
+  timestamp: bigint,
+): ProposalState {
+  const p = derived.proposals.get(proposalId);
+  if (!p) throw new Error(`unknown proposal ${proposalId}`);
+  const windowEnd = p.createdAt + VOTING_PERIOD;
+  if (timestamp < windowEnd) return "Open";
+  // No vote can be cast between the window closing and the first vote in
+  // the extension, so until then the tally is the tally at close.
+  const extended = p.votedInExtension || !derived.quorum.get(proposalId);
+  if (extended && timestamp < windowEnd + EXTENSION) return "Extended";
+  const tally = derived.tallies.get(proposalId);
+  if ((tally?.forVotes ?? 0n) <= (tally?.againstVotes ?? 0n)) return "Failed";
+  // The Timelock's operation has run once its effect is in the log.
+  const executed =
+    p.kind === WORK
+      ? derived.releasedByProposal.has(proposalId)
+      : [...derived.payees.values()].includes(proposalId);
+  if (executed) return "Executed";
+  if (derived.queued.has(proposalId)) return "Queued";
+  return "Passed";
 }
 
 // The read interface (#72) loads this module in a browser, where there is no

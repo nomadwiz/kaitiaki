@@ -41,13 +41,8 @@ describe("Read interface (#72)", () => {
         building.addresses,
         building.fromBlock,
       );
-      const times = new Map<number, bigint>();
-      for (const t of derived.transitions) {
-        const block = await ethers.provider.getBlock(t.blockNumber);
-        times.set(t.blockNumber, BigInt(block!.timestamp));
-      }
       const now = BigInt((await ethers.provider.getBlock("latest"))!.timestamp);
-      const view = buildView(derived, (n) => times.get(n)!, now, viewer);
+      const view = buildView(derived, now, viewer);
       return { view, html: renderBuilding(view) };
     };
     return { ethers, ...building, render };
