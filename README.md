@@ -62,9 +62,10 @@ npx hardhat keystore set ETHERSCAN_API_KEY
 npm run check:sepolia-account
 npx hardhat run scripts/deploy.ts --network sepolia   # writes evidence/week5/73-deployment-11155111.json
 npx hardhat run scripts/verify.ts --network sepolia   # verifies each contract on Etherscan
+npx hardhat run scripts/check-deployment.ts --network sepolia   # reads the wiring back, sends nothing
 ```
 
-The check prints the deployer address, its balance and the balance required, and exits 1 if it is short. The account must be a throwaway test-network account, and must send nothing else while the deployment runs. On the test network that one account is also the firm and the land-title adapter, so it binds units with `MembershipRegistry.bindUnit`. The deployment is for readability (#100): it uses the real parameters, so the loop itself is shown on the local network. Sepolia is a public test network, not the permissioned national chain the design assumes.
+The check prints the deployer address, its balance and the balance required, and exits 1 if it is short. The account must be a throwaway test-network account, and must send nothing else while the deployment runs. On the test network that one account is also the firm and the land-title adapter, so it binds units with `MembershipRegistry.bindUnit`. The deployment is for readability ([ADR-017](https://github.com/nomadwiz/kaitiki-doc/blob/master/doc/design/decisions/adr/017-test-network-for-readability.md)): it uses the real parameters, so the loop itself is shown on the local network. Sepolia is a public test network, not the permissioned national chain the design assumes.
 
 ## Read interface
 
