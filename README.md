@@ -75,6 +75,7 @@ What the interface must show and withhold is FR41 and NFR10 in [`doc/design/spec
 npx hardhat node              # terminal 1
 npm run demo                  # terminal 2: deploys, seeds, writes interface/public/deployment.json
 npm run interface             # then open the URL it prints
+npm run demo:loop             # later: queue, attest and pay proposal 2, then reload
 ```
 
 Without a browser wallet, "Viewing as" lists the bound wallets and a vote is signed by the local node's own unlocked account. `?as=<wallet>` in the URL picks the viewer.

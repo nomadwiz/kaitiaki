@@ -18,6 +18,7 @@
     "check:config-secrets": "node scripts/check-config-secrets.mjs",
     "check:sepolia-account": "hardhat run scripts/check-sepolia-account.ts --network sepolia",
     "demo": "hardhat run scripts/demo.ts --network localhost",
+    "demo:loop": "hardhat run scripts/demo-loop.ts --network localhost",
     "interface": "vite interface",
     "interface:build": "vite build interface",
     "typecheck": "tsc --noEmit",
