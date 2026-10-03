@@ -9,15 +9,22 @@ Running Mocha tests
 
 
   check-config-secrets
-    ✔ passes a clean tree (76ms)
-    ✔ fails on a tracked file holding a private-key-shaped value (63ms)
+    ✔ passes a clean tree (77ms)
+    ✔ fails on a tracked file holding a private-key-shaped value (72ms)
     ✔ fails on a tracked .env (63ms)
-    ✔ fails when a line of .env.example has a value (68ms)
-    ✔ passes a committed Ignition journal, whose transaction hashes are key-shaped (79ms)
+    ✔ fails when a line of .env.example has a value (64ms)
+    ✔ passes a committed Ignition journal, whose transaction hashes are key-shaped (65ms)
     ✔ fails closed outside a git repository
 
+  Read interface (#72)
+    ✔ NFR10: for a unit other than the viewer's own, renders exactly one of {current, in arrears} and no digit (296ms)
+    ✔ shows the viewer's own arrears, and stops surfacing a resolved arrear (R4) (54ms)
+    ✔ shows fund balances and proposals in the state Governance gives them (42ms)
+    ✔ offers a vote only to a unit that has not voted, and only while voting is open (39ms)
+    ✔ FR41: holds no key, and knows no contract function but castVote
+
   QAS-4 replay
-    ✔ derives fund balances, role holders, tallies, quorum, eligibility, payees, queueing, attestation and arrears from events alone (325ms)
+    ✔ derives fund balances, role holders, tallies, quorum, proposal states, eligibility, payees, queueing, attestation and arrears from events alone (53ms)
     ✔ refuses a VoteCast naming a unit no UnitBound gave the voter
     ✔ refuses a unit counted twice on one proposal
     ✔ refuses a VoteCast whose weight is not its number of units
@@ -33,14 +40,19 @@ Running Mocha tests
     ✔ refuses a WorkAttested on an admission proposal
     ✔ refuses a WorkAttested on a proposal never queued
     ✔ refuses a proposal attested twice
+    ✔ refuses a PayeeAdmitted on a proposal never queued
+    ✔ refuses a PayeeAdmitted before its proposal's eta
+    ✔ refuses a PaymentReleased on a proposal never queued
+    ✔ refuses a PaymentReleased before its proposal's eta
     ✔ refuses a log from a replayed address with no known event
     ✔ derives quorum's unit half, rounded up, from principal units
+    ✔ keeps a proposal Extended after a vote in the extension
 
   toolchain
     ✔ connects to the in-process simulated network
     ✔ gives tests funded signers
 
 
-  26 passing (772ms)
+  36 passing (952ms)
 
 
