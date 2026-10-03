@@ -172,7 +172,7 @@ Running Solidity tests
 
 
   110 passing
-Saved html report to /Users/nicholas/Personal/second-brain/1-projects/assignment/comp842-a1/code/coverage/html
+Saved html report to <repo>/coverage/html
 ╔═════════════════════════════════════════════════════════════════════════════════════╗
 ║                                   Coverage Report                                   ║
 ╚═════════════════════════════════════════════════════════════════════════════════════╝
