@@ -24,14 +24,17 @@ const OPERATING_BPS = 8_000;
 const OPERATING = 0;
 const LEVY = parseUnits("250", 18);
 
+// Moves the local node's clock forward and mines a block, so the next call
+// sees the new time. Only a local node allows it (ADR-017).
+export async function advance(ethers: Ethers, seconds: bigint | number) {
+  await ethers.provider.send("evm_increaseTime", [Number(seconds)]);
+  await ethers.provider.send("evm_mine", []);
+}
+
 export async function deployBuilding(ethers: Ethers) {
   const [firm, adapter, alice, bob, carol, vendor, stranger] =
     await ethers.getSigners();
   const fromBlock = await ethers.provider.getBlockNumber();
-  const advance = async (seconds: bigint) => {
-    await ethers.provider.send("evm_increaseTime", [Number(seconds)]);
-    await ethers.provider.send("evm_mine", []);
-  };
 
   // Treasury, LevyLedger and the Timelock are named before they exist, so
   // their addresses are worked out from the firm's nonce first.
@@ -99,9 +102,9 @@ export async function deployBuilding(ethers: Ethers) {
   );
   await governance.connect(alice).castVote(1, true);
   await governance.connect(bob).castVote(1, true);
-  await advance(await governance.VOTING_PERIOD());
+  await advance(ethers, await governance.VOTING_PERIOD());
   await governance.connect(stranger).queue(1);
-  await advance(await governance.TIMELOCK_DELAY());
+  await advance(ethers, await governance.TIMELOCK_DELAY());
   await governance.connect(stranger).execute(1);
 
   // Proposal 2 pays that vendor, and is open for voting.

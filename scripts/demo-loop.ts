@@ -11,6 +11,8 @@ import { readFile } from "node:fs/promises";
 import { formatUnits, id } from "ethers";
 import { network } from "hardhat";
 
+import { advance } from "./building.js";
+
 const PROPOSAL = 2;
 
 const { ethers } = await network.getOrCreate();
@@ -25,14 +27,9 @@ const [firm, , , , , , stranger] = await ethers.getSigners();
 const governance = await ethers.getContractAt("Governance", addresses.governance);
 const treasury = await ethers.getContractAt("Treasury", addresses.treasury);
 
-const advance = async (seconds: bigint) => {
-  await ethers.provider.send("evm_increaseTime", [Number(seconds)]);
-  await ethers.provider.send("evm_mine", []);
-};
-
-await advance(await governance.VOTING_PERIOD());
+await advance(ethers, await governance.VOTING_PERIOD());
 await (await governance.connect(stranger).queue(PROPOSAL)).wait();
-await advance(await governance.TIMELOCK_DELAY());
+await advance(ethers, await governance.TIMELOCK_DELAY());
 await (
   await governance
     .connect(firm)
