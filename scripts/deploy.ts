@@ -25,11 +25,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { ZeroAddress, getCreateAddress } from "ethers";
 import { network } from "hardhat";
 
-import { checkWiring } from "./wiring.js";
-
-// Treasury's operating share in basis points, as in the tests and
-// scripts/gas-per-cycle.ts.
-const OPERATING_BPS = 8_000;
+import { OPERATING_BPS, TIMELOCK_DELAY, checkWiring } from "./wiring.js";
 
 const { ethers, networkName } = await network.getOrCreate();
 const [deployer] = await ethers.getSigners();
@@ -43,11 +39,9 @@ const firm = deployer.address;
 const adapter = deployer.address;
 
 // Governance names Treasury and the Timelock, Treasury names LevyLedger, and
-// PayeeRegistry names the Timelock, each before it exists. Their addresses
-// follow from the deployer's nonce, so nothing else may send from this
-// account until the script ends; each address is checked as it lands.
-// In deployment order: each one's address is the deployer's nonce plus its
-// place in this list.
+// PayeeRegistry names the Timelock, each before it exists. Each address is
+// the deployer's nonce plus its place in this list, so nothing else may send
+// from this account until the script ends; each is checked as it lands.
 const CONTRACTS = [
   ["token", "MockNZD"],
   ["payeeRegistry", "PayeeRegistry"],
@@ -66,8 +60,7 @@ const expected = Object.fromEntries(
     getCreateAddress({ from: deployer.address, nonce: nonce + i }),
   ]),
 ) as Record<Key, string>;
-const contractNames = Object.fromEntries(CONTRACTS) as Record<Key, string>;
-const delay = 7n * 24n * 60n * 60n; // Governance.TIMELOCK_DELAY, checked below
+const delay = TIMELOCK_DELAY;
 
 const constructorArgs: Record<Key, unknown[]> = {
   token: [],
@@ -96,22 +89,19 @@ const constructorArgs: Record<Key, unknown[]> = {
 };
 const deployed = {} as Record<Key, string>;
 let gasUsed = 0n;
-for (const [key] of CONTRACTS) {
-  const contract = await ethers.deployContract(
-    contractNames[key],
-    constructorArgs[key],
-  );
+for (const [key, name] of CONTRACTS) {
+  const contract = await ethers.deployContract(name, constructorArgs[key]);
   await contract.waitForDeployment();
   gasUsed += (await contract.deploymentTransaction()!.wait())!.gasUsed;
   const address = await contract.getAddress();
   if (address !== expected[key]) {
     throw new Error(
-      `${contractNames[key]} landed at ${address}, not ${expected[key]}: ` +
+      `${name} landed at ${address}, not ${expected[key]}: ` +
         "another transaction used the deployer's nonce. Nothing is recorded; deploy again.",
     );
   }
   deployed[key] = address;
-  console.log(`${contractNames[key].padEnd(20)} ${address}`);
+  console.log(`${name.padEnd(20)} ${address}`);
 }
 
 console.log(`Gas used by the seven deployments: ${gasUsed}`);
@@ -120,7 +110,7 @@ const failed = await checkWiring(ethers, {
   deployer: deployer.address,
   firm,
   adapter,
-  operatingBps: BigInt(OPERATING_BPS),
+  operatingBps: OPERATING_BPS,
   timelockDelay: delay,
   addresses: deployed,
 });
@@ -147,7 +137,7 @@ if (chainId !== 31337n) {
         firm,
         adapter,
         addresses: deployed,
-        contracts: contractNames,
+        contracts: Object.fromEntries(CONTRACTS),
         constructorArgs,
       },
       (_, value) => (typeof value === "bigint" ? value.toString() : value),

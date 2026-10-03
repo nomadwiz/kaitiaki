@@ -5,7 +5,12 @@
 import { readFile } from "node:fs/promises";
 import { network } from "hardhat";
 
-import { checkWiring, type Deployment } from "./wiring.js";
+import {
+  OPERATING_BPS,
+  TIMELOCK_DELAY,
+  checkWiring,
+  type Deployment,
+} from "./wiring.js";
 
 const { ethers } = await network.getOrCreate();
 const { chainId } = await ethers.provider.getNetwork();
@@ -14,14 +19,14 @@ const record = JSON.parse(
     new URL(`../evidence/week5/73-deployment-${chainId}.json`, import.meta.url),
     "utf8",
   ),
-) as Omit<Deployment, "operatingBps" | "timelockDelay"> & {
-  constructorArgs: { treasury: unknown[]; timelock: unknown[] };
-};
+) as Omit<Deployment, "operatingBps" | "timelockDelay">;
 
 console.log(`Deployment on chain ${chainId}, as recorded`);
 const failed = await checkWiring(ethers, {
   ...record,
-  operatingBps: BigInt(String(record.constructorArgs.treasury[0])),
-  timelockDelay: BigInt(String(record.constructorArgs.timelock[0])),
+  // Fixed values, not the record's own constructor arguments, so the check
+  // does not merely confirm that the chain agrees with the file.
+  operatingBps: OPERATING_BPS,
+  timelockDelay: TIMELOCK_DELAY,
 });
 if (failed > 0) throw new Error(`${failed} wiring check(s) failed.`);

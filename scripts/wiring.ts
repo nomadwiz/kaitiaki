@@ -8,21 +8,19 @@ import type { network } from "hardhat";
 
 type Ethers = Awaited<ReturnType<typeof network.getOrCreate>>["ethers"];
 
+// Treasury's operating share in basis points, as in the tests and
+// scripts/gas-per-cycle.ts.
+export const OPERATING_BPS = 8_000n;
+// Governance.TIMELOCK_DELAY, spec §5's 7 days.
+export const TIMELOCK_DELAY = 7n * 24n * 60n * 60n;
+
 export type Deployment = {
   deployer: string;
   firm: string;
   adapter: string;
   operatingBps: bigint;
   timelockDelay: bigint;
-  addresses: {
-    token: string;
-    payeeRegistry: string;
-    membershipRegistry: string;
-    governance: string;
-    treasury: string;
-    levyLedger: string;
-    timelock: string;
-  };
+  addresses: Record<string, string>;
 };
 
 /** Prints each check and returns how many failed. */
