@@ -47,7 +47,7 @@ npm run typecheck
 
 ## Deploy
 
-[`scripts/deploy.ts`](scripts/deploy.ts) deploys the real system (#73): the seven contracts, wired as spec §4 and ADR-015 set out, with each address precomputed from the deployer's nonce. It then reads the wiring back and refuses a deployment in which any role holder or reference is wrong. To dry-run it on Hardhat's in-process network:
+[`scripts/deploy.ts`](scripts/deploy.ts) deploys the real system (#73). What it deploys, and the wiring check that makes it refuse a wrong deployment, are described at the top of the script. To dry-run it on Hardhat's in-process network:
 
 ```
 npx hardhat run scripts/deploy.ts
@@ -65,11 +65,11 @@ npx hardhat run scripts/verify.ts --network sepolia   # verifies each contract o
 npx hardhat run scripts/check-deployment.ts --network sepolia   # reads the wiring back, sends nothing
 ```
 
-The check prints the deployer address, its balance and the balance required, and exits 1 if it is short. The account must be a throwaway test-network account, and must send nothing else while the deployment runs. On the test network that one account is also the firm and the land-title adapter, so it binds units with `MembershipRegistry.bindUnit`. The deployment is for readability ([ADR-017](https://github.com/nomadwiz/kaitiki-doc/blob/master/doc/design/decisions/adr/017-test-network-for-readability.md)): it uses the real parameters, so the loop itself is shown on the local network. Sepolia is a public test network, not the permissioned national chain the design assumes.
+The check prints the deployer address, its balance and the balance required, and exits 1 if it is short. The account must be a throwaway test-network account, and must send nothing else while the deployment runs. What the test-network deployment is for is [ADR-017](https://github.com/nomadwiz/kaitiki-doc/blob/master/doc/design/decisions/adr/017-test-network-for-readability.md).
 
 ## Read interface
 
-A thin page that reads the event log and holds no key and no role (FR41). It shows the fund balances, the proposals and their state, and the viewer's own units with any overdue charge; for every other unit it shows only `current` or `in arrears` (NFR10). Its one form casts a vote, signed by the viewer's wallet. To run it against a local node seeded with a small building ([`scripts/building.ts`](scripts/building.ts)):
+What the interface must show and withhold is FR41 and NFR10 in [`doc/design/spec.md` §8](https://github.com/nomadwiz/kaitiki-doc/blob/master/doc/design/spec.md#8-requirements). To run it against a local node seeded with a small building ([`scripts/building.ts`](scripts/building.ts)):
 
 ```
 npx hardhat node              # terminal 1
@@ -85,10 +85,9 @@ Without a browser wallet, "Viewing as" lists the bound wallets and a vote is sig
 | --- | --- |
 | `contracts/` | Solidity sources, each with its Solidity tests (`*.t.sol`) beside it; `interfaces/` for the interfaces contracts call each other through, `stubs/` for stand-ins used before a real contract exists |
 | `test/` | TypeScript tests, only for claims that are off-chain by definition |
-| `interface/` | The read interface: Vite and `ethers`, reading events only (FR41) |
+| `interface/` | The read interface |
 | `scripts/` | Scripts run with `hardhat run` or `node`: deployment, the event-log replay, and configuration checks |
 | `evidence/` | Test output, gas tables and screenshots the report cites: one folder per week (`week1/`, `week2/`, …), each file named `<issue>-<slug>.<ext>`; its `README.md` says what each file shows |
-| `ignition/deployments/` | Records of test-network deployments, which are committed as evidence |
 | `.github/workflows/` | CI, run on every pull request, and the automated review |
 | `artifacts/`, `cache/`, `coverage/`, `types/` | Build output; generated, never committed |
 
