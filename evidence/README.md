@@ -15,8 +15,10 @@ figure earns nothing (C7).
 - **Every image has a one-line caption** saying what is being demonstrated and
   why it matters. The rubric requires each piece of visual evidence to be
   individually explained.
-- **Screenshots at 14pt or larger, light background.** They end up in a Word
-  document at half width.
+- **Screenshots print at 14pt or larger, light background.** They are placed
+  at full text width in a Word document, about 451 pt on A4. A 520 CSS px
+  viewport captured at 2× device scale prints 16 px body text at about 14 pt,
+  and nothing on the read interface below 10 pt.
 
 ## week1
 
@@ -26,7 +28,6 @@ figure earns nothing (C7).
 | --- | --- | --- |
 | `42-hardhat-test.txt` | Both test runners green: three Solidity tests and two TypeScript tests | `npx hardhat test` |
 | `42-toolchain-versions.txt` | The exact Node, npm, Hardhat, compiler and library versions this project builds on | `node -v; npm -v; npx hardhat --version; npm ls --depth=0` |
-| `42-hardhat-test-green.png` | Terminal screenshot of the green run. **Not yet captured** — see below | screenshot of `npx hardhat test` |
 
 `42-toolchain-versions.txt` is the one with lasting value. It is the
 reproducibility record behind every gas number and test result the report later
@@ -56,9 +57,6 @@ report cites ADR-007 for that half, not this test.
 | `43-gas-stats.txt` | Gas usage statistics built into Hardhat 3 for every function call in a test run, proving NFR11 is measurable now rather than retro-fitted in week 4 | `npm run test:gas` |
 | `43-lint.txt` | solhint configured (`solhint:recommended` plus the pinned 0.8.36 compiler-version rule) running clean: 0 errors across every contract, only advisory warnings | `npm run lint` |
 | `.github/workflows/ci.yml` (not evidence text — the file itself) | The workflow that runs lint, format check, build, Solidity tests with coverage, and the TypeScript suite on every pull request | Open a pull request and see the checks run |
-
-**Not yet captured.** A screenshot of the green GitHub Actions run — needs an
-actual pull request open against `main` first.
 
 **Branch protection on main is not done by this issue's code.** It is a
 repository setting only a repo admin can change (verified: this account has
@@ -329,13 +327,21 @@ The test bites, checked on 03-10-2026, one change at a time. With the executor c
 | File | What it shows | Reproduce with |
 | --- | --- | --- |
 | `72-read-interface-tests.txt` | The five interface tests pass alongside the existing TypeScript suites, 31 passing. They render the page to the same markup the browser receives, from the event log of a building on the real contracts. **NFR10**, by its stated method: for each of four viewers, every row for a unit other than the viewer's own holds exactly one status, `current` or `in arrears`, and no digit beyond the unit's own name; another unit's status carries no amount or date even before rendering. **R4**: a charge paid late is surfaced nowhere, and once alice pays her overdue charge it leaves her page and others'. Fund balances match `Treasury.balanceOf`, and each proposal's state matches `Governance.state` while open, extended and passed. A vote form is offered only while voting is open and one of the viewer's units has not voted. **FR41**: the interface's source holds no key and knows no contract function but `castVote` | `npm run test:mocha` |
-| `72-interface-as-alice.png` | Alice (units 1 and 2) on the seeded local building. Her own unit 2 is in arrears, with its amount and due date; unit 3, whose charge was paid late, shows `current`, and unit 4 shows `in arrears` with nothing more. She has voted on proposal 2 with both units, so no vote form is offered | `npx hardhat node`, `npm run demo`, `npm run interface`, open `?as=<alice>` |
-| `72-interface-as-bob.png` | Bob (unit 3), who paid late: his own unit shows `current` and no history of the late payment | as above, `?as=<bob>` |
-| `72-interface-as-carol.png` | Carol (unit 4): her own arrear with its amount and due date, the others as status only, and the vote form on the open proposal | as above, `?as=<carol>` |
+| `72-interface-as-alice.png` | **FR8, FR19, FR9.** Alice (units 1 and 2) on the seeded local building. The funds hold NZD 400 operating and NZD 100 maintenance, the NZD 500 paid split 80:20 (FR8). Proposal 2 shows 3 for, counted in units: alice's two and bob's one (FR19). Her own unit 2 is in arrears, with its amount and due date (FR9); unit 3, whose charge was paid late, shows `current`, and unit 4 shows `in arrears` with nothing more. She has voted on proposal 2 with both units, so no vote form is offered | `npx hardhat node`, `npm run demo`, `npm run interface`, then the capture below with `?as=<alice>` |
+| `72-interface-as-bob.png` | **R4, NFR10.** Bob (unit 3), who paid late: his own unit shows `current` and no history of the late payment (R4); alice's unit 2 shows `in arrears` and nothing more (NFR10) | as above, `?as=<bob>` |
+| `72-interface-as-carol.png` | **FR41, B8.** Carol (unit 4), whose unit has not voted: the vote form on the open proposal, the page's one write (FR41), sent as `castVote` from her wallet, which the contract checks (B8). Her own arrear has its amount and due date, the others are status only | as above, `?as=<carol>` |
 
 The tests bite, checked on 03-10-2026, one change at a time. Rendering a date beside another unit's `in arrears` fails the NFR10 test and no other. Listing paid charges as overdue fails the R4 test and no other. Both were restored before this output was captured.
 
-The seeded building's proposal 2 also received one vote from bob, cast through the same `castVote` call the form makes and signed by the local node, before the screenshots were taken.
+`npm run demo` casts bob's vote on proposal 2 as well as alice's, so the state above is reproduced from a fresh node. Each screenshot is headless Chrome at the size the conventions above set, with a window height that fits the page:
+
+```
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless --hide-scrollbars \
+  --window-size=520,1100 --force-device-scale-factor=2 --virtual-time-budget=5000 \
+  --screenshot=72-interface-as-alice.png 'http://localhost:5173/?as=<alice>'
+```
+
+The heights are 1100 for alice, 1075 for bob and 1140 for carol. The local node's accounts 2, 3 and 4 are alice, bob and carol.
 
 ### Issue #73 — Deploy to a public test network
 
