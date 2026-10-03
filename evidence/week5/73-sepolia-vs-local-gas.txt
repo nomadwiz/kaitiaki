@@ -24,7 +24,8 @@ Reading. MockNZD takes no constructor argument and costs the same on both
 networks to the unit. Every other difference is a multiple of 12 gas, the
 price gap between a non-zero and a zero calldata byte (16 against 4): the
 constructor arguments are addresses, and the two deployments' addresses have
-different bytes. The code executed charged the same gas on both networks, so
-they charge by the same gas schedule for these contracts. A call's gas can
-differ between the networks only by the calldata bytes of the addresses it
-carries, a few dozen gas at most.
+different bytes. The code executed charged the same gas on both networks: they
+price contract creation, constructor storage writes and calldata the same,
+which is consistent with one gas schedule. It does not measure the opcodes a
+later call adds, such as the token transfer in payLevy; for those, ADR-017
+states the same schedule as an assumption.
