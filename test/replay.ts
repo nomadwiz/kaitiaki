@@ -1,6 +1,7 @@
-// QAS-4, issue #69: replay the event log on an independent node and derive
-// every fund balance, every tally, quorum, every binding and every admitted
-// payee from it (FR40, NFR2).
+// QAS-4, issues #69 and #138: replay the event log on an independent node and
+// derive every fund balance, every tally, quorum, every proposal's state,
+// every binding and every admitted payee from it (FR40, NFR2), and check
+// FR21's eta against block times.
 //
 // The in-process Hardhat network stands in for a node run by a party other
 // than the operator and the firm — an insurer, a lender or an audit firm
@@ -11,41 +12,41 @@ import { expect } from "chai";
 import { Interface, ZeroAddress, ZeroHash, getCreateAddress, id } from "ethers";
 import { network } from "hardhat";
 
-import { arrearsAt, replay } from "../scripts/replay.js";
+import { arrearsAt, replay, stateAt } from "../scripts/replay.js";
 
 const OPERATING = 0;
 const MAINTENANCE = 1;
+const STATES = ["Open", "Extended", "Passed", "Failed", "Queued", "Executed"];
 
 describe("QAS-4 replay", () => {
-  it("derives fund balances, role holders, tallies, quorum, eligibility, payees, queueing, attestation and arrears from events alone", async () => {
+  it("derives fund balances, role holders, tallies, quorum, proposal states, eligibility, payees, queueing, attestation and arrears from events alone", async () => {
     const { ethers } = await network.getOrCreate();
-    const [firm, adapter, admitter, alice, bob, carol, vendor, stranger] =
+    const [firm, adapter, alice, bob, carol, vendor, stranger] =
       await ethers.getSigners();
     const fromBlock = await ethers.provider.getBlockNumber();
 
-    // Real contracts throughout, with one stand-in: a signer admits payees
-    // in the Timelock's place, so the vendor is on the register without a
-    // 21-day admission vote. Treasury and Governance share the real Timelock
-    // (ADR-015), so the work proposal's payment is queued, attested and
-    // executed as in deployment.
+    // Real contracts throughout, wired as in deployment (ADR-015): the
+    // Timelock is the Treasury's sole releaser and the only address that
+    // admits payees, so the admission and the payment are both queued and
+    // executed through it. PayeeRegistry, Governance and Treasury name the
+    // Timelock deployed after the LevyLedger, and Governance names the
+    // Treasury deployed straight after it.
+    const nonce = await firm.getNonce();
+    const treasuryAddress = getCreateAddress({
+      from: firm.address,
+      nonce: nonce + 4,
+    });
+    const timelockAddress = getCreateAddress({
+      from: firm.address,
+      nonce: nonce + 6,
+    });
     const token = await ethers.deployContract("MockNZD");
     const payees = await ethers.deployContract("PayeeRegistry", [
-      admitter.address,
+      timelockAddress,
     ]);
     const registry = await ethers.deployContract("MembershipRegistry", [
       adapter.address,
     ]);
-    // Governance names the Treasury deployed straight after it, and the
-    // Timelock deployed after the LevyLedger.
-    const nonce = await firm.getNonce();
-    const treasuryAddress = getCreateAddress({
-      from: firm.address,
-      nonce: nonce + 1,
-    });
-    const timelockAddress = getCreateAddress({
-      from: firm.address,
-      nonce: nonce + 3,
-    });
     const governance = await ethers.deployContract("Governance", [
       firm.address,
       payees.target,
@@ -90,10 +91,10 @@ describe("QAS-4 replay", () => {
       ZeroAddress,
     ]);
     expect(timelock.target).to.equal(timelockAddress);
-
-    // Proposal 1 admits the vendor; the stand-in carries out the admission.
-    await governance.getFunction("propose(address)")(vendor.address);
-    await payees.connect(admitter).admit(vendor.address, 1);
+    const advance = async (seconds: bigint) => {
+      await ethers.provider.send("evm_increaseTime", [Number(seconds)]);
+      await ethers.provider.send("evm_mine", []);
+    };
 
     // Four units, alice holding two of them.
     await registry.connect(adapter).bindUnit(1, alice.address);
@@ -116,31 +117,43 @@ describe("QAS-4 replay", () => {
     await token.mint(stranger.address, 500n);
     await token.connect(stranger).transfer(treasury.target, 500n);
 
+    // Proposal 1 admits the vendor through the whole loop: alice and bob vote
+    // for it, it waits out the window and the delay, and anyone executes it.
+    await governance.getFunction("propose(address)")(vendor.address);
+    await governance.connect(alice).castVote(1, true);
+    await governance.connect(bob).castVote(1, true);
+    await advance(await governance.VOTING_PERIOD());
+    await governance.connect(stranger).queue(1);
+    await advance(delay);
+    await governance.connect(stranger).execute(1);
+
     const propose = governance.getFunction(
       "propose(string,uint256,uint8,address,bytes32)",
     );
     await propose("Roof repair", 400n, OPERATING, vendor.address, ZeroHash);
     await propose("Lift overhaul", 100n, MAINTENANCE, vendor.address, ZeroHash);
+    await propose("Gutter clean", 50n, OPERATING, vendor.address, ZeroHash);
+    await propose("Hall repaint", 30n, MAINTENANCE, vendor.address, ZeroHash);
 
     // Alice votes for with units 1 and 2, then receives unit 5 and votes
     // against with it. One wallet, two votes, both counted: the tally keys on
-    // units, never on the wallet (spec §6, ADR-003). Proposal 3 has bob's
-    // vote alone, so it misses quorum's two-wallet minimum.
+    // units, never on the wallet (spec §6, ADR-003). Proposals 3 and 5 each
+    // have one vote for, so they miss quorum's two-wallet minimum. Nobody
+    // votes on proposal 4.
     await governance.connect(alice).castVote(2, true);
     await governance.connect(bob).castVote(2, false);
     await registry.connect(adapter).bindUnit(5, alice.address);
     await governance.connect(alice).castVote(2, false);
     await governance.connect(carol).castVote(2, true);
     await governance.connect(bob).castVote(3, true);
+    await governance.connect(carol).castVote(5, true);
 
     // Proposal 2 passes when its window closes. Anyone queues it, the firm
     // attests the work once the delay has run, and anyone executes it, which
-    // releases its whole limit (ADR-015). Proposal 3 missed quorum, so its
-    // window extends; it is never queued.
-    const advance = async (seconds: bigint) => {
-      await ethers.provider.send("evm_increaseTime", [Number(seconds)]);
-      await ethers.provider.send("evm_mine", []);
-    };
+    // releases its whole limit (ADR-015). Proposals 3, 4 and 5 missed
+    // quorum, so their windows extend. By the end quorum is waived: a lone
+    // vote for passes proposals 3 and 5, and proposal 4, with no vote,
+    // fails. Anyone then queues proposal 3.
     await advance(await governance.VOTING_PERIOD());
     await governance.connect(stranger).queue(2);
     const queuedAt = BigInt(
@@ -150,6 +163,7 @@ describe("QAS-4 replay", () => {
     const evidenceHash = id("Roof repair: completion photos");
     await governance.attest(2, evidenceHash);
     await governance.connect(stranger).execute(2);
+    await governance.connect(stranger).queue(3);
 
     const derived = await replay(
       ethers.provider,
@@ -188,19 +202,44 @@ describe("QAS-4 replay", () => {
     });
 
     // Quorum from ProposalCreated's principal units and the VoteCast log.
-    for (const id of [1n, 2n, 3n]) {
+    const proposalIds = [1n, 2n, 3n, 4n, 5n];
+    for (const id of proposalIds) {
       expect(derived.quorum.get(id), `proposal ${id}`).to.equal(
         await governance.quorumReached(id),
       );
     }
-    expect([...derived.quorum.values()]).to.deep.equal([false, true, false]);
+    expect([...derived.quorum.values()]).to.deep.equal([
+      true,
+      true,
+      false,
+      false,
+      false,
+    ]);
+
+    // Every proposal's state, from ProposalCreated, VoteCast, the queueing,
+    // the executions and block times, equals Governance.state at the last
+    // replayed block.
+    const last = derived.transitions.at(-1)!.blockNumber;
+    const at = BigInt((await ethers.provider.getBlock(last))!.timestamp);
+    for (const id of proposalIds) {
+      expect(stateAt(derived, id, at), `proposal ${id}`).to.equal(
+        STATES[Number(await governance.state(id, { blockTag: last }))],
+      );
+    }
+    expect(proposalIds.map((id) => stateAt(derived, id, at))).to.deep.equal([
+      "Executed",
+      "Executed",
+      "Queued",
+      "Failed",
+      "Passed",
+    ]);
 
     // Queueing and attestation, from ProposalQueued and WorkAttested. A
     // proposal is queued in the replay exactly when Governance has scheduled
     // it, and attested exactly when Governance.attested says so.
     const QUEUED = 4n; // Governance.ProposalState.Queued
     const EXECUTED = 5n;
-    for (const id of [1n, 2n, 3n]) {
+    for (const id of proposalIds) {
       const state = await governance.state(id);
       expect(derived.queued.has(id), `proposal ${id}`).to.equal(
         state === QUEUED || state === EXECUTED,
@@ -209,7 +248,8 @@ describe("QAS-4 replay", () => {
         await governance.attested(id),
       );
     }
-    expect(derived.queued).to.deep.equal(new Map([[2n, queuedAt + delay]]));
+    expect([...derived.queued.keys()]).to.deep.equal([1n, 2n, 3n]);
+    expect(derived.queued.get(2n)).to.equal(queuedAt + delay);
     expect(derived.attested).to.deep.equal(
       new Map([[2n, { attester: firm.address, evidenceHash }]]),
     );
@@ -254,17 +294,16 @@ describe("QAS-4 replay", () => {
     );
     expect(derived.roles.get(ZeroHash)).to.deep.equal(new Set());
 
-    // Treasury's four role events at construction, then an admission
-    // proposal and the admission, four bindings, an early payment, three
-    // charges issued, a late payment, two proposals, a fifth binding, five
-    // votes, then proposal 2 queued, attested and paid.
+    // Treasury's four role events at construction, then four bindings, an
+    // early payment, three charges issued, a late payment, the admission
+    // proposal with two votes, queued and executed, four work proposals, a
+    // fifth binding, six votes, proposal 2 queued, attested and paid, then
+    // proposal 3 queued.
     expect(derived.transitions.map((t) => t.name)).to.deep.equal([
       "RoleGranted",
       "RoleGranted",
       "RoleGranted",
       "RoleRevoked",
-      "ProposalCreated",
-      "PayeeAdmitted",
       ...Array(4).fill("UnitBound"),
       "Deposited",
       "LevyPaid",
@@ -272,16 +311,22 @@ describe("QAS-4 replay", () => {
       "Deposited",
       "LevyPaid",
       "ProposalCreated",
-      "ProposalCreated",
+      "VoteCast",
+      "VoteCast",
+      "ProposalQueued",
+      "PayeeAdmitted",
+      ...Array(4).fill("ProposalCreated"),
       "VoteCast",
       "VoteCast",
       "UnitBound",
       "VoteCast",
       "VoteCast",
       "VoteCast",
+      "VoteCast",
       "ProposalQueued",
       "WorkAttested",
       "PaymentReleased",
+      "ProposalQueued",
     ]);
   });
 
@@ -289,7 +334,9 @@ describe("QAS-4 replay", () => {
   // contradicts itself, rather than derive a state from it.
   const vendor = "0x000000000000000000000000000000000000dead";
   const alice = "0x000000000000000000000000000000000000a11c";
-  type Event = [name: string, args: unknown[]];
+  // A forged log sits in block 1 unless it names another, and each forged
+  // block's timestamp is its number.
+  type Event = [name: string, args: unknown[], block?: number];
   const work: Event = [
     "ProposalCreated",
     [1n, 1, vendor, 400n, 0, ZeroHash, "Roof", 1n],
@@ -301,8 +348,18 @@ describe("QAS-4 replay", () => {
   const bound: Event = ["UnitBound", [1n, alice]];
   const admitted: Event = ["PayeeAdmitted", [vendor, 1n]];
   const issued: Event = ["ChargeIssued", [0n, 1n, 100n, 1n]];
+  // Block 1's timestamp is 1: at this eta, so `queued` makes its proposal
+  // executable in block 1 and `queuedLate` does not.
   const queued: Event = ["ProposalQueued", [1n, 1n]];
+  const queuedLate: Event = ["ProposalQueued", [1n, 2n]];
   const attested: Event = ["WorkAttested", [1n, alice, id("evidence")]];
+  const released: Event = ["PaymentReleased", [0, vendor, 1n, 1n]];
+  // The vendor admitted by proposal 2, so a release on proposal 1 can pay it.
+  const vendorAdmitted: Event[] = [
+    ["ProposalCreated", [2n, 0, vendor, 0n, 0, ZeroHash, "", 1n]],
+    ["ProposalQueued", [2n, 1n]],
+    ["PayeeAdmitted", [vendor, 2n]],
+  ];
   const cases: [string, Event[], string][] = [
     [
       "a VoteCast naming a unit no UnitBound gave the voter",
@@ -329,7 +386,11 @@ describe("QAS-4 replay", () => {
       [bound, ["VoteCast", [1n, alice, true, 1n, [1n]]]],
       "unknown proposal 1",
     ],
-    ["a payee admitted twice", [admitted, admitted], "admitted twice"],
+    [
+      "a payee admitted twice",
+      [admit, queued, admitted, admitted],
+      "admitted twice",
+    ],
     [
       "a release to a payee no PayeeAdmitted admitted",
       [work, ["PaymentReleased", [0, vendor, 1n, 1n]]],
@@ -380,6 +441,26 @@ describe("QAS-4 replay", () => {
       "proposal 1 attested twice",
     ],
     [
+      "a PayeeAdmitted on a proposal never queued",
+      [admit, admitted],
+      "proposal 1 admitted a payee before it was queued",
+    ],
+    [
+      "a PayeeAdmitted before its proposal's eta",
+      [admit, queuedLate, admitted],
+      "proposal 1 admitted a payee at 1, before its eta 2",
+    ],
+    [
+      "a PaymentReleased on a proposal never queued",
+      [...vendorAdmitted, work, released],
+      "proposal 1 paid before it was queued",
+    ],
+    [
+      "a PaymentReleased before its proposal's eta",
+      [...vendorAdmitted, work, queuedLate, released],
+      "proposal 1 paid at 1, before its eta 2",
+    ],
+    [
       "a log from a replayed address with no known event",
       [["unknown", []]],
       "unrecognised log",
@@ -403,14 +484,17 @@ describe("QAS-4 replay", () => {
     const abi = new Interface(
       fragments.flat().filter((f) => f.type === "event"),
     );
-    const logs = events.map(([name, args], index) => ({
+    const logs = events.map(([name, args, block = 1], index) => ({
       ...(name === "unknown"
         ? { topics: [id("Unknown()")], data: "0x" }
         : abi.encodeEventLog(name, args)),
-      blockNumber: 1,
+      blockNumber: block,
       index,
     }));
-    const forgedNode = { getLogs: async () => logs } as never;
+    const forgedNode = {
+      getLogs: async () => logs,
+      getBlock: async (block: number) => ({ timestamp: block }),
+    } as never;
     return replay(
       forgedNode,
       {
@@ -451,5 +535,25 @@ describe("QAS-4 replay", () => {
     ];
     expect((await forge(votedByTwo(8n))).quorum.get(1n)).to.equal(true);
     expect((await forge(votedByTwo(9n))).quorum.get(1n)).to.equal(false);
+  });
+
+  // A vote in the extension, which the runs above never cast. Bob's vote
+  // lands as the window closes without quorum, so Governance takes it in the
+  // extension and marks it. Quorum is then reached, but the proposal stays
+  // Extended until the extension ends, as Governance.state has it.
+  it("keeps a proposal Extended after a vote in the extension", async () => {
+    const bob = "0x0000000000000000000000000000000000000b0b";
+    const windowEnd = 1 + 14 * 86_400;
+    const extensionEnd = windowEnd + 7 * 86_400;
+    const derived = await forge([
+      ["ProposalCreated", [1n, 1, vendor, 400n, 0, ZeroHash, "Roof", 4n]],
+      bound,
+      ["UnitBound", [2n, bob]],
+      ["VoteCast", [1n, alice, true, 1n, [1n]]],
+      ["VoteCast", [1n, bob, true, 1n, [2n]], windowEnd],
+    ]);
+    expect(derived.quorum.get(1n)).to.equal(true);
+    expect(stateAt(derived, 1n, BigInt(windowEnd))).to.equal("Extended");
+    expect(stateAt(derived, 1n, BigInt(extensionEnd))).to.equal("Passed");
   });
 });
