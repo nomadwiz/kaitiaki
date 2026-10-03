@@ -5,7 +5,7 @@
 //   npx hardhat node                                   # terminal 1
 //   npx hardhat run scripts/demo.ts --network localhost # terminal 2
 //   npm run interface                                  # then open the URL
-import { writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { network } from "hardhat";
 
@@ -15,6 +15,8 @@ const { ethers } = await network.getOrCreate();
 const { fromBlock, addresses } = await deployBuilding(ethers);
 
 const out = new URL("../interface/public/deployment.json", import.meta.url);
+// interface/public/ holds only this git-ignored file, so a fresh clone lacks it.
+await mkdir(new URL(".", out), { recursive: true });
 await writeFile(
   out,
   JSON.stringify(
