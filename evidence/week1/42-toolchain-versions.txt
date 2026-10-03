@@ -8,7 +8,7 @@ hardhat 3.15.0
 solc    0.8.36 (optimiser on, 200 runs, evm target prague — see hardhat.config.ts)
 
 --- npm ls --depth=0 ---
-kaitiaki@0.1.0 /Users/nicholas/Personal/second-brain/1-projects/assignment/comp842-a1/work/build/kaitiaki
+kaitiaki@0.1.0 <repo>
 ├── @nomicfoundation/hardhat-toolbox-mocha-ethers@3.0.7
 ├── @openzeppelin/contracts@5.6.1
 ├── @types/chai@5.2.3

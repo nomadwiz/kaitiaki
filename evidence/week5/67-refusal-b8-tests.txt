@@ -237,7 +237,7 @@ Running Solidity tests
 
 
   165 passing
-Saved html report to C:\Users\SOKHOUR\OneDrive\Documents\Master_AUT\03_Courses\S2_COMP842_AppliedBlockchainsAndCryptocurrencies\Assignments\A01_BlockchainProject\Kaitiaki\code\coverage\html
+Saved html report to <repo>\coverage\html
 ╔═════════════════════════════════════════════════════════════════════════════════════╗
 ║                                   Coverage Report                                   ║
 ╚═════════════════════════════════════════════════════════════════════════════════════╝

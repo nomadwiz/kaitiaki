@@ -12,6 +12,7 @@ figure earns nothing (C7).
 - **Every artefact records the command that reproduces it.** Text captures put
   the command in a header comment or the surrounding entry below; images get a
   caption here.
+- **Absolute local paths in a text capture are replaced with `<repo>`**, the repository root on the machine that captured it.
 - **Every image has a one-line caption** saying what is being demonstrated and
   why it matters. The rubric requires each piece of visual evidence to be
   individually explained.
