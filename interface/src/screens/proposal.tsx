@@ -5,7 +5,7 @@ import type { FormEvent } from "react";
 
 import { date } from "../format.js";
 import { PageHead } from "../shell.js";
-import { ProposalMeta, TONE, type Proposal as ProposalView } from "./home.js";
+import { ProposalMeta, TONE, type Proposal as ProposalView } from "./proposals.js";
 
 type OnVote = (proposalId: bigint, inFavour: boolean) => void;
 

@@ -1,10 +1,40 @@
-// Screen 4, Register (`#/register`): every other unit, as OtherUnitRow's
+// Building (`#/building`), until #180 rebuilds it from its mock-up: every other unit, as OtherUnitRow's
 // markup exactly, beside the privacy line. The NFR10 test reads these rows:
 // `<li data-other-unit>`, and the status in an element whose last attribute
 // is `data-arrears`, with nothing else in the row beyond the unit's name.
 import { date } from "../format.js";
 import { Address, PageHead } from "../shell.js";
 import type { View } from "../view.js";
+
+const GUARANTEES = [
+  [
+    "Approved proposal",
+    "No one can spend without a proposal that owners passed.",
+  ],
+  [
+    "Approved vendor",
+    "Money goes only to a vendor owners approved, and only the one the proposal names.",
+  ],
+  ["Within the cap", "A proposal never pays more than its spending cap."],
+  [
+    "Right fund",
+    "A proposal pays only from the fund it names. The two funds never mix.",
+  ],
+] as const;
+
+function Guarantees() {
+  return (
+    <div className="guarantees">
+      <strong>The contract protects the money:</strong>
+      {GUARANTEES.map(([name, sentence]) => (
+        <details key={name}>
+          <summary>{name}</summary>
+          <p>{sentence}</p>
+        </details>
+      ))}
+    </div>
+  );
+}
 
 export function Register({
   units,
@@ -15,7 +45,9 @@ export function Register({
 }) {
   return (
     <>
-      <PageHead title="Building register" />
+      <PageHead title="Building">
+        <Guarantees />
+      </PageHead>
       <section aria-labelledby="h-reg" className="card">
         <div className="card-header">
           <h2 className="card-title" id="h-reg">

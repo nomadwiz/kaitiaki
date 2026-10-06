@@ -1,18 +1,49 @@
-// The design system's AppShell: header bar, main navigation (a Sheet behind
-// Menu below 800px) and the wallet slot. Markup copied from
-// doc/asset/design-system/components/AppShell and Sheet.
-import { useRef, useState, type ReactNode } from "react";
+// The workspace shell (ADR-021, #176): shadcn/ui's Sidebar from 800px up, the
+// BottomBar below it, and a top bar naming the role. Each workspace has its
+// own five items and nothing else (doc/asset/mockups/Nav.dc.html).
+import {
+  HandCoins,
+  History,
+  House,
+  KeyRound,
+  ScrollText,
+  Store,
+  Building2,
+  Wallet as WalletIcon,
+  type LucideIcon,
+} from "lucide-react";
+import type { ReactNode } from "react";
 
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+} from "./components/ui/sidebar.js";
 import { short, unitsLabel } from "./format.js";
 
-export const NAV = [
-  ["#/", "Home"],
-  ["#/units", "Your units"],
-  ["#/register", "Register"],
-  ["#/activity", "Activity"],
-  ["#/actions", "Actions"],
-  ["#/firm", "Firm"],
-];
+export type Workspace = "owner" | "firm";
+
+export const NAV: Record<Workspace, [string, string, LucideIcon][]> = {
+  owner: [
+    ["#/", "Home", House],
+    ["#/proposals", "Proposals", ScrollText],
+    ["#/units", "Your units", KeyRound],
+    ["#/building", "Building", Building2],
+    ["#/activity", "Activity", History],
+  ],
+  firm: [
+    ["#/", "Home", House],
+    ["#/proposals", "Proposals", ScrollText],
+    ["#/collect", "Collect levies", HandCoins],
+    ["#/vendors", "Vendors", Store],
+    ["#/activity", "Activity", History],
+  ],
+};
 
 // A value shortened to its ends, with a button that copies all of it.
 export function Address({
@@ -38,154 +69,109 @@ export function Address({
   );
 }
 
-// The viewer's units and shortened address, or Connect wallet. With the local
-// node's accounts (`choices`), a select picks the viewer.
-export function WalletSlot({
-  viewer,
-  units,
-  choices,
-  canConnect,
-  onConnect,
-  onViewer,
-  firm,
-}: {
-  viewer?: string;
-  // Undefined until the log has been read.
-  units?: bigint[];
-  choices?: { address: string; units: bigint[] }[];
-  // A browser wallet, not connected, on the deployment's chain.
-  canConnect?: boolean;
-  onConnect?: () => void;
-  onViewer?: (address: string) => void;
-  // The firm's address, from the deployment file: its wallet is named so.
-  firm?: string;
-}) {
-  const label = (address: string, units: bigint[]) =>
-    address.toLowerCase() === firm?.toLowerCase()
-      ? "Management firm"
-      : unitsLabel(units);
-  if (!viewer) {
-    return (
-      <span className="wallet-slot">
-        {canConnect && (
-          <button className="btn" type="button" onClick={onConnect}>
-            Connect wallet
-          </button>
-        )}
-      </span>
-    );
-  }
+function Viewer({ address }: { address: string }) {
   return (
-    <span className="wallet-slot">
-      <span className="wallet">
-        <span className="wallet-dot" aria-hidden="true"></span>
-        <span>
-          {choices ? (
-            <>
-              <label className="sr-only" htmlFor="viewer">
-                Viewing as
-              </label>
-              <select
-                id="viewer"
-                className="select"
-                value={viewer}
-                onChange={(e) => onViewer?.(e.target.value)}
-              >
-                {choices.map((c) => (
-                  <option key={c.address} value={c.address}>
-                    {label(c.address, c.units)}
-                  </option>
-                ))}
-              </select>
-            </>
-          ) : (
-            units && <b>{label(viewer, units)}</b>
-          )}
-          <br />
-          <Address value={viewer} />
-        </span>
-      </span>
+    <span className="flex items-center gap-2">
+      <WalletIcon aria-hidden="true" className="size-4 text-muted-foreground" />
+      <span className="font-mono text-[0.9375rem]">{short(address)}</span>
     </span>
   );
 }
 
-export function AppShell({
+export function Shell({
+  workspace,
   current,
-  wallet,
+  viewer,
+  units,
+  children,
 }: {
+  workspace: Workspace;
   // The navigation link marked current.
   current: string;
-  wallet: ReactNode;
+  viewer: string;
+  // The viewer's own units; the firm's role names none.
+  units: bigint[];
+  children: ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
-  const menu = useRef<HTMLButtonElement>(null);
-  const close = () => {
-    setOpen(false);
-    menu.current?.focus();
-  };
+  const items = NAV[workspace];
+  const role = workspace === "firm" ? "Management firm" : "Owner";
+  const holds = workspace === "owner" ? unitsLabel(units) : undefined;
   return (
-    <header className="shell-header">
-      <div className="shell-bar">
-        <a className="wordmark" href="#/">
-          Kaitiaki<small>Body corporate treasury</small>
-        </a>
-        <nav className="nav" aria-label="Main">
-          {NAV.map(([href, label]) => (
-            <a
-              key={href}
-              href={href}
-              aria-current={href === current ? "page" : undefined}
-            >
-              {label}
-            </a>
-          ))}
-        </nav>
-        {wallet}
-        <button
-          ref={menu}
-          className="btn nav-toggle"
-          data-variant="outline"
-          type="button"
-          aria-label="Open menu"
-          aria-expanded={open}
-          aria-controls={open ? "sheet" : undefined}
-          onClick={() => setOpen(!open)}
-        >
-          Menu
-        </button>
-      </div>
-      {open && (
+    <SidebarProvider style={{ "--sidebar-width": "264px" } as object}>
+      <Sidebar
+        collapsible="none"
+        className="sticky top-0 hidden h-svh border-r px-3 pt-5 pb-4 wide:flex"
+      >
+        <SidebarHeader className="px-3 pt-1 pb-4">
+          <span className="text-xl font-bold tracking-tight">Kaitiaki</span>
+        </SidebarHeader>
+        <div className="mx-1 mb-3 grid gap-0.5 rounded-lg bg-muted px-3 py-2.5 text-base">
+          <span className="font-semibold">{role}</span>
+          {holds && <span className="text-muted-foreground">{holds}</span>}
+        </div>
+        <SidebarContent>
+          <nav aria-label="Workspace">
+            <SidebarMenu className="gap-0.5">
+              {items.map(([href, label, Icon]) => (
+                <SidebarMenuItem key={href}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={href === current}
+                    className="text-foreground no-underline"
+                  >
+                    <a
+                      href={href}
+                      aria-current={href === current ? "page" : undefined}
+                    >
+                      <Icon aria-hidden="true" />
+                      {label}
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </nav>
+        </SidebarContent>
+        <SidebarFooter className="mt-auto gap-1 border-t px-3 pt-3.5 pb-1 text-base">
+          <Viewer address={viewer} />
+          <span className="text-muted-foreground">
+            Every action is signed in your wallet.
+          </span>
+        </SidebarFooter>
+      </Sidebar>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex min-h-15 items-center justify-between gap-3 border-b bg-card px-4 py-2 wide:hidden">
+          <span className="grid">
+            <span className="text-xl font-bold tracking-tight">Kaitiaki</span>
+            <span className="text-base text-muted-foreground">
+              {holds ? `${role}, ${holds}` : role}
+            </span>
+          </span>
+          <Viewer address={viewer} />
+        </header>
+        <main className="flex-1 px-4 pt-5 pb-8 wide:px-12 wide:pt-10 wide:pb-16">
+          <div className="flex max-w-[1200px] flex-col gap-6 wide:gap-8">
+            {children}
+          </div>
+        </main>
         <nav
-          className="sheet"
-          id="sheet"
-          aria-label="Menu"
-          onKeyDown={(e) => e.key === "Escape" && close()}
+          aria-label="Workspace"
+          className="sticky bottom-0 grid grid-cols-5 border-t bg-card wide:hidden"
         >
-          <button
-            className="btn"
-            data-variant="outline"
-            type="button"
-            autoFocus
-            onClick={close}
-          >
-            Close menu
-          </button>
-          {NAV.map(([href, label]) => (
+          {items.map(([href, label, Icon]) => (
             <a
               key={href}
-              className="btn"
-              data-variant="ghost"
               href={href}
-              style={{ justifyContent: "flex-start" }}
               aria-current={href === current ? "page" : undefined}
-              onClick={() => setOpen(false)}
+              className="relative flex min-h-16 flex-col items-center justify-center gap-1 px-0.5 py-2 text-center text-sm leading-tight text-muted-foreground no-underline aria-[current=page]:font-semibold aria-[current=page]:text-primary aria-[current=page]:before:absolute aria-[current=page]:before:inset-x-[20%] aria-[current=page]:before:top-0 aria-[current=page]:before:h-[3px] aria-[current=page]:before:rounded-b-[3px] aria-[current=page]:before:bg-primary"
             >
+              <Icon aria-hidden="true" className="size-6" />
               {label}
             </a>
           ))}
         </nav>
-      )}
-    </header>
+      </div>
+    </SidebarProvider>
   );
 }
 

@@ -1,10 +1,9 @@
-// Screen 7, Anyone's actions (`#/actions`): queue a passed proposal, carry out
-// a ready one (#156). A button appears only once its date has arrived, by the
+// Queue and Carry out (#156), on Proposals until #178 moves them onto each
+// proposal's timeline: queue a passed proposal, carry out a ready one. A button appears only once its date has arrived, by the
 // latest block's time, which view.ts decides. Any wallet may press them
 // (FR22, NFR7), so nothing here looks at the viewer. Collecting a due levy is
 // the firm's alone (ADR-020), so it is on the Firm screen.
 import { date } from "../format.js";
-import { PageHead } from "../shell.js";
 import { Waiting } from "../states.js";
 import type { View } from "../view.js";
 
@@ -66,12 +65,10 @@ export function Actions({
   const button = { onAct, acting };
   return (
     <>
-      <PageHead title="Anyone’s actions">
-        <p className="muted-text">
-          These steps need someone to press a button once their date arrives.
-          Anyone may press them, owner or not. Each is signed in your wallet.
-        </p>
-      </PageHead>
+      <p className="muted-text">
+        These steps need someone to press a button once their date arrives.
+        Anyone may press them, owner or not. Each is signed in your wallet.
+      </p>
       <div className="grid-2">
         <section className="card">
           <div className="card-header">

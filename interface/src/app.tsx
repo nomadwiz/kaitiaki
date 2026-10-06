@@ -1,19 +1,22 @@
-// The interface's markup (#149): the design system's AppShell around one of
-// seven screens, chosen by the address's hash. Every component keeps the
-// class names and attributes of the design system's previews
-// (doc/asset/design-system/components/) and is a pure function of its props,
-// so test/interface.ts renders them with react-dom/server and checks exactly
+// The interface's markup (#149, #176): the workspace the viewer's address
+// chooses (ADR-021), its shell, and one of its screens, chosen by the
+// address's hash. Every component is a pure function of its props, so
+// test/interface.ts renders them with react-dom/server and checks exactly
 // what a viewer would see.
+import { Info } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { Actions, type Acting, type OnAct } from "./screens/actions.js";
+import { Alert as Callout, AlertTitle } from "./components/ui/alert.js";
+
+import { type Acting, type OnAct } from "./screens/actions.js";
 import { Activity } from "./screens/activity.js";
 import { Firm, type FirmActs } from "./screens/firm.js";
 import { Home } from "./screens/home.js";
 import { Proposal } from "./screens/proposal.js";
+import { Proposals } from "./screens/proposals.js";
 import { Register } from "./screens/register.js";
 import { YourUnits } from "./screens/units.js";
-import { AppShell, NAV, WalletSlot } from "./shell.js";
+import { NAV, Shell, type Workspace } from "./shell.js";
 import {
   Alert,
   ConnectWallet,
@@ -34,8 +37,8 @@ export type Wallet =
       chainId: bigint;
       deploymentChainId: bigint;
     }
-  // The local node's unlocked accounts, chosen with `?as=` or the select.
-  | { kind: "node"; choices: { address: string; units: bigint[] }[] };
+  // An account the local node unlocks, chosen with `?as=`.
+  | { kind: "node" };
 
 type Props = {
   hash: string;
@@ -55,12 +58,11 @@ type Props = {
   // Reading failed: the notice says why, and nothing is loading.
   failed?: boolean;
   onConnect?: () => void;
-  onViewer?: (address: string) => void;
   onVote?: (proposalId: bigint, inFavour: boolean) => void;
   onPay?: (unitId: bigint, chargeId: bigint, amount: bigint) => void;
   // Set up direct debit: approve the levy ledger for `total` (ADR-020).
   onDebit?: (total: bigint) => void;
-  // The Anyone's actions the wallet is signing, and the one pressed.
+  // The Queue or Carry out the wallet is signing, and the one pressed.
   acting?: Acting;
   onAct?: OnAct;
   // The firm's address, from the deployment file, and what its wallet can do.
@@ -75,7 +77,6 @@ type Context = {
   view: View;
   id: string;
   canAct: boolean;
-  walletState: ReactNode;
   voting?: bigint;
   onVote?: Props["onVote"];
   paying?: bigint;
@@ -88,58 +89,92 @@ type Context = {
   fresh?: Props["fresh"];
 };
 
-const SCREENS: Record<string, (c: Context) => ReactNode> = {
-  "#/": (c) => (
-    <Home
-      funds={c.view.funds}
-      queued={c.view.queued}
-      proposals={c.view.proposals}
-      ownUnits={c.view.ownUnits}
-    >
-      {c.walletState}
-    </Home>
-  ),
-  // Keyed without "#/", so no hash names it: only #/proposal/<n> reaches it.
-  proposal: (c) => (
-    <Proposal
-      id={c.id}
-      proposal={c.view.proposals.find((p) => String(p.id) === c.id)}
-      canAct={c.canAct}
-      voting={c.voting}
-      onVote={c.onVote}
-    />
-  ),
-  "#/units": (c) => (
-    <YourUnits
-      units={c.view.ownUnits}
-      onPay={c.canAct ? c.onPay : undefined}
-      paying={c.paying}
-      onDebit={c.canAct ? c.onDebit : undefined}
-      acting={c.acting}
-    >
-      {c.walletState}
-    </YourUnits>
-  ),
-  "#/register": (c) => <Register units={c.view.otherUnits} vendors={c.view.vendors} />,
-  "#/activity": (c) => <Activity events={c.view.activity} />,
-  "#/actions": (c) => (
-    <Actions
-      actions={c.view.actions}
-      onAct={c.canAct ? c.onAct : undefined}
-      acting={c.acting}
-    />
-  ),
-  "#/firm": (c) => (
-    <Firm
-      vendors={c.view.vendors}
-      toConfirm={c.view.toConfirm}
-      toCollect={c.view.toCollect}
-      act={c.onFirm}
-      acting={c.acting}
-      fresh={c.fresh}
-    />
-  ),
+// Which workspace an address opens, in ADR-021's order: the firm's address
+// from the deployment file, even if it holds units; then an address with a
+// UnitBound event; then any other address; then no wallet.
+export function workspaceOf(
+  viewer: string | undefined,
+  firm: string | undefined,
+  ownUnits: unknown[],
+): Workspace | "no-unit" | "connect" {
+  if (!viewer) return "connect";
+  if (viewer.toLowerCase() === firm?.toLowerCase()) return "firm";
+  return ownUnits.length ? "owner" : "no-unit";
+}
+
+const proposals = (c: Context) => (
+  <Proposals
+    proposals={c.view.proposals}
+    actions={c.view.actions}
+    onAct={c.canAct ? c.onAct : undefined}
+    acting={c.acting}
+  />
+);
+// The firm's screens are one until #182, #184 and #185 split them.
+const firm = (c: Context) => (
+  <Firm
+    vendors={c.view.vendors}
+    toConfirm={c.view.toConfirm}
+    toCollect={c.view.toCollect}
+    act={c.onFirm}
+    acting={c.acting}
+    fresh={c.fresh}
+  />
+);
+
+// Each workspace's routes. `#/proposal/<n>` is in both, keyed as "proposal"
+// so no hash names it directly.
+const SCREENS: Record<Workspace, Record<string, (c: Context) => ReactNode>> = {
+  owner: {
+    "#/": (c) => (
+      <Home
+        funds={c.view.funds}
+        proposals={c.view.proposals}
+        ownUnits={c.view.ownUnits}
+      />
+    ),
+    "#/proposals": proposals,
+    "#/units": (c) => (
+      <YourUnits
+        units={c.view.ownUnits}
+        onPay={c.canAct ? c.onPay : undefined}
+        paying={c.paying}
+        onDebit={c.canAct ? c.onDebit : undefined}
+        acting={c.acting}
+      />
+    ),
+    "#/building": (c) => (
+      <Register units={c.view.otherUnits} vendors={c.view.vendors} />
+    ),
+    "#/activity": (c) => <Activity events={c.view.activity} />,
+  },
+  firm: {
+    "#/": firm,
+    "#/proposals": proposals,
+    "#/propose": firm,
+    "#/collect": firm,
+    "#/vendors": firm,
+    "#/activity": (c) => <Activity events={c.view.activity} />,
+  },
 };
+// The firm's address is offered no vote, even if it holds units (ADR-021).
+for (const [workspace, routes] of Object.entries(SCREENS)) {
+  routes.proposal = (c) => {
+    const p = c.view.proposals.find((p) => String(p.id) === c.id);
+    return (
+      <Proposal
+        id={c.id}
+        proposal={p && workspace === "firm" ? { ...p, canVote: false } : p}
+        canAct={c.canAct}
+        voting={c.voting}
+        onVote={c.onVote}
+      />
+    );
+  };
+}
+
+export const ELSEWHERE =
+  "That page belongs to another workspace. Kaitiaki opened your Home instead.";
 
 export function App({
   hash,
@@ -153,7 +188,6 @@ export function App({
   paying,
   failed,
   onConnect,
-  onViewer,
   onVote,
   onPay,
   onDebit,
@@ -163,72 +197,95 @@ export function App({
   onFirm,
   fresh,
 }: Props) {
-  const id = /^#\/proposal\/(\d+)$/.exec(hash)?.[1];
-  const route = id ? "proposal" : Object.hasOwn(SCREENS, hash) ? hash : "#/";
-  // A proposal is reached from Home, so Home stays the current link.
-  const current = NAV.some(([href]) => href === route) ? route : "#/";
   const browser = wallet?.kind === "browser" ? wallet : undefined;
   const viewer = browser ? browser.account : view?.viewer;
   // A wallet on another chain than the deployment's is offered no action.
   const wrongChain = browser && browser.chainId !== browser.deploymentChainId;
   const canConnect = browser && !viewer && !wrongChain;
+  const workspace = view && workspaceOf(viewer, firm, view.ownUnits);
+  const routes =
+    workspace === "owner" || workspace === "firm" ? SCREENS[workspace] : {};
+  const id = /^#\/proposal\/(\d+)$/.exec(hash)?.[1];
+  const route = id ? "proposal" : Object.hasOwn(routes, hash) ? hash : "#/";
+  // A route of the other workspace opens this one's Home, and says so.
+  const elsewhere =
+    route === "#/" &&
+    hash !== "#/" &&
+    Object.values(SCREENS).some((r) => Object.hasOwn(r, hash));
+  // A proposal, and Propose work, are reached from Proposals, which stays
+  // the current link.
+  const current = id || route === "#/propose" ? "#/proposals" : route;
 
-  const walletState = canConnect ? (
-    <ConnectWallet onConnect={onConnect} />
-  ) : viewer && view?.ownUnits.length === 0 ? (
-    <NoUnit />
-  ) : null;
+  const notices = (
+    <>
+      {wrongChain && (
+        <Alert
+          variant="destructive"
+          title={`Your wallet is on chain ${browser.chainId}, and Kaitiaki is deployed on chain ${browser.deploymentChainId}.`}
+          description={`Switch your wallet to chain ${browser.deploymentChainId}. Nothing can be signed until then.`}
+        />
+      )}
+      {notice && <Alert {...notice} />}
+      {toast && <Toast {...toast} onDismiss={onDismissToast} />}
+    </>
+  );
+
+  let page: ReactNode;
+  if (!view || !workspace) {
+    page = (
+      <main className="shell-main">
+        {notices}
+        {!failed && <Loading />}
+      </main>
+    );
+  } else if (workspace === "connect" || workspace === "no-unit") {
+    // The entry screens show no navigation and no building data (#186).
+    page = (
+      <main className="shell-main">
+        {notices}
+        {workspace === "no-unit" ? (
+          <NoUnit />
+        ) : (
+          canConnect && <ConnectWallet onConnect={onConnect} />
+        )}
+      </main>
+    );
+  } else {
+    page = (
+      <Shell
+        workspace={workspace}
+        current={NAV[workspace].some(([href]) => href === current) ? current : "#/"}
+        viewer={viewer!}
+        units={view.ownUnits.map((u) => u.unitId)}
+      >
+        {elsewhere && (
+          <Callout role="status" className="border-transparent bg-accent text-accent-foreground">
+            <Info aria-hidden="true" />
+            <AlertTitle>{ELSEWHERE}</AlertTitle>
+          </Callout>
+        )}
+        {notices}
+        {routes[route]({
+          view,
+          id: id ?? "",
+          canAct: !wrongChain,
+          voting,
+          onVote,
+          paying,
+          onPay,
+          onDebit,
+          acting,
+          onAct,
+          onFirm: !wrongChain && workspace === "firm" ? onFirm : undefined,
+          fresh,
+        })}
+      </Shell>
+    );
+  }
 
   return (
     <>
-      <AppShell
-        current={current}
-        wallet={
-          <WalletSlot
-            viewer={viewer}
-            units={view?.ownUnits.map((u) => u.unitId)}
-            choices={wallet?.kind === "node" ? wallet.choices : undefined}
-            canConnect={canConnect}
-            onConnect={onConnect}
-            onViewer={onViewer}
-            firm={firm}
-          />
-        }
-      />
-      <main className="shell-main">
-        {wrongChain && (
-          <Alert
-            variant="destructive"
-            title={`Your wallet is on chain ${browser.chainId}, and Kaitiaki is deployed on chain ${browser.deploymentChainId}.`}
-            description={`Switch your wallet to chain ${browser.deploymentChainId}. Nothing can be signed until then.`}
-          />
-        )}
-        {notice && <Alert {...notice} />}
-        {toast && <Toast {...toast} onDismiss={onDismissToast} />}
-        {view
-          ? SCREENS[route]({
-              view,
-              id: id ?? "",
-              canAct: !wrongChain,
-              walletState,
-              voting,
-              onVote,
-              paying,
-              onPay,
-              onDebit,
-              acting,
-              onAct,
-              onFirm:
-                !wrongChain &&
-                !!firm &&
-                !!viewer &&
-                viewer.toLowerCase() === firm.toLowerCase()
-                  ? onFirm
-                  : undefined,
-              fresh,
-            })
-          : !failed && <Loading />}
-      </main>
+      {page}
       {signing && <SigningDialog signing={signing} />}
     </>
   );

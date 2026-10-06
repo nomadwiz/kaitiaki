@@ -13,7 +13,7 @@ import { PageHead } from "../shell.js";
 import { Waiting } from "../states.js";
 import type { View } from "../view.js";
 import type { Acting } from "./actions.js";
-import { FUNDS } from "./home.js";
+import { FUNDS } from "./proposals.js";
 
 export type Work = {
   description: string;

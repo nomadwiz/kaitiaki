@@ -8,6 +8,7 @@
     "skipLibCheck": true,
     "outDir": "dist",
     "types": ["node", "mocha"],
-    "verbatimModuleSyntax": true
+    "verbatimModuleSyntax": true,
+    "paths": { "@/*": ["./interface/src/*"] }
   }
 }

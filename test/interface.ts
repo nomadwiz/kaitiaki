@@ -20,7 +20,7 @@ import hre, { network } from "hardhat";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { App, type Wallet } from "../interface/src/app.js";
+import { App, ELSEWHERE, type Wallet } from "../interface/src/app.js";
 import { checkEvidence, checkVendor, checkWork } from "../interface/src/screens/firm.js";
 import { date, nzd, short } from "../interface/src/format.js";
 import { ABI, approvedRefusal, carryOut, collectLevies, confirmWork, payment, proposeVendor, proposeWork, refusal, send, standingApproval } from "../interface/src/tx.js";
@@ -47,17 +47,45 @@ async function outcome(
 const ZERO = "0x" + "11".repeat(20);
 const STATES = ["Open", "Extended", "Passed", "Failed", "Queued", "Executed"];
 
-// Each route, the heading its screen opens with, and the link marked current.
-const ROUTES = [
-  ["#/", "Home", "Home"],
-  ["#/proposal/2", "Roof repair", "Home"],
-  ["#/units", "Your units and levies", "Your units"],
-  ["#/register", "Building register", "Register"],
-  ["#/activity", "Activity", "Activity"],
-  ["#/actions", "Anyone’s actions", "Actions"],
-  ["#/firm", "Firm workspace", "Firm"],
-  ["#/no-such-screen", "Home", "Home"],
-];
+// Each workspace's routes, the heading each screen opens with, and the link
+// marked current. A route of the other workspace opens Home, and says so.
+const ROUTES = {
+  owner: [
+    ["#/", "Home", "Home"],
+    ["#/proposals", "Proposals", "Proposals"],
+    ["#/proposal/2", "Roof repair", "Proposals"],
+    ["#/units", "Your units and levies", "Your units"],
+    ["#/building", "Building", "Building"],
+    ["#/activity", "Activity", "Activity"],
+    ["#/no-such-screen", "Home", "Home"],
+    ["#/collect", "Home", "Home"],
+  ],
+  firm: [
+    ["#/", "Firm workspace", "Home"],
+    ["#/proposals", "Proposals", "Proposals"],
+    ["#/proposal/2", "Roof repair", "Proposals"],
+    ["#/propose", "Firm workspace", "Proposals"],
+    ["#/collect", "Firm workspace", "Collect levies"],
+    ["#/vendors", "Firm workspace", "Vendors"],
+    ["#/activity", "Activity", "Activity"],
+    ["#/units", "Firm workspace", "Home"],
+  ],
+};
+const NAV_LABELS = {
+  owner: ["Home", "Proposals", "Your units", "Building", "Activity"],
+  firm: ["Home", "Proposals", "Collect levies", "Vendors", "Activity"],
+};
+// Each Workspace navigation on a page (the Sidebar, then the BottomBar),
+// as its links' labels and whether each is marked current.
+const navs = (html: string) =>
+  html
+    .split('aria-label="Workspace"')
+    .slice(1)
+    .map((nav) =>
+      [...nav.split("</nav>")[0].matchAll(/<a ([^>]*)>[\s\S]*?<\/svg>([^<]*)<\/a>/g)].map(
+        ([, attrs, label]) => ({ label, current: attrs.includes('aria-current="page"') }),
+      ),
+    );
 
 const PRIVACY_LINE =
   '<p class="privacy-line">The full record is public on the chain. This page chooses to show only whether each unit is current or in arrears. That is a presentation choice, not protection.</p>';
@@ -99,7 +127,7 @@ describe("Read interface (#72, #149)", () => {
       return {
         view,
         html: renderToStaticMarkup(
-          createElement(App, { hash, view, wallet, onPay: () => {}, onAct: () => {} }),
+          createElement(App, { hash, view, wallet, firm: building.signers.firm.address, onPay: () => {}, onAct: () => {} }),
         ),
       };
     };
@@ -110,8 +138,8 @@ describe("Read interface (#72, #149)", () => {
     const { signers, render } = await setUp();
     const { alice, bob, carol, stranger } = signers;
 
-    for (const viewer of [alice, bob, carol, stranger]) {
-      const { view, html } = await render(viewer.address, "#/register");
+    for (const viewer of [alice, bob, carol]) {
+      const { view, html } = await render(viewer.address, "#/building");
       const rows = otherUnitRows(html);
       expect(rows).to.have.length(view.otherUnits.length);
       for (const row of rows) {
@@ -127,21 +155,23 @@ describe("Read interface (#72, #149)", () => {
         expect(Object.keys(unit)).to.deep.equal(["unitId", "status"]);
       }
     }
+    // A wallet holding no unit sees no building data at all (ADR-021).
+    expect(otherUnitRows((await render(stranger.address, "#/building")).html)).to.deep.equal([]);
 
     // The case that matters: as alice, carol's unit 4 is in arrears, and the
     // page says so with no amount and no date.
-    const { html } = await render(alice.address, "#/register");
+    const { html } = await render(alice.address, "#/building");
     expect(otherUnitRows(html)).to.deep.equal([
       { text: "Unit 3 current", statuses: ["current"] },
       { text: "Unit 4 in arrears", statuses: ["in arrears"] },
     ]);
   });
 
-  it("FR13: Register lists the approved vendor by name, shortened address and company identifier, and a Work card names it", async () => {
+  it("FR13: Building lists the approved vendor by name, shortened address and company identifier, and a Work card names it", async () => {
     const { signers, render } = await setUp();
     const vendor = signers.vendor.address;
     const short = `${vendor.slice(0, 6)}…${vendor.slice(-4)}`;
-    const { view, html } = await render(signers.alice.address, "#/register");
+    const { view, html } = await render(signers.alice.address, "#/building");
     expect(view.vendors.map((v) => [v.payee, v.name, v.companyId])).to.deep.equal([
       [vendor, "Harbour Lifts Ltd", "DEMO-0001"],
     ]);
@@ -152,7 +182,7 @@ describe("Read interface (#72, #149)", () => {
     expect(otherUnitRows(html).join()).to.not.contain("Harbour");
 
     // Proposal 2 pays the vendor: its card says who, by name, then wallet.
-    const home = (await render(signers.alice.address, "#/")).html;
+    const home = (await render(signers.alice.address, "#/proposals")).html;
     expect(home).to.match(
       new RegExp(`<dt>Vendor</dt><dd>Harbour Lifts Ltd <span class="addr">${short}`),
     );
@@ -254,16 +284,16 @@ describe("Read interface (#72, #149)", () => {
       expect(html).to.not.contain("Charge #");
     });
 
-    it("offers Pay on Your units and not on Home, which shares the unit card", async () => {
+    it("offers Pay on Your units and not on Home", async () => {
       const { signers, render } = await setUp();
       const units = await render(signers.alice.address, "#/units");
       const home = await render(signers.alice.address, "#/");
       expect(units.html.match(/Pay NZD 250\.00/g)).to.have.length(2);
       expect(home.html).to.not.contain("Pay NZD");
-      // Home lists overdue charges only: unit 2's, not unit 1's scheduled #4.
+      // Home names the arrear only: unit 2's charge #1, not unit 1's
+      // scheduled #4.
       expect(home.html).to.not.contain("Charge #4");
-      expect(home.html).to.contain("Charge #1 · was due");
-      expect(home.html).to.contain('<p class="muted-text">No overdue charges.</p>');
+      expect(home.html).to.contain("Charge #1 was not covered when it was collected.");
       expect(units.html).to.contain("Charge #4 · due");
     });
 
@@ -295,7 +325,7 @@ describe("Read interface (#72, #149)", () => {
     });
   });
 
-  describe("Anyone's actions (#156)", () => {
+  describe("Queue and Carry out, on Proposals (#156)", () => {
     const QUEUE = '<button class="btn" data-size="sm" type="button">Queue</button>';
     const CARRY = '<button class="btn" data-size="sm" type="button">Carry out</button>';
     // A card's content, by its title.
@@ -321,13 +351,13 @@ describe("Read interface (#72, #149)", () => {
 
     it("ADR-020: lists no levy charge, because collecting is the firm's", async () => {
       const { signers, render } = await setUp();
-      const { html } = await render(signers.alice.address, "#/actions");
+      const { html } = await render(signers.alice.address, "#/proposals");
       expect(html).to.not.match(/Charge #|Issue|Collect/);
     });
 
     it("says an open proposal can be queued if it passes, with the day voting closes", async () => {
       const { signers, render } = await setUp();
-      const { view, html } = await render(signers.alice.address, "#/actions");
+      const { view, html } = await render(signers.alice.address, "#/proposals");
       const closes = view.proposals.find((p) => p.id === 2n)!.closes!;
       expect(text(section(html, "Queue passed proposals"))).to.contain(
         `No proposal is waiting to be queued. Proposal #2 can be queued if it passes when voting closes on ${date(closes)}.`,
@@ -342,14 +372,14 @@ describe("Read interface (#72, #149)", () => {
       const { governance } = contracts;
       await governance.connect(signers.bob).castVote(2, true);
       await advance(ethers, await governance.VOTING_PERIOD());
-      const { html } = await render(signers.stranger.address, "#/actions");
+      const { html } = await render(signers.carol.address, "#/proposals");
       const card = section(html, "Queue passed proposals");
       expect(card).to.contain("#2");
       expect(card).to.contain("Roof repair");
       expect(card).to.contain(QUEUE);
       expect(html).to.not.contain(CARRY);
       await (await new Contract(addresses.governance, ABI, signers.stranger).queue(2n)).wait();
-      const after = await render(signers.stranger.address, "#/actions");
+      const after = await render(signers.carol.address, "#/proposals");
       expect(section(after.html, "Queue passed proposals")).to.not.contain(QUEUE);
       expect(section(after.html, "Carry out ready proposals")).to.contain("Roof repair");
     });
@@ -361,17 +391,17 @@ describe("Read interface (#72, #149)", () => {
       const governance = new Contract(addresses.governance, ABI, signers.stranger);
       const queued = await governance.queue(3n);
       const eta = BigInt((await ethers.provider.getBlock((await queued.wait())!.blockNumber))!.timestamp) + (await s.contracts.governance.TIMELOCK_DELAY());
-      let { html } = await render(signers.stranger.address, "#/actions");
+      let { html } = await render(signers.carol.address, "#/proposals");
       let card = section(html, "Carry out ready proposals");
       expect(card).to.contain("Admit Lift Co");
       expect(card).to.contain(`Available from ${date(eta)}.`);
       expect(card).to.not.contain(CARRY);
       await advance(ethers, await s.contracts.governance.TIMELOCK_DELAY());
-      ({ html } = await render(signers.stranger.address, "#/actions"));
+      ({ html } = await render(signers.carol.address, "#/proposals"));
       card = section(html, "Carry out ready proposals");
       expect(card).to.contain(CARRY);
       await (await governance.execute(3n)).wait();
-      ({ html } = await render(signers.stranger.address, "#/actions"));
+      ({ html } = await render(signers.carol.address, "#/proposals"));
       expect(html).to.not.contain(CARRY);
     });
 
@@ -381,7 +411,7 @@ describe("Read interface (#72, #149)", () => {
       await governance.connect(signers.bob).castVote(2, true);
       await advance(ethers, await governance.VOTING_PERIOD());
       await governance.connect(signers.stranger).queue(2);
-      const carry = async () => section((await render(signers.stranger.address, "#/actions")).html, "Carry out ready proposals");
+      const carry = async () => section((await render(signers.carol.address, "#/proposals")).html, "Carry out ready proposals");
       // Waiting for the date, and for the firm, as the preview words it.
       let card = await carry();
       expect(card).to.match(/Available from \d{1,2} [A-Z][a-z]{2} \d{4}, after the firm confirms the work is done\./);
@@ -403,11 +433,11 @@ describe("Read interface (#72, #149)", () => {
       const { ethers, signers, contracts, render } = await setUp();
       await contracts.governance.connect(signers.bob).castVote(2, true);
       await advance(ethers, await contracts.governance.VOTING_PERIOD());
-      const { view } = await render(signers.stranger.address, "#/actions");
+      const { view } = await render(signers.carol.address, "#/proposals");
       const h = (props: object) =>
-        renderToStaticMarkup(createElement(App, { hash: "#/actions", view, ...props }));
+        renderToStaticMarkup(createElement(App, { hash: "#/proposals", view, ...props }));
       expect(h({ onAct: () => {} })).to.contain(QUEUE);
-      const wrong = { kind: "browser", account: signers.stranger.address, chainId: 1n, deploymentChainId: 31337n } as const;
+      const wrong = { kind: "browser", account: signers.carol.address, chainId: 1n, deploymentChainId: 31337n } as const;
       expect(h({ wallet: wrong, onAct: () => {} })).to.not.contain(QUEUE);
       const busy = h({ onAct: () => {}, acting: { action: "queue", id: 2n } });
       expect(busy).to.contain("Waiting for your wallet…");
@@ -423,10 +453,10 @@ describe("Read interface (#72, #149)", () => {
     // The Firm screen as `viewer` sees it, with the firm's address from the
     // deployment file. `onFirm` is given as App gives it to the firm's wallet.
     async function firmPage(s: Awaited<ReturnType<typeof setUp>>, viewer?: string, wallet?: Wallet) {
-      const { view } = await s.render(viewer, "#/firm");
+      const { view } = await s.render(viewer, "#/");
       const html = renderToStaticMarkup(
         createElement(App, {
-          hash: "#/firm", view, wallet, firm: s.signers.firm.address,
+          hash: "#/", view, wallet, firm: s.signers.firm.address,
           onFirm: { onWork() {}, onVendor() {}, onConfirm() {}, onCollect() {} },
         }),
       );
@@ -441,28 +471,25 @@ describe("Read interface (#72, #149)", () => {
       return (await firmPage(s, s.signers.firm.address)).view.toConfirm[0].eta;
     }
 
-    it("FR16, FR17: enables the forms for the firm's wallet only, and states the firm's limits to everyone", async () => {
+    it("FR16, FR17: enables the forms for the firm's wallet, and no other address reaches them (ADR-021)", async () => {
       const s = await setUp();
       const { firm, alice, stranger } = s.signers;
       const limits = "You can propose, confirm and collect levies. You cannot move money out.";
       const own = await firmPage(s, firm.address);
-      expect(own.html).to.not.contain("disabled");
+      expect(own.html).to.not.contain('disabled=""');
       expect(own.html).to.contain("Management firm");
       expect(text(own.html)).to.contain(limits);
       for (const viewer of [alice.address, stranger.address, undefined]) {
         const { html } = await firmPage(s, viewer);
-        // Every control is disabled, Collect included, and the same limits
-        // stand.
-        expect(html.match(CONTROLS)!.length).to.equal(10);
-        expect(html.match(/disabled=""/g)!.length).to.equal(11);
-        expect(text(html)).to.contain(limits);
+        expect(html.match(CONTROLS), String(viewer)).to.equal(null);
+        expect(html).to.not.contain(limits);
         expect(html).to.not.contain("Management firm");
       }
       // No firm in the config and no viewer must not match each other.
-      const { view } = await s.render(undefined, "#/firm");
-      const none = renderToStaticMarkup(createElement(App, { hash: "#/firm", view, onFirm: { onWork() {}, onVendor() {}, onConfirm() {}, onCollect() {} } }));
-      expect(none.match(/disabled=""/g)!.length).to.equal(11);
-      // The firm's wallet on another chain is offered nothing either.
+      const { view } = await s.render(undefined, "#/");
+      const none = renderToStaticMarkup(createElement(App, { hash: "#/", view, onFirm: { onWork() {}, onVendor() {}, onConfirm() {}, onCollect() {} } }));
+      expect(none.match(CONTROLS)).to.equal(null);
+      // The firm's wallet on another chain is offered nothing.
       const wrong = { kind: "browser", account: firm.address, chainId: 1n, deploymentChainId: 31337n } as const;
       expect((await firmPage(s, firm.address, wrong)).html).to.contain('disabled=""');
     });
@@ -574,7 +601,7 @@ describe("Read interface (#72, #149)", () => {
       const admitted = await outcome(proposeVendor(admit!.name), () =>
         asFirm.getFunction("propose(address,string,string)")(admit!.vendor, admit!.name, admit!.companyId));
       expect(admitted.toast).to.deep.equal({ title: "Vendor proposed", body: "Stair Paint Ltd is proposed as a vendor for owners to vote on." });
-      const { view } = await s.render(firm.address, "#/firm");
+      const { view } = await s.render(firm.address, "#/");
       const [paint, stair] = view.proposals.slice(-2);
       expect([paint.kind, paint.description, paint.limit, paint.fund, paint.payee]).to.deep.equal(["Work", "Paint the stairwell", work!.limit, 1n, vendor.address]);
       expect([stair.kind, stair.description, stair.payee]).to.deep.equal(["Admit", "Stair Paint Ltd", carol.address]);
@@ -680,12 +707,12 @@ describe("Read interface (#72, #149)", () => {
     expect(await check()).to.deep.equal(["Executed", "Passed"]);
   });
 
-  it("FR40: Home's queued-to-pay figure is the sum of the Queued limits on that fund, from events", async () => {
+  it("FR40: the queued-to-pay figure is the sum of the Queued limits on that fund, from events, and Home lists the queued work with its date", async () => {
     const { ethers, contracts, signers, render } = await setUp();
     const { governance } = contracts;
     let { view, html } = await render(signers.carol.address);
     expect(view.queued).to.deep.equal({ operating: 0n, maintenance: 0n });
-    expect(html).to.contain('Queued to pay, at most: <b class="num">none</b>');
+    expect(html).to.contain("Nothing is queued to pay.");
 
     // Bob and carol vote with alice, so quorum holds and the window closes
     // without an extension; anyone then queues it.
@@ -698,13 +725,12 @@ describe("Read interface (#72, #149)", () => {
       operating: parseUnits("400", 18),
       maintenance: 0n,
     });
-    expect(html).to.contain(
-      `Queued to pay, at most: <b class="num">${nzd(parseUnits("400", 18))}</b>`,
-    );
-    // The other fund has nothing queued.
-    expect(
-      html.match(/Queued to pay, at most: <b class="num">none<\/b>/g),
-    ).to.have.length(1);
+    const eta = view.proposals.find((p) => p.id === 2n)!.steps.find((s) => s.name === "Queued")!.date!;
+    const queued = html.split('id="h-queued"')[1].split('id="h-funds"')[0];
+    expect(queued).to.contain('<a href="#/proposal/2"');
+    expect(queued).to.contain("Roof repair");
+    expect(queued).to.contain("Harbour Lifts Ltd");
+    expect(queued).to.contain(`Payment possible from ${date(eta)}`);
   });
 
   it("lists what needs the viewer's vote, each with the date voting closes", async () => {
@@ -727,44 +753,50 @@ describe("Read interface (#72, #149)", () => {
 
     // Carol's unit has not voted on proposal 2; alice's both have.
     let { view, html } = await render(signers.carol.address);
+    const vote = (page: string) => page.split('id="h-vote"')[1].split('id="h-levies"')[0];
     expect(view.proposals.find((p) => p.id === 2n)?.closes).to.equal(closes);
-    expect(html).to.contain(`Voting closes ${date(closes)}.`);
-    expect(html).to.contain('<span class="muted-text">1 proposal</span>');
+    expect(vote(html)).to.contain(`Closes ${date(closes)}`);
     // Home links to the proposal and offers no action (interface.md §4).
-    expect(html).to.contain('<a href="#/proposal/2">Roof repair</a>');
+    expect(vote(html)).to.contain('<a href="#/proposal/2"');
+    expect(vote(html)).to.contain("Roof repair");
+    expect(vote(html)).to.contain('data-tone="info">Open</span>');
+    expect(vote(html)).to.not.contain("Quorum waived");
     expect(html).to.not.contain("<form");
     ({ html } = await render(signers.alice.address));
-    expect(html).to.contain('<span class="muted-text">0 proposals</span>');
-    expect(html).to.contain("Nothing needs your vote.");
+    expect(vote(html)).to.contain("No proposals are open for voting.");
 
-    // One wallet voted, so no quorum: voting extends by seven days.
+    // One wallet voted, so no quorum: voting extends by seven days, and the
+    // waiver stays in sight.
     await advance(ethers, window);
     ({ view, html } = await render(signers.carol.address));
     const extended = closes + 7n * 86_400n;
     expect(view.proposals.find((p) => p.id === 2n)?.closes).to.equal(extended);
-    expect(html).to.contain(`Voting closes ${date(extended)}.`);
+    expect(vote(html)).to.contain(`Closes ${date(extended)}`);
+    expect(vote(html)).to.contain('data-tone="wait">Extended</span>');
+    expect(vote(html)).to.contain("Quorum waived. One owner&#x27;s vote can decide.");
   });
 
-  it("shows the viewer's own units and the Guarantees line on Home", async () => {
+  it("Home names each of the viewer's units in arrears and the next charge, with a Rules button on each card that has rules", async () => {
     const { signers, render } = await setUp();
-    const { html } = await render(signers.alice.address);
-    expect(html).to.contain('<h2 id="h-units">Your levies</h2>');
-    expect(html).to.match(
-      /Unit 1<\/h3><span class="status" data-tone="ok">current/,
-    );
-    expect(html).to.match(
-      /Unit 2<\/h3><span class="status" data-tone="late">in arrears/,
-    );
-    expect(html).to.contain("Charge #1 · was due");
+    const { view, html } = await render(signers.alice.address);
+    const levies = html.split('id="h-levies"')[1].split('id="h-queued"')[0];
+    // Unit 2 owes charge #1; unit 1 is current and is not named.
+    expect(levies).to.contain("Unit 2 is in arrears");
+    expect(levies).to.contain("Charge #1 was not covered when it was collected. Pay it to clear the arrear.");
+    expect(levies).to.not.contain("Unit 1 is in arrears");
+    // The approval and the wallet balance wait on interface.md §3's [OPEN].
+    expect(levies).to.not.contain("Direct debit approved for");
+    expect(levies).to.not.contain("Wallet balance");
+    const next = view.ownUnits.flatMap((u) => u.charges).find((c) => !c.overdue)!;
+    expect(levies).to.contain(`${nzd(next.amount)} on ${date(next.dueDate)}`);
+    expect(levies).to.contain('<a href="#/units"');
+    // Needs your vote and Your levies have rules; the other two cards do not.
+    expect(html.match(/aria-haspopup="dialog"[^>]*>[\s\S]*?<\/svg>Rules<\/button>/g)).to.have.length(2);
     expect(html).to.not.contain("Unit 3");
-    expect(html).to.contain("The contract protects the money:");
-    for (const g of [
-      "Approved proposal",
-      "Approved vendor",
-      "Within the cap",
-      "Right fund",
-    ]) {
-      expect(html).to.contain(`<summary>${g}</summary>`);
+    // The guarantees are on Building now.
+    const building = (await render(signers.alice.address, "#/building")).html;
+    for (const g of ["Approved proposal", "Approved vendor", "Within the cap", "Right fund"]) {
+      expect(building).to.contain(`<summary>${g}</summary>`);
     }
   });
 
@@ -784,13 +816,7 @@ describe("Read interface (#72, #149)", () => {
     );
   });
 
-  it("Home leaves Your levies out when the viewer holds no unit", async () => {
-    const { signers, render } = await setUp();
-    const { html } = await render(signers.stranger.address);
-    expect(html).to.not.contain("Your levies");
-  });
-
-  it("FR40: a queued long-term maintenance proposal is on that fund's card and not Operating's", async () => {
+  it("FR40: a queued long-term maintenance proposal counts against that fund and not Operating", async () => {
     const { ethers, contracts, signers, render } = await setUp();
     const { governance } = contracts;
     // Proposal 3 pays the admitted vendor from long-term maintenance (fund 1).
@@ -808,19 +834,11 @@ describe("Read interface (#72, #149)", () => {
     }
     await advance(ethers, await governance.VOTING_PERIOD());
     await governance.connect(signers.stranger).queue(3);
-    const { view, html } = await render(signers.carol.address);
+    const { view } = await render(signers.carol.address);
     expect(view.queued).to.deep.equal({
       operating: 0n,
       maintenance: parseUnits("900", 18),
     });
-    const cards = html.split('<section class="card fund"').slice(1);
-    expect(cards).to.have.length(2);
-    expect(cards[0]).to.contain("Operating");
-    expect(cards[0]).to.contain('Queued to pay, at most: <b class="num">none');
-    expect(cards[1]).to.contain("Long-term maintenance");
-    expect(cards[1]).to.contain(
-      `Queued to pay, at most: <b class="num">${nzd(parseUnits("900", 18))}</b>`,
-    );
   });
 
   describe("Proposal screen (#152)", () => {
@@ -1308,7 +1326,11 @@ describe("Read interface (#72, #149)", () => {
       ]) {
         const { view, html } = await render(viewer?.address, "#/activity");
         const own = new Set(view.ownUnits.map((u) => u.unitId));
-        const levy = eventRows(html).filter((r) => r.kind in anonymous);
+        // A wallet with no unit, and no wallet, see no Activity (ADR-021);
+        // the sentences are still checked where they are built.
+        const page = own.size > 0;
+        expect(eventRows(html).length > 0, String(viewer?.address)).to.equal(page);
+        const levy = view.activity.filter((r) => r.kind in anonymous);
         expect(levy).to.have.length(10);
         let named = 0;
         for (const r of levy) {
@@ -1332,6 +1354,7 @@ describe("Read interface (#72, #149)", () => {
         // which the viewer's own charges and the Deposited rows legitimately
         // show. A due date is asserted only where no own charge and no row's
         // block time shares it.
+        if (!page) continue;
         const legitimate = new Set<string>(eventRows(html).map((r) => r.time));
         const dueOf = new Map<number, string>();
         for (let chargeId = 0; chargeId < unitOf.length; chargeId++) {
@@ -1373,24 +1396,57 @@ describe("Read interface (#72, #149)", () => {
     });
   });
 
-  it("puts every route inside the shell with one current link, and keeps the privacy line on Register", async () => {
+  it("ADR-021: each workspace has its own five-item navigation, one current link in each bar, and a route of the other workspace opens Home and says so", async () => {
     const { signers, render } = await setUp();
-    for (const [hash, heading, current] of ROUTES) {
-      const { html } = await render(signers.alice.address, hash);
-      expect(html, hash).to.match(/^<header class="shell-header">/);
-      expect(html, hash).to.contain('<main class="shell-main">');
-      expect(html, hash).to.contain(`<h1>${heading}</h1>`);
-      const marked = [
-        ...html.matchAll(/<a [^>]*aria-current="page"[^>]*>([^<]*)</g),
-      ];
-      expect(
-        marked.map(([, label]) => label),
-        hash,
-      ).to.deep.equal([current]);
+    for (const [workspace, viewer] of [["owner", signers.alice.address], ["firm", signers.firm.address]] as const) {
+      for (const [hash, heading, current] of ROUTES[workspace]) {
+        const { html } = await render(viewer, hash);
+        const at = `${workspace} ${hash}`;
+        expect(html, at).to.match(/^<div data-slot="sidebar-wrapper"/);
+        expect(html, at).to.contain(`<h1>${heading}</h1>`);
+        // The Sidebar and the BottomBar: the same five items, one current.
+        const bars = navs(html);
+        expect(bars, at).to.have.length(2);
+        for (const bar of bars) {
+          expect(bar.map((l) => l.label), at).to.deep.equal(NAV_LABELS[workspace]);
+          expect(bar.filter((l) => l.current).map((l) => l.label), at).to.deep.equal([current]);
+        }
+        // Only a route of the other workspace says so; an unknown one does not.
+        expect(html.includes(ELSEWHERE), at).to.equal(at === "owner #/collect" || at === "firm #/units");
+      }
     }
-    expect((await render(signers.alice.address, "#/register")).html).to.contain(
-      PRIVACY_LINE,
+    expect((await render(signers.alice.address, "#/building")).html).to.contain(PRIVACY_LINE);
+  });
+
+  it("ADR-021: a firm's address that holds a unit is offered no vote", async () => {
+    const { signers, render } = await setUp();
+    // Carol's unit has not voted on proposal 2, so as an owner she is offered
+    // the vote; named as the firm in the deployment file, she is not.
+    const { view, html } = await render(signers.carol.address, "#/proposal/2");
+    expect(view.proposals.find((p) => p.id === 2n)!.canVote).to.equal(true);
+    expect(html).to.contain('<form class="vote" data-proposal="2">');
+    const asFirm = renderToStaticMarkup(
+      createElement(App, { hash: "#/proposal/2", view, firm: signers.carol.address, onVote() {} }),
     );
+    expect(asFirm).to.contain("Management firm");
+    expect(asFirm).to.not.contain("<form");
+  });
+
+  it("ADR-021: an owner's markup holds none of the firm's navigation or actions, the firm's none of an owner's, and an address with no unit sees no building data", async () => {
+    const { signers, render } = await setUp();
+    const firmOnly = ["Collect levies", "Vendors", "Propose work", "Propose a vendor", "Confirm work", "Management firm", 'href="#/collect"', 'href="#/vendors"', 'href="#/propose"'];
+    const ownerOnly = ["Your units", "Building", "Your levies", 'href="#/units"', 'href="#/building"', '<form class="vote"'];
+    for (const hash of [...ROUTES.owner, ...ROUTES.firm].map(([h]) => h)) {
+      const owner = (await render(signers.alice.address, hash)).html;
+      for (const t of firmOnly) expect(owner, `owner ${hash}: ${t}`).to.not.contain(t);
+      const firm = (await render(signers.firm.address, hash)).html;
+      for (const t of ownerOnly) expect(firm, `firm ${hash}: ${t}`).to.not.contain(t);
+      for (const nobody of [signers.stranger.address, undefined]) {
+        const html = (await render(nobody, hash)).html;
+        expect(html, `${nobody} ${hash}`).to.not.contain('aria-label="Workspace"');
+        expect(html, `${nobody} ${hash}`).to.not.match(/NZD|Unit \d|Proposal #|Roof repair/);
+      }
+    }
   });
 
   it("FR41: holds no key, and its ABI has no view or pure function", async () => {
@@ -1507,9 +1563,7 @@ describe("Read interface (#72, #149)", () => {
       expect(html, hash).to.contain(
         '<h3 class="card-title">Connect your wallet to vote or pay</h3>',
       );
-      expect(html, hash).to.contain(
-        '<span class="wallet-slot"><button class="btn" type="button">Connect wallet</button></span>',
-      );
+      expect(html.match(/>Connect wallet</g), hash).to.have.length(1);
     }
 
     // Connected, holding no unit.
@@ -1545,15 +1599,6 @@ describe("Read interface (#72, #149)", () => {
     expect(failed).to.not.contain('class="skeleton"');
     expect(failed).to.contain(
       '<main class="shell-main"><div class="alert" data-variant="destructive" role="alert"><p class="alert-title">The event log could not be read.</p><p class="alert-description">connection refused</p></div></main>',
-    );
-  });
-
-  it("points the Menu button at the Sheet only while the Sheet exists", () => {
-    const html = renderToStaticMarkup(createElement(App, { hash: "#/" }));
-    // Closed on first render, so the Sheet is not in the page.
-    expect(html).to.not.contain('id="sheet"');
-    expect(html).to.match(
-      /<button class="btn nav-toggle" data-variant="outline" type="button" aria-label="Open menu" aria-expanded="false">Menu<\/button>/,
     );
   });
 
