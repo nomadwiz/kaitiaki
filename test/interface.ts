@@ -352,6 +352,10 @@ describe("Read interface (#72, #149)", () => {
       view: any,
     ) {
       for (const p of view.proposals) {
+        // The state each check is made in is the contract's too.
+        expect(p.state, `proposal ${p.id} state`).to.equal(
+          STATES[Number(await governance.state(p.id))],
+        );
         const stored = await governance.proposal(p.id);
         const tally = await governance.tallyOf(p.id);
         const unitsVoted = tally.forVotes + tally.againstVotes;
@@ -424,12 +428,44 @@ describe("Read interface (#72, #149)", () => {
         "Queued",
         "Executed",
       ]);
-      // Proposal 3 got no vote: it extends, and quorum is still not met.
-      ({ view } = await render(signers.carol.address));
-      await expectQuorumMatches(ethers, governance, view);
-      expect(view.proposals.find((x) => x.id === 3n)!.state).to.equal(
-        STATES[Number(await governance.state(3))],
-      );
+      const byId = async (id: bigint) => {
+        const { view } = await render(signers.carol.address);
+        await expectQuorumMatches(ethers, governance, view);
+        return view.proposals.find((x) => x.id === id)!;
+      };
+      // Proposal 3 got no vote and its window and extension have passed: it
+      // failed with quorum unmet.
+      let q = await byId(3n);
+      expect(q.state).to.equal("Failed");
+      expect(await governance.quorumReached(3)).to.equal(false);
+      // Proposal 4 is voted down by three wallets: quorum met, and Failed.
+      // Proposal 5 gets no vote, so it extends.
+      const propose = (name: string, hash: string) =>
+        governance
+          .connect(signers.firm)
+          .getFunction("propose(string,uint256,uint8,address,bytes32)")(
+          name,
+          parseUnits("100", 18),
+          0,
+          signers.vendor.address,
+          zeroPadValue(hash, 32),
+        );
+      await propose("Repaint the car park", "0x06");
+      await propose("Mow the lawn", "0x07");
+      for (const owner of [signers.alice, signers.bob, signers.carol]) {
+        await governance.connect(owner).castVote(4, false);
+      }
+      await advance(ethers, await governance.VOTING_PERIOD());
+      q = await byId(4n);
+      expect(q.state).to.equal("Failed");
+      expect(q.quorum).to.include({ unitsMet: true, votersMet: true });
+      expect(await governance.quorumReached(4)).to.equal(true);
+      q = await byId(5n);
+      expect(q.state).to.equal("Extended");
+      expect(q.quorum).to.include({ unitsMet: false, votersMet: false });
+      expect(await governance.quorumReached(5)).to.equal(false);
+      await advance(ethers, await governance.EXTENSION());
+      expect((await byId(5n)).state).to.equal("Failed");
     });
 
     it("draws the timeline from stateAt and block times, and waives quorum in the extension", async () => {
@@ -485,8 +521,11 @@ describe("Read interface (#72, #149)", () => {
           "&#x27;",
         ),
       );
-      // The meter is replaced by the notice.
-      expect(html).to.not.contain('class="quorum"');
+      // The meter is replaced by the design system's waived notice.
+      expect(html).to.not.contain("quorum-row");
+      expect(html).to.contain(
+        '<p class="quorum-waived"><b>Quorum waived.</b> Too few owners voted in the first 14 days, so voting was extended 7 days and quorum no longer applies. One owner’s vote can decide. This is deliberate and lawful.</p>',
+      );
 
       await advance(ethers, extension);
       ({ html } = await render(signers.carol.address, "#/proposal/2"));
@@ -858,38 +897,14 @@ describe("Transactions (#150)", () => {
   // Each error the design names, arguments to encode, and its message
   // (RefusalNotice's table and interface.md §3's additions).
   const MESSAGES: [string, unknown[], string][] = [
-    [
-      "NotBoundOwner",
-      [who],
-      "This wallet holds no unit in this building, so it cannot vote.",
-    ],
-    [
-      "AlreadyVoted",
-      [2, who],
-      "Your units have already voted on this proposal.",
-    ],
+    ["NotBoundOwner", [who], "This wallet holds no unit in this building, so it cannot vote."],
+    ["AlreadyVoted", [2, who], "Your units have already voted on this proposal."],
     ["VotingClosed", [2], "Voting on this proposal has closed."],
     ["NotReady", [2, when], "The 7-day wait ends on 14 Oct 2026."],
-    [
-      "NotAttested",
-      [2],
-      "Payment waits for the firm to confirm the work is done.",
-    ],
-    [
-      "PayeeNotRegistered",
-      [who],
-      "This vendor has not been approved by owners.",
-    ],
-    [
-      "ChargeNotDue",
-      [1, when],
-      "This charge cannot be issued before 14 Oct 2026.",
-    ],
-    [
-      "NotFirm",
-      [who],
-      "Only the management firm’s wallet can propose or confirm work.",
-    ],
+    ["NotAttested", [2], "Payment waits for the firm to confirm the work is done."],
+    ["PayeeNotRegistered", [who], "This vendor has not been approved by owners."],
+    ["ChargeNotDue", [1, when], "This charge cannot be issued before 14 Oct 2026."],
+    ["NotFirm", [who], "Only the management firm’s wallet can propose or confirm work."],
     ["AlreadyAttested", [2], "The firm has already confirmed this work."],
     ["EvidenceHashIsZero", [], "Add the evidence hash before confirming."],
     ["NotPassed", [2, 0], "Only a proposal that passed can be queued."],
@@ -900,32 +915,12 @@ describe("Transactions (#150)", () => {
     ["ChargeAlreadyIssued", [1], "This charge has already been issued."],
     ["ChargeAlreadyPaid", [1], "This charge has already been paid."],
     // amount, alreadyReleased and limit differ, so the wrong one shows.
-    [
-      "AmountExceedsLimit",
-      [2, 600n * UNIT, 100n * UNIT, 500n * UNIT],
-      "This payment would go over the proposal’s cap of NZD 500.00.",
-    ],
+    ["AmountExceedsLimit", [2, 600n * UNIT, 100n * UNIT, 500n * UNIT], "This payment would go over the proposal’s cap of NZD 500.00."],
     ["VendorNameIsEmpty", [], "Add the vendor's name before proposing."],
-    [
-      "CompanyIdIsEmpty",
-      [],
-      "Add the vendor's company identifier before proposing.",
-    ],
-    [
-      "NotWorkProposal",
-      [2],
-      "Only a work proposal needs the firm to confirm the work.",
-    ],
-    [
-      "ERC20InsufficientBalance",
-      [who, 0, 1],
-      "This wallet does not hold enough NZD to pay this charge.",
-    ],
-    [
-      "ERC20InsufficientAllowance",
-      [who, 0, 1],
-      "The levy ledger was not approved to take this payment. Approve it in your wallet, then pay.",
-    ],
+    ["CompanyIdIsEmpty", [], "Add the vendor's company identifier before proposing."],
+    ["NotWorkProposal", [2], "Only a work proposal needs the firm to confirm the work."],
+    ["ERC20InsufficientBalance", [who, 0, 1], "This wallet does not hold enough NZD to pay this charge."],
+    ["ERC20InsufficientAllowance", [who, 0, 1], "The levy ledger was not approved to take this payment. Approve it in your wallet, then pay."],
   ];
 
   it("knows every custom error of the six contracts and MockNZD", async () => {
@@ -949,9 +944,7 @@ describe("Transactions (#150)", () => {
 
   it("decodes each named error to its RefusalNotice message", () => {
     for (const [name, args, message] of MESSAGES) {
-      expect(
-        refusal({ data: ABI.encodeErrorResult(name, args) }),
-      ).to.deep.equal({
+      expect(refusal({ data: ABI.encodeErrorResult(name, args) })).to.deep.equal({
         name,
         message,
       });
@@ -970,10 +963,7 @@ describe("Transactions (#150)", () => {
   it("never throws on revert data it cannot decode", () => {
     // ethers gives an empty revert, `revert()` or a bare `require`, as "0x".
     for (const data of ["0x", "0x1234", ABI.getError("NotReady")!.selector]) {
-      expect(
-        refusal({ data, shortMessage: "execution reverted" }),
-        data,
-      ).to.deep.equal({
+      expect(refusal({ data, shortMessage: "execution reverted" }), data).to.deep.equal({
         message: "execution reverted",
       });
     }
@@ -1015,8 +1005,7 @@ describe("Transactions (#150)", () => {
         setSigning: (v?: string) => (state.signing = v),
         setToast: (v?: object) => (state.toast = v),
         setNotice: (v?: object) => (state.notice = v),
-        reload: async () =>
-          void (state.reloads = (state.reloads as number) + 1),
+        reload: async () => void (state.reloads = (state.reloads as number) + 1),
       };
       const sign = (wait: () => Promise<unknown>) => async () => {
         seen.signing = { ...state };
@@ -1032,11 +1021,7 @@ describe("Transactions (#150)", () => {
 
     it("shows the Dialog only while the wallet signs, then the Toast, then reads the log again", async () => {
       const { state, seen, ui, sign } = page(true);
-      await send(
-        VOTE,
-        sign(async () => {}),
-        ui,
-      );
+      await send(VOTE, sign(async () => {}), ui);
       // The last transaction's Toast and notice go as the Dialog opens.
       expect(seen.signing).to.include({
         signing: VOTE.signing,
@@ -1074,11 +1059,7 @@ describe("Transactions (#150)", () => {
 
     it("opens no Dialog when the local node signs, because no wallet asks anything", async () => {
       const { state, seen, ui, sign } = page(false);
-      await send(
-        VOTE,
-        sign(async () => {}),
-        ui,
-      );
+      await send(VOTE, sign(async () => {}), ui);
       expect(seen.signing).to.include({ signing: undefined });
       expect(state).to.include({ toast: VOTE.done, reloads: 1 });
     });
@@ -1095,7 +1076,8 @@ describe("Transactions (#150)", () => {
     const error = await governance.castVote(2, true).catch((e: unknown) => e);
     expect(refusal(error)).to.deep.equal({
       name: "NotBoundOwner",
-      message: "This wallet holds no unit in this building, so it cannot vote.",
+      message:
+        "This wallet holds no unit in this building, so it cannot vote.",
     });
   });
 });

@@ -10,6 +10,7 @@
 import {
   arrearsAt,
   closesAt,
+  extended,
   stateAt,
   type ProposalState,
   type QuorumParts,
@@ -227,12 +228,9 @@ export function buildView(
     const open = state === "Open" || state === "Extended";
     const quorum = derived.quorumParts.get(p.proposalId)!;
     const proposal = derived.proposals.get(p.proposalId)!;
-    // Voting extends when quorum was missed at the window's close, or a vote
-    // came after it.
     const waived =
       state === "Extended" ||
-      (state !== "Open" &&
-        (proposal.votedInExtension || !derived.quorum.get(p.proposalId)));
+      (state !== "Open" && extended(derived, p.proposalId));
     return {
       id: p.proposalId,
       kind: p.kind === WORK ? "Work" : "Admit",

@@ -351,6 +351,18 @@ export function arrearsAt(
   );
 }
 
+// Whether voting extends past its window: quorum was missed at the window's
+// close, or a vote came after it. Meaningful once the window has closed.
+export function extended(
+  derived: Awaited<ReturnType<typeof replay>>,
+  proposalId: bigint,
+) {
+  return (
+    derived.proposals.get(proposalId)!.votedInExtension ||
+    !derived.quorum.get(proposalId)
+  );
+}
+
 // FR20, #138: where a proposal stands at `timestamp`, decided as
 // Governance.state decides it, from the replayed log and block times alone.
 // A state moves with time even when no log does, so `timestamp` is an
@@ -367,8 +379,8 @@ export function stateAt(
   if (timestamp < windowEnd) return "Open";
   // No vote can be cast between the window closing and the first vote in
   // the extension, so until then the tally is the tally at close.
-  const extended = p.votedInExtension || !derived.quorum.get(proposalId);
-  if (extended && timestamp < windowEnd + EXTENSION) return "Extended";
+  if (extended(derived, proposalId) && timestamp < windowEnd + EXTENSION)
+    return "Extended";
   const tally = derived.tallies.get(proposalId);
   if ((tally?.forVotes ?? 0n) <= (tally?.againstVotes ?? 0n)) return "Failed";
   // The Timelock's operation has run once its effect is in the log.

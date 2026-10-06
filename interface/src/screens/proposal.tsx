@@ -41,7 +41,7 @@ function Row({
   unit: string;
   met: boolean;
 }) {
-  const share = Math.min(100, (Number(count) * 100) / Number(of));
+  const share = of ? Math.min(100, (Number(count) * 100) / Number(of)) : 0;
   return (
     <div className="quorum-row">
       <div className="quorum-head">
@@ -92,10 +92,11 @@ function Vote({ proposal: p }: { proposal: ProposalView }) {
         </p>
       </div>
       {p.waived ? (
-        <div className="alert">
-          <p className="alert-title">Quorum is waived.</p>
-          <p className="alert-description">
-            Voting was extended by 7 days. One owner’s vote can decide.
+        <div className="quorum">
+          <p className="quorum-waived">
+            <b>Quorum waived.</b> Too few owners voted in the first 14 days, so
+            voting was extended 7 days and quorum no longer applies. One owner’s
+            vote can decide. This is deliberate and lawful.
           </p>
         </div>
       ) : (

@@ -228,50 +228,46 @@ export function Home({
               <h2 id="h-units">Your levies</h2>
               <a href="#/units">Your units</a>
             </div>
-            {
-              <div className="card">
-                <div
-                  className="card-content stack"
-                  style={{ paddingTop: "var(--space-6)" }}
-                >
-                  {ownUnits.map((u, i) => (
-                    <Fragment key={String(u.unitId)}>
-                      {i > 0 && <hr className="separator" />}
-                      <div className="own-unit">
-                        <div className="row">
-                          <h3 className="card-title">
-                            Unit {String(u.unitId)}
-                          </h3>
-                          <span
-                            className="status"
-                            data-tone={u.status === "current" ? "ok" : "late"}
-                          >
-                            {u.status}
-                          </span>
-                        </div>
-                        {u.overdue.length === 0 && (
-                          <p className="muted-text">No overdue charges.</p>
-                        )}
-                        {u.overdue.map((c) => (
-                          <div key={String(c.chargeId)} className="charge">
-                            <div>
-                              <p className="charge-amount">{nzd(c.amount)}</p>
-                              <p
-                                className="field-hint"
-                                style={{ color: "var(--foreground)" }}
-                              >
-                                Charge #{String(c.chargeId)} · was due{" "}
-                                {date(c.dueDate)}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
+            <div className="card">
+              <div
+                className="card-content stack"
+                style={{ paddingTop: "var(--space-6)" }}
+              >
+                {ownUnits.map((u, i) => (
+                  <Fragment key={String(u.unitId)}>
+                    {i > 0 && <hr className="separator" />}
+                    <div className="own-unit">
+                      <div className="row">
+                        <h3 className="card-title">Unit {String(u.unitId)}</h3>
+                        <span
+                          className="status"
+                          data-tone={u.status === "current" ? "ok" : "late"}
+                        >
+                          {u.status}
+                        </span>
                       </div>
-                    </Fragment>
-                  ))}
-                </div>
+                      {u.overdue.length === 0 && (
+                        <p className="muted-text">No overdue charges.</p>
+                      )}
+                      {u.overdue.map((c) => (
+                        <div key={String(c.chargeId)} className="charge">
+                          <div>
+                            <p className="charge-amount">{nzd(c.amount)}</p>
+                            <p
+                              className="field-hint"
+                              style={{ color: "var(--foreground)" }}
+                            >
+                              Charge #{String(c.chargeId)} · was due{" "}
+                              {date(c.dueDate)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </Fragment>
+                ))}
               </div>
-            }
+            </div>
           </section>
         )}
       </div>
