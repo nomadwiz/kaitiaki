@@ -10,6 +10,10 @@ interface IMembershipQuery {
     /// @notice Whether `wallet` is the bound owner of `unitId`.
     function isOwner(uint256 unitId, address wallet) external view returns (bool);
 
+    /// @notice The wallet bound to `unitId`, or the zero address if unbound.
+    /// LevyLedger collects a due charge from this wallet (ADR-020).
+    function ownerOf(uint256 unitId) external view returns (address);
+
     /// @notice The unit ids currently bound to `wallet`.
     function unitsOf(address wallet) external view returns (uint256[] memory);
 

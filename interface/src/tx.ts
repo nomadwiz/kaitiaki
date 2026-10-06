@@ -5,7 +5,7 @@
 // `pure` fragment: the interface cannot read storage through an ABI that has
 // none. Signatures are copied from the compiled contracts; test/interface.ts
 // fails if one drifts or a contract gains an error missing here.
-import { Interface, isError } from "ethers";
+import { Interface, MaxUint256, isError, type Provider } from "ethers";
 
 import { date, nzd } from "./format.js";
 import type { Done, Notice } from "./states.js";
@@ -16,7 +16,6 @@ export const ABI = new Interface([
   "function approve(address spender, uint256 value) returns (bool)",
   "function payLevy(uint256 chargeId)",
   // Anyone's actions: each waits for its date, and any wallet may call it
-  "function issueCharges(uint256[] chargeIds)",
   "function queue(uint256 proposalId) returns (uint256 eta)",
   "function execute(uint256 proposalId)",
   // The firm's: propose work, propose a vendor (the overload, ADR-018), and
@@ -24,6 +23,8 @@ export const ABI = new Interface([
   "function propose(string description, uint256 limit, uint8 fund, address vendor, bytes32 quoteHash) returns (uint256 proposalId)",
   "function propose(address vendor, string name, string companyId) returns (uint256 proposalId)",
   "function attest(uint256 proposalId, bytes32 evidenceHash)",
+  // The firm collects due levies from owners' wallets (ADR-020)
+  "function collect(uint256[] chargeIds)",
   // Treasury, and the OpenZeppelin AccessControl it inherits
   "error AccessControlBadConfirmation()",
   "error AccessControlUnauthorizedAccount(address account, bytes32 neededRole)",
@@ -70,8 +71,8 @@ export const ABI = new Interface([
   "error NotAdapter(address caller)",
   "error UnitAlreadyBound(uint256 unitId, address boundTo)",
   "error WalletIsZero()",
-  // LevyLedger; TreasuryIsZero is Governance's too
-  "error ChargeAlreadyIssued(uint256 chargeId)",
+  // LevyLedger; TreasuryIsZero, MembershipRegistryIsZero, FirmIsZero and
+  // NotFirm are Governance's too
   "error ChargeAlreadyPaid(uint256 chargeId)",
   "error ChargeNotDue(uint256 chargeId, uint256 dueDate)",
   "error LevyTransferFailed(address payer, uint256 amount)",
@@ -112,9 +113,8 @@ const MESSAGES: Record<string, (args: bigint[]) => string> = {
   NotAttested: () => "Payment waits for the firm to confirm the work is done.",
   PayeeNotRegistered: () => "This vendor has not been approved by owners.",
   ChargeNotDue: ([, dueDate]) =>
-    `This charge cannot be issued before ${date(dueDate)}.`,
-  NotFirm: () =>
-    "Only the management firm’s wallet can propose or confirm work.",
+    `This charge cannot be collected before ${date(dueDate)}.`,
+  NotFirm: () => "Only the management firm’s wallet can do this.",
   AlreadyAttested: () => "The firm has already confirmed this work.",
   EvidenceHashIsZero: () => "Add the evidence hash before confirming.",
   NotPassed: () => "Only a proposal that passed can be queued.",
@@ -122,7 +122,6 @@ const MESSAGES: Record<string, (args: bigint[]) => string> = {
   NotQueued: () => "This proposal is not queued for payment.",
   AlreadyExecuted: () => "This proposal has already been carried out.",
   UnknownProposal: () => "There is no proposal with that number.",
-  ChargeAlreadyIssued: () => "This charge has already been issued.",
   ChargeAlreadyPaid: () => "This charge has already been paid.",
   // The cap is the fourth argument, `limit`, not the amount asked for.
   AmountExceedsLimit: ([, , , limit]) =>
@@ -149,12 +148,62 @@ export const payment = (unitId: bigint, chargeId: bigint, amount: bigint) => ({
   refused: "Your payment was not made",
 });
 
-// The same for Anyone's actions, which take one signature each.
-export const issue = (chargeId: bigint) => ({
-  signing: `issuing Charge #${chargeId}`,
-  done: { title: "Charge issued", body: `Charge #${chargeId} is issued.` },
-  refused: "The charge was not issued",
+// The two events that decide how much the levy ledger may still take from
+// `owner`: the token's Approval sets it, and the ledger's LevyPaid spends it,
+// because the ledger moves an owner's NZD only by `transferFrom` in `_pay`.
+const ALLOWANCE = new Interface([
+  "event Approval(address indexed owner, address indexed spender, uint256 value)",
+  "event LevyPaid(uint256 indexed chargeId, uint256 indexed unitId, address indexed payer, uint256 amount)",
+]);
+
+/**
+ * The levy ledger's standing approval from `owner`, rebuilt from events alone
+ * (FR41): the last Approval to the ledger, less every LevyPaid after it that
+ * `owner` paid. OpenZeppelin's ERC-20 emits no Approval when an allowance is
+ * spent, so the payments are needed, and it never spends an unlimited one.
+ * Paying by hand approves this plus the charge, so a direct debit survives it.
+ */
+export async function standingApproval(
+  provider: Pick<Provider, "getLogs">,
+  token: string,
+  levyLedger: string,
+  owner: string,
+  fromBlock: number,
+) {
+  const [approvals, payments] = await Promise.all([
+    provider.getLogs({
+      address: token,
+      fromBlock,
+      topics: ALLOWANCE.encodeFilterTopics("Approval", [owner, levyLedger]),
+    }),
+    provider.getLogs({
+      address: levyLedger,
+      fromBlock,
+      topics: ALLOWANCE.encodeFilterTopics("LevyPaid", [null, null, owner]),
+    }),
+  ]);
+  let allowance = 0n;
+  for (const log of [...approvals, ...payments].sort(
+    (a, b) => a.blockNumber - b.blockNumber || a.index - b.index,
+  )) {
+    const { name, args } = ALLOWANCE.parseLog(log)!;
+    if (name === "Approval") allowance = args.value;
+    else if (allowance !== MaxUint256) allowance -= args.amount;
+  }
+  return allowance;
+}
+
+// Setting up direct debit: one approval, for every unpaid charge (ADR-020).
+export const directDebit = (total: bigint) => ({
+  signing: `approving the levy ledger to collect up to ${nzd(total)} from this wallet`,
+  done: {
+    title: "Direct debit set up",
+    body: `The firm can now collect up to ${nzd(total)} of your levies as they fall due.`,
+  },
+  refused: "Direct debit was not set up",
 });
+
+// The same for Anyone's actions, which take one signature each.
 export const queue = (proposalId: bigint) => ({
   signing: `queueing Proposal #${proposalId}`,
   done: {
@@ -196,6 +245,14 @@ export const confirmWork = (proposalId: bigint) => ({
     body: `The work on Proposal #${proposalId} is confirmed as done.`,
   },
   refused: "The work was not confirmed",
+});
+export const collectLevies = (count: number) => ({
+  signing: `collecting ${count} due levy charge${count === 1 ? "" : "s"} from owners' wallets`,
+  done: {
+    title: "Levies collected",
+    body: `${count} due charge${count === 1 ? "" : "s"} collected. Any an owner's wallet did not cover ${count === 1 ? "is" : "are"} recorded as owed.`,
+  },
+  refused: "The levies were not collected",
 });
 
 /**

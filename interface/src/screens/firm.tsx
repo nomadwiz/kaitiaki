@@ -1,5 +1,6 @@
-// Screen 6, Firm (`#/firm`, #157): propose work, propose a vendor, confirm
-// work done. Only the firm's wallet can (`Governance.onlyFirm`), so for every
+// Screen 6, Firm (`#/firm`, #157, #173): propose work, propose a vendor,
+// confirm work done, collect due levies. Only the firm's wallet can
+// (`NotFirm` in Governance and LevyLedger), so for every
 // other viewer the same forms are drawn disabled. Each form reads its fields
 // when submitted and holds only the hints for what failed; a malformed value
 // never reaches ethers. An empty name, identifier or description is left to
@@ -9,6 +10,7 @@ import { useState, type FormEvent, type ReactNode } from "react";
 
 import { date, nzd } from "../format.js";
 import { PageHead } from "../shell.js";
+import { Waiting } from "../states.js";
 import type { View } from "../view.js";
 import type { Acting } from "./actions.js";
 import { FUNDS } from "./home.js";
@@ -27,6 +29,7 @@ export type FirmActs = {
   onWork: (work: Work) => void;
   onVendor: (vendor: NewVendor) => void;
   onConfirm: (proposalId: bigint, evidenceHash: string) => void;
+  onCollect: (chargeIds: bigint[]) => void;
 };
 
 type Fields = Record<string, string>;
@@ -154,10 +157,7 @@ function Submit({
       aria-disabled={acting !== undefined || undefined}
     >
       {mine ? (
-        <>
-          <span className="spinner" aria-hidden="true"></span>
-          Waiting for your wallet…
-        </>
+        <Waiting />
       ) : (
         label
       )}
@@ -343,10 +343,7 @@ function ConfirmWork({
           aria-disabled={acting !== undefined || !work.due || undefined}
         >
           {acting?.action === "confirm" && acting.id === work.id ? (
-            <>
-              <span className="spinner" aria-hidden="true"></span>
-              Waiting for your wallet…
-            </>
+            <Waiting />
           ) : (
             "Confirm work is done"
           )}
@@ -429,15 +426,91 @@ function ProposeVendor({ act, acting }: { act?: FirmActs; acting?: Acting }) {
   );
 }
 
+// Every due, unpaid charge in one collection (ADR-020). Each is taken from
+// its owner's wallet if the owner approved the levy ledger and holds it;
+// otherwise it is recorded as owed. Listed without unit or amount.
+function CollectLevies({
+  charges,
+  act,
+  acting,
+}: {
+  charges: View["toCollect"];
+  act?: FirmActs;
+  acting?: Acting;
+}) {
+  const due = charges.filter((c) => c.due).map((c) => c.chargeId);
+  const busy = acting !== undefined;
+  return (
+    <section className="card">
+      <div className="card-header">
+        <h2 className="card-title">Collect due levies</h2>
+        <p className="card-description">
+          Takes each due levy from its owner’s wallet, if the owner has set up
+          direct debit and holds the amount. If not, the charge is recorded as
+          owed and the unit is in arrears after its due date. Charges are
+          listed without their unit.
+        </p>
+      </div>
+      <div className="card-content stack" style={{ overflowX: "auto" }}>
+        {charges.length === 0 ? (
+          <p className="muted-text">No charge is waiting to be collected.</p>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Charge</th>
+                <th>Due</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {charges.map((c) => (
+                <tr key={String(c.chargeId)}>
+                  <td>Charge #{String(c.chargeId)}</td>
+                  <td>{date(c.dueDate)}</td>
+                  <td className="muted-text">
+                    {c.attempted
+                      ? "Not covered when last collected"
+                      : c.due
+                        ? "Due"
+                        : `Available from ${date(c.dueDate)}`}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        {due.length > 0 && (
+          <button
+            className="btn"
+            type="button"
+            disabled={!act}
+            aria-disabled={busy || undefined}
+            onClick={act && !busy ? () => act.onCollect(due) : undefined}
+          >
+            {acting?.action === "collect" ? (
+              <Waiting />
+            ) : (
+              `Collect ${due.length} due charge${due.length === 1 ? "" : "s"}`
+            )}
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
+
 export function Firm({
   vendors,
   toConfirm,
+  toCollect,
   act,
   acting,
   fresh = { work: 0, vendor: 0 },
 }: {
   vendors: View["vendors"];
   toConfirm: View["toConfirm"];
+  toCollect: View["toCollect"];
   act?: FirmActs;
   acting?: Acting;
   // A new number empties that form: a new key mounts it afresh.
@@ -450,11 +523,13 @@ export function Firm({
       </PageHead>
       <div className="alert">
         <p className="alert-title">
-          You can propose and confirm. You cannot move money.
+          You can propose, confirm and collect levies. You cannot move money
+          out.
         </p>
         <p className="alert-description">
           Owners decide every proposal. Payment releases only through the
-          contract. Other wallets see this page read-only.
+          contract, and a collected levy goes only to the treasury. Other
+          wallets see this page read-only.
         </p>
       </div>
       <div className="grid-2">
@@ -482,6 +557,7 @@ export function Firm({
           <ProposeVendor key={fresh.vendor} act={act} acting={acting} />
         </div>
       </div>
+      <CollectLevies charges={toCollect} act={act} acting={acting} />
     </>
   );
 }

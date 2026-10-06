@@ -106,8 +106,9 @@ export async function replay(
   // ponytail: roles are Treasury's alone; key them by contract address once a
   // second replayed contract uses AccessControl.
   const roles = new Map<string, Set<string>>();
-  // Charges by id, created by ChargeScheduled. A charge may be paid before it
-  // is issued (ADR-016), so either of the other two events may come first.
+  // Charges by id, created by ChargeScheduled. A charge may be paid by hand
+  // before the firm collects it (ADR-016, ADR-020), so either of the other
+  // two events may come first, and a paid charge may never be issued.
   type Charge = {
     unitId: bigint;
     amount: bigint;

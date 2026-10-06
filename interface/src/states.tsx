@@ -4,6 +4,16 @@
 // RefusalNotice, Dialog and Toast.
 import { useEffect, useRef } from "react";
 
+// What a button shows while the viewer's wallet signs.
+export function Waiting() {
+  return (
+    <>
+      <span className="spinner" aria-hidden="true"></span>
+      Waiting for your wallet…
+    </>
+  );
+}
+
 export type Notice = {
   variant: "default" | "success" | "destructive";
   title: string;
@@ -46,8 +56,7 @@ export function SigningDialog({ signing }: { signing: string }) {
       </p>
       <div className="dialog-footer">
         <button className="btn" type="button" aria-disabled="true">
-          <span className="spinner" aria-hidden="true"></span>
-          Waiting for your wallet…
+          <Waiting />
         </button>
       </div>
     </dialog>

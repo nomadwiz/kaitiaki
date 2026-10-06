@@ -23,7 +23,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { App, type Wallet } from "../interface/src/app.js";
 import { checkEvidence, checkVendor, checkWork } from "../interface/src/screens/firm.js";
 import { date, nzd, short } from "../interface/src/format.js";
-import { ABI, approvedRefusal, carryOut, confirmWork, issue, payment, proposeVendor, proposeWork, refusal, send } from "../interface/src/tx.js";
+import { ABI, approvedRefusal, carryOut, collectLevies, confirmWork, payment, proposeVendor, proposeWork, refusal, send, standingApproval } from "../interface/src/tx.js";
 import { buildView } from "../interface/src/view.js";
 import { advance, deployBuilding } from "../scripts/building.js";
 import { replay } from "../scripts/replay.js";
@@ -164,7 +164,7 @@ describe("Read interface (#72, #149)", () => {
     // An overdue charge on Your units: its amount, then its number and due
     // date.
     const overdue =
-      /<p class="charge-amount">NZD 250\.00<\/p><p class="field-hint"[^>]*>Charge #1 · was due \d{1,2} [A-Z][a-z]{2} \d{4} · issued<\/p>/;
+      /<p class="charge-amount">NZD 250\.00<\/p><p class="field-hint"[^>]*>Charge #1 · was due \d{1,2} [A-Z][a-z]{2} \d{4} · not covered when the firm collected<\/p>/;
 
     // Alice's unit 2 is overdue: her own page gives the amount and due date.
     let { view, html } = await render(alice.address, "#/units");
@@ -182,7 +182,9 @@ describe("Read interface (#72, #149)", () => {
       { unitId: 3n, status: "current", charges: [] },
     ]);
 
-    // Alice pays. Her arrear stops being surfaced to her and to others.
+    // Alice pays by hand. Her arrear stops being surfaced to her and to
+    // others.
+    await contracts.token.connect(alice).approve(contracts.ledger.target, 250n * 10n ** 18n);
     await contracts.ledger.connect(alice).payLevy(1);
     ({ view, html } = await render(alice.address, "#/units"));
     expect(view.ownUnits[1]).to.deep.equal({
@@ -202,11 +204,12 @@ describe("Read interface (#72, #149)", () => {
     const unit = (view: Awaited<ReturnType<typeof buildView>>, id: bigint) =>
       view.ownUnits.find((u) => u.unitId === id)!;
 
-    it("lists every unpaid charge of the viewer's units, issued or only scheduled, and no one else's", async () => {
+    it("lists every unpaid charge of the viewer's units, collected or not yet, and no one else's", async () => {
       const { signers, render } = await setUp();
       const { view, html } = await render(signers.alice.address, "#/units");
-      // Unit 1 has a charge scheduled for later; unit 2's is issued and
-      // overdue. Unit 1's charge 0 was paid before issue, so it is gone.
+      // Unit 1 has a charge scheduled for later; unit 2's collection was not
+      // covered, and it is overdue. Unit 1's charge 0 was paid by hand before
+      // its due date, so it is gone.
       expect(unit(view, 1n).charges).to.deep.equal([
         {
           chargeId: 4n,
@@ -220,8 +223,8 @@ describe("Read interface (#72, #149)", () => {
         [1n, true, true],
       ]);
       expect(unit(view, 1n).status).to.equal("current");
-      expect(html).to.match(/Charge #4 · due \d{1,2} [A-Z][a-z]{2,3} \d{4} · scheduled/);
-      expect(html).to.match(/Charge #1 · was due \d{1,2} [A-Z][a-z]{2,3} \d{4} · issued/);
+      expect(html).to.match(/Charge #4 · due \d{1,2} [A-Z][a-z]{2,3} \d{4} · not yet collected/);
+      expect(html).to.match(/Charge #1 · was due \d{1,2} [A-Z][a-z]{2,3} \d{4} · not covered when the firm collected/);
       expect(html).to.contain('<button class="btn" type="button">Pay NZD 250.00</button>');
       // Carol's unit 4 is in arrears, and alice sees nothing but its status.
       expect(view.ownUnits.map((u) => u.unitId)).to.deep.equal([1n, 2n]);
@@ -293,11 +296,9 @@ describe("Read interface (#72, #149)", () => {
   });
 
   describe("Anyone's actions (#156)", () => {
-    const DAY = 24n * 60n * 60n;
-    const ISSUE = '<button class="btn" data-size="sm" type="button">Issue charge</button>';
     const QUEUE = '<button class="btn" data-size="sm" type="button">Queue</button>';
     const CARRY = '<button class="btn" data-size="sm" type="button">Carry out</button>';
-    // The Issue card's rows, as text, and the card for carrying out.
+    // A card's content, by its title.
     const section = (html: string, title: string) =>
       html
         .split(`<h2 class="card-title">${title}</h2>`)[1]
@@ -305,10 +306,6 @@ describe("Read interface (#72, #149)", () => {
         .split('<div class="card-content')[1];
     const text = (html: string) =>
       html.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
-    const rows = (html: string) =>
-      [...html.matchAll(/<tr><td>([\s\S]*?)<\/tr>/g)].map(([, r]) =>
-        r.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim(),
-      );
 
     // A new vendor for the firm to propose, carried through the vote.
     async function admitPassed(s: Awaited<ReturnType<typeof setUp>>) {
@@ -322,47 +319,10 @@ describe("Read interface (#72, #149)", () => {
       await advance(s.ethers, await governance.VOTING_PERIOD());
     }
 
-    it("lists an unissued charge not yet due with its date and no button, and no unit anywhere in the row", async () => {
+    it("ADR-020: lists no levy charge, because collecting is the firm's", async () => {
       const { signers, render } = await setUp();
-      const { view, html } = await render(signers.alice.address, "#/actions");
-      expect(view.actions.charges.map((c) => [c.chargeId, c.due])).to.deep.equal([[4n, false]]);
-      const card = section(html, "Issue due charges");
-      expect(rows(card)).to.deep.equal([`Charge #4 ${date(view.actions.charges[0].dueDate)} Available from ${date(view.actions.charges[0].dueDate)}`]);
-      expect(card).to.not.contain("Issue charge");
-      expect(card).to.not.match(/Unit|unit/);
-      expect(html).to.contain("Charges are listed without their unit.");
-      // Nothing about the viewer changes it: anyone sees the same card.
-      expect(section((await render(undefined, "#/actions")).html, "Issue due charges")).to.equal(card);
-    });
-
-    it("offers Issue once the date has arrived, issueCharges succeeds, and the charge leaves the list", async () => {
-      const { ethers, signers, addresses, render } = await setUp();
-      await advance(ethers, 31n * DAY);
-      const { html } = await render(signers.stranger.address, "#/actions");
-      expect(section(html, "Issue due charges")).to.contain(ISSUE);
-      expect(section(html, "Issue due charges")).to.not.contain("Available from");
-      expect(section(html, "Issue due charges")).to.not.match(/Unit|unit \d/);
-      const ledger = new Contract(addresses.levyLedger, ABI, signers.stranger);
-      await (await ledger.issueCharges([4n])).wait();
-      const after = await render(signers.stranger.address, "#/actions");
-      expect(after.view.actions.charges).to.deep.equal([]);
-      expect(section(after.html, "Issue due charges")).to.contain("No charge is waiting to be issued.");
-    });
-
-    it("lists a charge paid before it was issued, which issueCharges still accepts", async () => {
-      const { ethers, signers, contracts, addresses, render } = await setUp();
-      await contracts.token.mint(signers.alice.address, 250n * 10n ** 18n);
-      const token = new Contract(String(contracts.token.target), ABI, signers.alice);
-      const ledger = new Contract(addresses.levyLedger, ABI, signers.alice);
-      await (await token.approve(addresses.levyLedger, 250n * 10n ** 18n)).wait();
-      await (await ledger.payLevy(4n)).wait();
-      await advance(ethers, 31n * DAY);
       const { html } = await render(signers.alice.address, "#/actions");
-      expect(section(html, "Issue due charges")).to.contain(ISSUE);
-      await (await ledger.issueCharges([4n])).wait();
-      const after = await render(signers.alice.address, "#/actions");
-      expect(after.view.actions.charges).to.deep.equal([]);
-      expect(section(after.html, "Issue due charges")).to.contain("No charge is waiting to be issued.");
+      expect(html).to.not.match(/Charge #|Issue|Collect/);
     });
 
     it("says an open proposal can be queued if it passes, with the day voting closes", async () => {
@@ -440,16 +400,18 @@ describe("Read interface (#72, #149)", () => {
     });
 
     it("offers no button to a wallet on the wrong chain, and shows the wait on the action being signed", async () => {
-      const { ethers, signers, render } = await setUp();
-      await advance(ethers, 31n * DAY);
+      const { ethers, signers, contracts, render } = await setUp();
+      await contracts.governance.connect(signers.bob).castVote(2, true);
+      await advance(ethers, await contracts.governance.VOTING_PERIOD());
       const { view } = await render(signers.stranger.address, "#/actions");
       const h = (props: object) =>
         renderToStaticMarkup(createElement(App, { hash: "#/actions", view, ...props }));
+      expect(h({ onAct: () => {} })).to.contain(QUEUE);
       const wrong = { kind: "browser", account: signers.stranger.address, chainId: 1n, deploymentChainId: 31337n } as const;
-      expect(h({ wallet: wrong, onAct: () => {} })).to.not.contain("Issue charge");
-      const busy = h({ onAct: () => {}, acting: { action: "issue", id: 4n } });
+      expect(h({ wallet: wrong, onAct: () => {} })).to.not.contain(QUEUE);
+      const busy = h({ onAct: () => {}, acting: { action: "queue", id: 2n } });
       expect(busy).to.contain("Waiting for your wallet…");
-      expect(busy).to.not.contain(ISSUE);
+      expect(busy).to.not.contain(QUEUE);
     });
   });
 
@@ -465,7 +427,7 @@ describe("Read interface (#72, #149)", () => {
       const html = renderToStaticMarkup(
         createElement(App, {
           hash: "#/firm", view, wallet, firm: s.signers.firm.address,
-          onFirm: { onWork() {}, onVendor() {}, onConfirm() {} },
+          onFirm: { onWork() {}, onVendor() {}, onConfirm() {}, onCollect() {} },
         }),
       );
       return { view, html };
@@ -482,23 +444,24 @@ describe("Read interface (#72, #149)", () => {
     it("FR16, FR17: enables the forms for the firm's wallet only, and states the firm's limits to everyone", async () => {
       const s = await setUp();
       const { firm, alice, stranger } = s.signers;
-      const limits = "You can propose and confirm. You cannot move money.";
+      const limits = "You can propose, confirm and collect levies. You cannot move money out.";
       const own = await firmPage(s, firm.address);
       expect(own.html).to.not.contain("disabled");
       expect(own.html).to.contain("Management firm");
       expect(text(own.html)).to.contain(limits);
       for (const viewer of [alice.address, stranger.address, undefined]) {
         const { html } = await firmPage(s, viewer);
-        // Every control is disabled, and the same limits stand.
+        // Every control is disabled, Collect included, and the same limits
+        // stand.
         expect(html.match(CONTROLS)!.length).to.equal(10);
-        expect(html.match(/disabled=""/g)!.length).to.equal(10);
+        expect(html.match(/disabled=""/g)!.length).to.equal(11);
         expect(text(html)).to.contain(limits);
         expect(html).to.not.contain("Management firm");
       }
       // No firm in the config and no viewer must not match each other.
       const { view } = await s.render(undefined, "#/firm");
-      const none = renderToStaticMarkup(createElement(App, { hash: "#/firm", view, onFirm: { onWork() {}, onVendor() {}, onConfirm() {} } }));
-      expect(none.match(/disabled=""/g)!.length).to.equal(10);
+      const none = renderToStaticMarkup(createElement(App, { hash: "#/firm", view, onFirm: { onWork() {}, onVendor() {}, onConfirm() {}, onCollect() {} } }));
+      expect(none.match(/disabled=""/g)!.length).to.equal(11);
       // The firm's wallet on another chain is offered nothing either.
       const wrong = { kind: "browser", account: firm.address, chainId: 1n, deploymentChainId: 31337n } as const;
       expect((await firmPage(s, firm.address, wrong)).html).to.contain('disabled=""');
@@ -512,6 +475,89 @@ describe("Read interface (#72, #149)", () => {
       const { html } = await firmPage(s, s.signers.firm.address);
       const select = html.split('id="f-ven"')[1].split("</select>")[0];
       expect([...select.matchAll(/<option value="(0x\w+)">([^<]*)<\/option>/g)].map(([, v, n]) => [v, n])).to.deep.equal([[s.signers.vendor.address, "Harbour Lifts Ltd"]]);
+    });
+
+    it("ADR-020: lists every unpaid charge without its unit or amount, and offers Collect for the due ones", async () => {
+      const s = await setUp();
+      const { view, html } = await firmPage(s, s.signers.firm.address);
+      // Charges 1 and 3 were collected and not covered; 4 is not yet due.
+      expect(view.toCollect.map((c) => [c.chargeId, c.due, c.attempted])).to.deep.equal([
+        [1n, true, true],
+        [3n, true, true],
+        [4n, false, false],
+      ]);
+      const card = html.split('<h2 class="card-title">Collect due levies</h2>')[1].split("</section>")[0];
+      expect(card).to.not.match(/Unit \d|NZD/);
+      expect(text(card)).to.contain("Charge #1");
+      expect(text(card)).to.contain("Not covered when last collected");
+      expect(text(card)).to.contain(`Available from ${date(view.toCollect[2].dueDate)}`);
+      expect(card).to.contain('<button class="btn" type="button">Collect 2 due charges</button>');
+    });
+
+    it("ADR-020: collect through tx.ts's ABI takes a direct-debited levy and leaves an uncovered one owed", async () => {
+      const s = await setUp();
+      const { firm, alice, carol } = s.signers;
+      await advance(s.ethers, 31n * DAY);
+      // Alice sets up direct debit for her two unpaid charges; carol does not.
+      await s.contracts.token.mint(alice.address, 250n * 10n ** 18n);
+      const token = new Contract(String(s.contracts.token.target), ABI, alice);
+      await (await token.approve(s.addresses.levyLedger, 500n * 10n ** 18n)).wait();
+      const ledger = new Contract(s.addresses.levyLedger, ABI, firm);
+      await (await ledger.collect([1n, 3n, 4n])).wait();
+
+      const own = await s.render(alice.address, "#/units");
+      expect(own.view.ownUnits.map((u) => [u.unitId, u.status, u.charges.length])).to.deep.equal([
+        [1n, "current", 0],
+        [2n, "current", 0],
+      ]);
+      const { view } = await firmPage(s, firm.address);
+      expect(view.toCollect.map((c) => [c.chargeId, c.attempted])).to.deep.equal([[3n, true]]);
+      expect((await s.render(carol.address, "#/units")).view.ownUnits[0].status).to.equal("in arrears");
+    });
+
+    it("ADR-020: paying one charge by hand leaves the direct debit standing for the rest, rebuilt from events alone", async () => {
+      const s = await setUp();
+      const { firm, alice } = s.signers;
+      const UNIT = 10n ** 18n;
+      const token = new Contract(String(s.contracts.token.target), ABI, alice);
+      const ledger = new Contract(s.addresses.levyLedger, ABI, alice);
+      const standing = () =>
+        standingApproval(s.ethers.provider, String(s.contracts.token.target), s.addresses.levyLedger, alice.address, s.fromBlock);
+      // The events agree with the token's own count at every step.
+      const agrees = async () =>
+        expect(await standing()).to.equal(await s.contracts.token.allowance(alice.address, s.addresses.levyLedger));
+      await agrees();
+      // Alice sets up direct debit for charges 1 and 4, then pays charge 1 by
+      // hand as main.tsx's Pay does: the standing approval plus the charge.
+      await s.contracts.token.mint(alice.address, 250n * UNIT);
+      await (await token.approve(s.addresses.levyLedger, 500n * UNIT)).wait();
+      await agrees();
+      await (await token.approve(s.addresses.levyLedger, (await standing()) + 250n * UNIT)).wait();
+      await (await ledger.payLevy(1n)).wait();
+      expect(await standing()).to.equal(500n * UNIT);
+      await agrees();
+      // Charge 4 falls due, and the firm's collection still takes it.
+      await advance(s.ethers, 31n * DAY);
+      await (await new Contract(s.addresses.levyLedger, ABI, firm).collect([4n])).wait();
+      expect((await s.render(alice.address, "#/units")).view.ownUnits.flatMap((u) => u.charges)).to.deep.equal([]);
+      expect(await standing()).to.equal(250n * UNIT);
+      await agrees();
+    });
+
+    it("ADR-020: Set up direct debit approves the levy ledger for the owner's unpaid total", async () => {
+      const s = await setUp();
+      const units = async (viewer: string, props: object = {}) =>
+        renderToStaticMarkup(
+          createElement(App, { hash: "#/units", view: (await s.render(viewer, "#/units")).view, onDebit() {}, ...props }),
+        );
+      // Alice's unpaid charges are 1 and 4, NZD 250.00 each.
+      const html = await units(s.signers.alice.address);
+      expect(text(html)).to.contain("take up to NZD 500.00, your unpaid charges");
+      expect(html).to.contain('<button class="btn" type="button">Set up direct debit</button>');
+      expect(await units(s.signers.stranger.address)).to.not.contain("Set up direct debit");
+      const busy = await units(s.signers.alice.address, { acting: { action: "debit", id: 0n } });
+      expect(busy).to.contain("Waiting for your wallet…");
+      expect(busy).to.not.contain(">Set up direct debit<");
     });
 
     it("FR17: proposes work and a vendor through tx.ts's ABI, and both appear in the replayed View", async () => {
@@ -540,7 +586,7 @@ describe("Read interface (#72, #149)", () => {
       const asStranger = new Contract(s.addresses.governance, ABI, stranger);
       const refused = await outcome(proposeWork("Roof"), () =>
         asStranger.getFunction("propose(string,uint256,uint8,address,bytes32)")("Roof", 1n, 0, vendor.address, id("q")));
-      expect(refused.notice).to.deep.equal({ variant: "destructive", title: "The work was not proposed", description: "Only the management firm’s wallet can propose or confirm work.", code: "NotFirm" });
+      expect(refused.notice).to.deep.equal({ variant: "destructive", title: "The work was not proposed", description: "Only the management firm’s wallet can do this.", code: "NotFirm" });
       const asFirm = new Contract(s.addresses.governance, ABI, firm);
       const empty = await outcome(proposeVendor(""), () => asFirm.getFunction("propose(address,string,string)")(carol.address, "", "NZBN 9"));
       expect(empty.notice).to.deep.equal({ variant: "destructive", title: "The vendor was not proposed", description: "Add the vendor's name before proposing.", code: "VendorNameIsEmpty" });
@@ -1231,8 +1277,8 @@ describe("Read interface (#72, #149)", () => {
           ".",
       );
       expect(sentences(rows, "ChargeIssued")).to.include.members([
-        "Charge #0 issued for your Unit 1: NZD 250.00, due " +
-          html.match(/Charge #0 issued for your Unit 1: NZD 250\.00, due ([^<]*?)\.</)![1] +
+        "The firm asked for payment of Charge #1 for your Unit 2: NZD 250.00, due " +
+          html.match(/Charge #1 for your Unit 2: NZD 250\.00, due ([^<]*?)\.</)![1] +
           ".",
       ]);
       expect(sentences(rows, "LevyPaid")).to.include(
@@ -1244,14 +1290,15 @@ describe("Read interface (#72, #149)", () => {
       const { signers, contracts, render } = await finished();
       const anonymous = {
         ChargeScheduled: "A levy charge was scheduled for another owner's unit.",
-        ChargeIssued: "A levy charge was issued for another owner's unit.",
+        ChargeIssued: "The firm asked for payment of a levy charge for another owner's unit.",
         LevyPaid: "A levy was paid for another owner's unit.",
       };
-      // The unit of each charge, and the charges the log scheduled, issued
-      // and paid: five levy events of the first kind, four of the second and
-      // two of the third.
+      // The unit of each charge, and the charges the log scheduled, the firm
+      // collected and were paid: five levy events of the first kind, three of
+      // the second and two of the third. Charge 0 was paid before it was due,
+      // so the firm never collected it.
       const unitOf = [1n, 2n, 3n, 4n, 1n];
-      const events = { ChargeScheduled: [0, 1, 2, 3, 4], ChargeIssued: [0, 1, 2, 3], LevyPaid: [0, 2] };
+      const events = { ChargeScheduled: [0, 1, 2, 3, 4], ChargeIssued: [1, 2, 3], LevyPaid: [0, 2] };
       for (const viewer of [
         signers.alice,
         signers.bob,
@@ -1262,7 +1309,7 @@ describe("Read interface (#72, #149)", () => {
         const { view, html } = await render(viewer?.address, "#/activity");
         const own = new Set(view.ownUnits.map((u) => u.unitId));
         const levy = eventRows(html).filter((r) => r.kind in anonymous);
-        expect(levy).to.have.length(11);
+        expect(levy).to.have.length(10);
         let named = 0;
         for (const r of levy) {
           if (r.text === anonymous[r.kind as keyof typeof anonymous]) {
@@ -1354,7 +1401,7 @@ describe("Read interface (#72, #149)", () => {
       "castVote",
       "approve",
       "payLevy",
-      "issueCharges",
+      "collect",
       "queue",
       "execute",
       "propose",
@@ -1543,8 +1590,8 @@ describe("Transactions (#150)", () => {
     ["NotReady", [2, when], "The 7-day wait ends on 14 Oct 2026."],
     ["NotAttested", [2], "Payment waits for the firm to confirm the work is done."],
     ["PayeeNotRegistered", [who], "This vendor has not been approved by owners."],
-    ["ChargeNotDue", [1, when], "This charge cannot be issued before 14 Oct 2026."],
-    ["NotFirm", [who], "Only the management firm’s wallet can propose or confirm work."],
+    ["ChargeNotDue", [1, when], "This charge cannot be collected before 14 Oct 2026."],
+    ["NotFirm", [who], "Only the management firm’s wallet can do this."],
     ["AlreadyAttested", [2], "The firm has already confirmed this work."],
     ["EvidenceHashIsZero", [], "Add the evidence hash before confirming."],
     ["NotPassed", [2, 0], "Only a proposal that passed can be queued."],
@@ -1552,7 +1599,6 @@ describe("Transactions (#150)", () => {
     ["NotQueued", [2, 0], "This proposal is not queued for payment."],
     ["AlreadyExecuted", [2], "This proposal has already been carried out."],
     ["UnknownProposal", [9], "There is no proposal with that number."],
-    ["ChargeAlreadyIssued", [1], "This charge has already been issued."],
     ["ChargeAlreadyPaid", [1], "This charge has already been paid."],
     // amount, alreadyReleased and limit differ, so the wrong one shows.
     ["AmountExceedsLimit", [2, 600n * UNIT, 100n * UNIT, 500n * UNIT], "This payment would go over the proposal’s cap of NZD 500.00."],
@@ -1771,17 +1817,29 @@ describe("Transactions (#150)", () => {
       });
     });
 
-    it("ChargeNotDue: issuing a charge before its due date names the date", async () => {
+    it("ChargeNotDue: the firm collecting a charge before its due date names the date", async () => {
       const { ethers } = await network.getOrCreate();
       const { addresses, signers, fromBlock } = await deployBuilding(ethers);
-      const ledger = new Contract(addresses.levyLedger, ABI, signers.stranger);
+      const ledger = new Contract(addresses.levyLedger, ABI, signers.firm);
       const derived = await replay(ethers.provider, addresses, fromBlock);
       const dueDate = derived.charges.get(4n)!.dueDate;
-      expect((await outcome(issue(4n), () => ledger.issueCharges([4n]))).notice).to.deep.equal({
+      expect((await outcome(collectLevies(1), () => ledger.collect([4n]))).notice).to.deep.equal({
         variant: "destructive",
-        title: "The charge was not issued",
-        description: `This charge cannot be issued before ${date(dueDate)}.`,
+        title: "The levies were not collected",
+        description: `This charge cannot be collected before ${date(dueDate)}.`,
         code: "ChargeNotDue",
+      });
+    });
+
+    it("NotFirm: an owner collecting a due levy is refused in plain words", async () => {
+      const { ethers } = await network.getOrCreate();
+      const { addresses, signers } = await deployBuilding(ethers);
+      const ledger = new Contract(addresses.levyLedger, ABI, signers.alice);
+      expect((await outcome(collectLevies(1), () => ledger.collect([1n]))).notice).to.deep.equal({
+        variant: "destructive",
+        title: "The levies were not collected",
+        description: "Only the management firm’s wallet can do this.",
+        code: "NotFirm",
       });
     });
   });
