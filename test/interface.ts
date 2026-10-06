@@ -1378,7 +1378,7 @@ describe("Read interface (#72, #149)", () => {
     });
 
     it("NFR10: a levy event for another owner's unit names no unit, amount or charge, and with no viewer every levy event is anonymous", async () => {
-      const { signers, contracts, render } = await finished();
+      const { signers, contracts, render, ethers, addresses, fromBlock } = await finished();
       const anonymous = {
         ChargeScheduled: "A levy charge was scheduled for another owner's unit.",
         ChargeIssued: "The firm asked for payment of a levy charge for another owner's unit.",
@@ -1464,6 +1464,16 @@ describe("Read interface (#72, #149)", () => {
       expect(sentences(rows, "ChargeScheduled")).to.deep.equal([4, 3, 2, 1, 0].map((n) => `Charge #${n} was scheduled.`));
       expect(sentences(rows, "ChargeIssued")).to.deep.equal([3, 2, 1].map((n) => `The firm asked for payment of Charge #${n}.`));
       expect(sentences(rows, "LevyPaid")).to.deep.equal([2, 0].map((n) => `Charge #${n} was paid.`));
+      // Every vote the firm sees names no unit and no count, even one cast
+      // by the firm's own address when it holds units (alice, named as the
+      // firm here).
+      for (const t of sentences(rows, "VoteCast")) expect(t).to.match(/^An owner voted (for|against) Proposal #\d+\.$/);
+      const now = BigInt((await ethers.provider.getBlock("latest"))!.timestamp);
+      const derived = await replay(ethers.provider, addresses, fromBlock);
+      const asFirm = buildView(derived, now, signers.alice.address, undefined, signers.alice.address);
+      const votes = asFirm.activity.filter((e) => e.kind === "VoteCast").map((e) => e.text);
+      expect(votes).to.have.length.above(0);
+      for (const t of votes) expect(t).to.match(/^An owner voted (for|against) Proposal #\d+\.$/);
       const times = new Set(rows.map((r) => r.time));
       for (let chargeId = 0; chargeId < unitOf.length; chargeId++) {
         const due = date((await contracts.ledger.charges(chargeId)).dueDate);

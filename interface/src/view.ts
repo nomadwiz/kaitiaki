@@ -295,7 +295,7 @@ export function buildView(
         const side = a.inFavour ? "for" : "against";
         // Another owner's vote names no unit and no count (NFR10, the design
         // system's hard rule 1); the firm sees every vote so.
-        if (!isViewer(a.voter)) {
+        if (firmViews || !isViewer(a.voter)) {
           return `An owner voted ${side} Proposal #${a.proposalId}.`;
         }
         const votes = Object.values(a.unitIds as object) as bigint[];
