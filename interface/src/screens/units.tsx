@@ -112,7 +112,7 @@ export function YourUnits({
               ) : (
                 <>
                   <BadgeCheck aria-hidden="true" />
-                  Approve {nzd(total)}
+                  Set up direct debit
                 </>
               )}
             </Button>

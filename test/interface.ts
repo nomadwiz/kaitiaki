@@ -339,7 +339,7 @@ describe("Read interface (#72, #149)", () => {
       // and nor can the direct debit's approval.
       expect(html).to.contain("Waiting for your wallet…");
       expect(html).to.match(/<button [^>]*aria-disabled="true">Pay early<\/button>/);
-      expect(html).to.match(/<button [^>]*aria-disabled="true"><svg[^>]*>[\s\S]*?<\/svg>Approve NZD 500\.00<\/button>/);
+      expect(html).to.match(/<button [^>]*aria-disabled="true"><svg[^>]*>[\s\S]*?<\/svg>Set up direct debit<\/button>/);
       expect(html.match(/<button [^>]*>(?:<svg[^>]*>[\s\S]*?<\/svg>)?(?:Pay|Approve)/g)!.every((b) => b.includes('aria-disabled="true"'))).to.equal(true);
     });
 
@@ -525,12 +525,12 @@ describe("Read interface (#72, #149)", () => {
       const html = await units(s.signers.alice.address);
       const card = html.split('id="h-debit"')[1].split('<div data-slot="card"')[0];
       expect(text(card)).to.contain("Scheduled total NZD 500.00");
-      expect(card).to.match(/<button [^>]*><svg[^>]*>[\s\S]*?<\/svg>Approve NZD 500\.00<\/button>/);
+      expect(card).to.match(/<button [^>]*><svg[^>]*>[\s\S]*?<\/svg>Set up direct debit<\/button>/);
       expect(card).to.contain("Signed in your wallet.");
-      expect(await units(s.signers.stranger.address)).to.not.contain("Approve NZD");
+      expect(await units(s.signers.stranger.address)).to.not.contain("Set up direct debit");
       const busy = await units(s.signers.alice.address, { acting: { action: "debit", id: 0n } });
       expect(busy).to.contain("Waiting for your wallet…");
-      expect(busy).to.not.contain("Approve NZD");
+      expect(busy).to.not.contain("Set up direct debit");
     });
 
     it("FR17: proposes work and a vendor through tx.ts's ABI, and both appear in the replayed View", async () => {
@@ -1714,6 +1714,8 @@ describe("Read interface (#72, #149)", () => {
     expect(nzd(999n * 10n ** 13n)).to.equal("NZD 0.00");
     expect(nzd(String(19_999n * 10n ** 15n))).to.equal("NZD 19.99");
     // 13 Oct 2026, 11:30 UTC is 14 Oct 2026, 00:30 in New Zealand.
+    // Three-letter months, September too, whatever the locale's own.
+    expect(date(BigInt(Date.UTC(2027, 8, 8) / 1000))).to.equal("8 Sep 2027");
     expect(date(BigInt(Date.UTC(2026, 9, 13, 11, 30) / 1000))).to.equal(
       "14 Oct 2026",
     );
