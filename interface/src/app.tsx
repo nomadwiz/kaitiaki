@@ -6,7 +6,7 @@
 // what a viewer would see.
 import type { ReactNode } from "react";
 
-import { Actions } from "./screens/actions.js";
+import { Actions, type Act } from "./screens/actions.js";
 import { Activity } from "./screens/activity.js";
 import { Firm } from "./screens/firm.js";
 import { Home } from "./screens/home.js";
@@ -58,6 +58,9 @@ type Props = {
   onViewer?: (address: string) => void;
   onVote?: (proposalId: bigint, inFavour: boolean) => void;
   onPay?: (unitId: bigint, chargeId: bigint, amount: bigint) => void;
+  // The Anyone's actions the wallet is signing, and the one pressed.
+  acting?: { action: Act; id: bigint };
+  onAct?: (action: Act, id: bigint) => void;
 };
 
 // What each screen is given, once the log has been read.
@@ -70,6 +73,8 @@ type Context = {
   onVote?: Props["onVote"];
   paying?: bigint;
   onPay?: Props["onPay"];
+  acting?: Props["acting"];
+  onAct?: Props["onAct"];
 };
 
 const SCREENS: Record<string, (c: Context) => ReactNode> = {
@@ -104,7 +109,13 @@ const SCREENS: Record<string, (c: Context) => ReactNode> = {
   ),
   "#/register": (c) => <Register units={c.view.otherUnits} vendors={c.view.vendors} />,
   "#/activity": (c) => <Activity events={c.view.activity} />,
-  "#/actions": () => <Actions />,
+  "#/actions": (c) => (
+    <Actions
+      actions={c.view.actions}
+      onAct={c.canAct ? c.onAct : undefined}
+      acting={c.acting}
+    />
+  ),
   "#/firm": () => <Firm />,
 };
 
@@ -123,6 +134,8 @@ export function App({
   onViewer,
   onVote,
   onPay,
+  acting,
+  onAct,
 }: Props) {
   const id = /^#\/proposal\/(\d+)$/.exec(hash)?.[1];
   const route = id ? "proposal" : Object.hasOwn(SCREENS, hash) ? hash : "#/";
@@ -175,6 +188,8 @@ export function App({
               onVote,
               paying,
               onPay,
+              acting,
+              onAct,
             })
           : !failed && <Loading />}
       </main>

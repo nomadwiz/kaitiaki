@@ -21,8 +21,8 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { App, type Wallet } from "../interface/src/app.js";
-import { date, nzd } from "../interface/src/format.js";
-import { ABI, approvedRefusal, payment, refusal, send } from "../interface/src/tx.js";
+import { date, nzd, short } from "../interface/src/format.js";
+import { ABI, approvedRefusal, carryOut, issue, payment, refusal, send } from "../interface/src/tx.js";
 import { buildView } from "../interface/src/view.js";
 import { advance, deployBuilding } from "../scripts/building.js";
 import { replay } from "../scripts/replay.js";
@@ -81,7 +81,7 @@ describe("Read interface (#72, #149)", () => {
       return {
         view,
         html: renderToStaticMarkup(
-          createElement(App, { hash, view, wallet, onPay: () => {} }),
+          createElement(App, { hash, view, wallet, onPay: () => {}, onAct: () => {} }),
         ),
       };
     };
@@ -271,6 +271,162 @@ describe("Read interface (#72, #149)", () => {
       expect(html).to.contain("Two signatures are needed");
       expect(html).to.contain("Charge #57");
       expect(html).to.contain("NZD 1,240.00");
+    });
+  });
+
+  describe("Anyone's actions (#156)", () => {
+    const DAY = 24n * 60n * 60n;
+    const ISSUE = '<button class="btn" data-size="sm" type="button">Issue charge</button>';
+    const QUEUE = '<button class="btn" data-size="sm" type="button">Queue</button>';
+    const CARRY = '<button class="btn" data-size="sm" type="button">Carry out</button>';
+    // The Issue card's rows, as text, and the card for carrying out.
+    const section = (html: string, title: string) =>
+      html
+        .split(`<h2 class="card-title">${title}</h2>`)[1]
+        .split("</section>")[0]
+        .split('<div class="card-content')[1];
+    const text = (html: string) =>
+      html.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+    const rows = (html: string) =>
+      [...html.matchAll(/<tr><td>([\s\S]*?)<\/tr>/g)].map(([, r]) =>
+        r.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim(),
+      );
+
+    // A new vendor for the firm to propose, carried through the vote.
+    async function admitPassed(s: Awaited<ReturnType<typeof setUp>>) {
+      const { governance } = s.contracts;
+      const { firm, bob, alice } = s.signers;
+      await governance
+        .connect(firm)
+        .getFunction("propose(address,string,string)")(alice.address, "Lift Co", "NZBN 1");
+      await governance.connect(alice).castVote(3, true);
+      await governance.connect(bob).castVote(3, true);
+      await advance(s.ethers, await governance.VOTING_PERIOD());
+    }
+
+    it("lists an unissued charge not yet due with its date and no button, and no unit anywhere in the row", async () => {
+      const { signers, render } = await setUp();
+      const { view, html } = await render(signers.alice.address, "#/actions");
+      expect(view.actions.charges.map((c) => [c.chargeId, c.due])).to.deep.equal([[4n, false]]);
+      const card = section(html, "Issue due charges");
+      expect(rows(card)).to.deep.equal([`Charge #4 ${date(view.actions.charges[0].dueDate)} Available from ${date(view.actions.charges[0].dueDate)}`]);
+      expect(card).to.not.contain("Issue charge");
+      expect(card).to.not.match(/Unit|unit/);
+      expect(html).to.contain("Charges are listed without their unit.");
+      // Nothing about the viewer changes it: anyone sees the same card.
+      expect(section((await render(undefined, "#/actions")).html, "Issue due charges")).to.equal(card);
+    });
+
+    it("offers Issue once the date has arrived, issueCharges succeeds, and the charge leaves the list", async () => {
+      const { ethers, signers, addresses, render } = await setUp();
+      await advance(ethers, 31n * DAY);
+      const { html } = await render(signers.stranger.address, "#/actions");
+      expect(section(html, "Issue due charges")).to.contain(ISSUE);
+      expect(section(html, "Issue due charges")).to.not.contain("Available from");
+      expect(section(html, "Issue due charges")).to.not.match(/Unit|unit \d/);
+      const ledger = new Contract(addresses.levyLedger, ABI, signers.stranger);
+      await (await ledger.issueCharges([4n])).wait();
+      const after = await render(signers.stranger.address, "#/actions");
+      expect(after.view.actions.charges).to.deep.equal([]);
+      expect(section(after.html, "Issue due charges")).to.contain("No charge is waiting to be issued.");
+    });
+
+    it("lists a charge paid before it was issued, which issueCharges still accepts", async () => {
+      const { ethers, signers, contracts, addresses, render } = await setUp();
+      await contracts.token.mint(signers.alice.address, 250n * 10n ** 18n);
+      const token = new Contract(String(contracts.token.target), ABI, signers.alice);
+      const ledger = new Contract(addresses.levyLedger, ABI, signers.alice);
+      await (await token.approve(addresses.levyLedger, 250n * 10n ** 18n)).wait();
+      await (await ledger.payLevy(4n)).wait();
+      await advance(ethers, 31n * DAY);
+      const { html } = await render(signers.alice.address, "#/actions");
+      expect(section(html, "Issue due charges")).to.contain(ISSUE);
+      await (await ledger.issueCharges([4n])).wait();
+    });
+
+    it("says an open proposal can be queued if it passes, with the day voting closes", async () => {
+      const { signers, render } = await setUp();
+      const { view, html } = await render(signers.alice.address, "#/actions");
+      const closes = view.proposals.find((p) => p.id === 2n)!.closes!;
+      expect(text(section(html, "Queue passed proposals"))).to.contain(
+        `No proposal is waiting to be queued. Proposal #2 can be queued if it passes when voting closes on ${date(closes)}.`,
+      );
+      expect(html).to.not.contain(QUEUE);
+      expect(html).to.not.contain(CARRY);
+      expect(section(html, "Carry out ready proposals")).to.contain("No proposal is waiting to be carried out.");
+    });
+
+    it("offers Queue to a Passed proposal, and queue succeeds", async () => {
+      const { ethers, signers, contracts, addresses, render } = await setUp();
+      const { governance } = contracts;
+      await governance.connect(signers.bob).castVote(2, true);
+      await advance(ethers, await governance.VOTING_PERIOD());
+      const { html } = await render(signers.stranger.address, "#/actions");
+      const card = section(html, "Queue passed proposals");
+      expect(card).to.contain("#2");
+      expect(card).to.contain("Roof repair");
+      expect(card).to.contain(QUEUE);
+      expect(html).to.not.contain(CARRY);
+      await (await new Contract(addresses.governance, ABI, signers.stranger).queue(2n)).wait();
+      const after = await render(signers.stranger.address, "#/actions");
+      expect(section(after.html, "Queue passed proposals")).to.not.contain(QUEUE);
+      expect(section(after.html, "Carry out ready proposals")).to.contain("Roof repair");
+    });
+
+    it("offers Carry out to a queued Admit proposal only once its wait has ended", async () => {
+      const s = await setUp();
+      const { ethers, signers, addresses, render } = s;
+      await admitPassed(s);
+      const governance = new Contract(addresses.governance, ABI, signers.stranger);
+      const queued = await governance.queue(3n);
+      const eta = BigInt((await ethers.provider.getBlock((await queued.wait())!.blockNumber))!.timestamp) + (await s.contracts.governance.TIMELOCK_DELAY());
+      let { html } = await render(signers.stranger.address, "#/actions");
+      let card = section(html, "Carry out ready proposals");
+      expect(card).to.contain("Admit Lift Co");
+      expect(card).to.contain(`Available from ${date(eta)}.`);
+      expect(card).to.not.contain(CARRY);
+      await advance(ethers, await s.contracts.governance.TIMELOCK_DELAY());
+      ({ html } = await render(signers.stranger.address, "#/actions"));
+      card = section(html, "Carry out ready proposals");
+      expect(card).to.contain(CARRY);
+      await (await governance.execute(3n)).wait();
+      ({ html } = await render(signers.stranger.address, "#/actions"));
+      expect(html).to.not.contain(CARRY);
+    });
+
+    it("offers Carry out to a queued Work proposal only after its wait and the firm's confirmation", async () => {
+      const { ethers, signers, contracts, addresses, render } = await setUp();
+      const { governance } = contracts;
+      await governance.connect(signers.bob).castVote(2, true);
+      await advance(ethers, await governance.VOTING_PERIOD());
+      await governance.connect(signers.stranger).queue(2);
+      const carry = async () => section((await render(signers.stranger.address, "#/actions")).html, "Carry out ready proposals");
+      // Waiting for the date, and for the firm, as the preview words it.
+      let card = await carry();
+      expect(card).to.match(/Available from \d{1,2} [A-Z][a-z]{2} \d{4}, after the firm confirms the work is done\./);
+      expect(card).to.not.contain(CARRY);
+      await advance(ethers, await governance.TIMELOCK_DELAY());
+      card = await carry();
+      expect(card).to.contain("Available once the firm confirms the work is done.");
+      expect(card).to.not.contain(CARRY);
+      await governance.connect(signers.firm).attest(2, id("evidence: roof"));
+      card = await carry();
+      expect(card).to.contain(CARRY);
+      await (await new Contract(addresses.governance, ABI, signers.stranger).execute(2n)).wait();
+      expect(await carry()).to.not.contain("Roof repair");
+    });
+
+    it("offers no button to a wallet on the wrong chain, and shows the wait on the action being signed", async () => {
+      const { ethers, signers, render } = await setUp();
+      await advance(ethers, 31n * DAY);
+      const { view } = await render(signers.stranger.address, "#/actions");
+      const h = (props: object) =>
+        renderToStaticMarkup(createElement(App, { hash: "#/actions", view, ...props }));
+      const wrong = { kind: "browser", account: signers.stranger.address, chainId: 1n, deploymentChainId: 31337n } as const;
+      expect(h({ wallet: wrong, onAct: () => {} })).to.not.contain("Issue charge");
+      const busy = h({ onAct: () => {}, acting: { action: "issue", id: 4n } });
+      expect(busy).to.contain("Waiting for your wallet…");
+      expect(busy).to.not.contain(ISSUE);
     });
   });
 
@@ -859,8 +1015,6 @@ describe("Read interface (#72, #149)", () => {
         "ProposalQueued",
         "VoteCast",
       ]);
-      const vendor = signers.vendor.address;
-      const short = `${vendor.slice(0, 6)}…${vendor.slice(-4)}`;
       expect(rows[0].text).to.equal(
         "NZD 400.00 paid to Harbour Lifts Ltd from Operating for Proposal #2.",
       );
@@ -871,7 +1025,7 @@ describe("Read interface (#72, #149)", () => {
         /^Proposal #2 queued\. Payment possible from \d{1,2} [A-Z][a-z]{2} \d{4}\.$/,
       );
       expect(rows[0].time).to.match(/^\d{1,2} [A-Z][a-z]{2} \d{4}$/);
-      expect(rows.map((r) => r.text)).to.not.contain(short);
+      expect(html).to.not.contain(short(signers.vendor.address));
       expect(sentences(rows, "VoteCast")).to.deep.equal([
         "Unit 3 voted for Proposal #2 (1 unit).",
         "Units 1 and 2 voted for Proposal #2 (2 units).",
@@ -1031,6 +1185,9 @@ describe("Read interface (#72, #149)", () => {
       "castVote",
       "approve",
       "payLevy",
+      "issueCharges",
+      "queue",
+      "execute",
     ]);
     for (const f of functions) {
       expect(["view", "pure"], f.format()).to.not.include(f.stateMutability);
@@ -1399,6 +1556,71 @@ describe("Transactions (#150)", () => {
       await send(VOTE, sign(async () => {}), ui);
       expect(seen.signing).to.include({ signing: undefined });
       expect(state).to.include({ toast: VOTE.done, reloads: 1 });
+    });
+  });
+
+  describe("real refusals on the seeded building (#156)", () => {
+    // What a viewer is shown when `call` is refused: send's own notice.
+    async function noticeOf(
+      action: Parameters<typeof send>[0],
+      call: () => Promise<{ wait(): Promise<unknown> }>,
+    ) {
+      let notice: unknown;
+      await send(action, call, {
+        prompt: false,
+        setSigning() {},
+        setToast() {},
+        setNotice: (n) => void (notice = n),
+        async reload() {},
+      });
+      return notice;
+    }
+
+    it("NotReady: carrying out, or the firm confirming, before the wait ends names the date", async () => {
+      const { ethers } = await network.getOrCreate();
+      const { addresses, signers, contracts } = await deployBuilding(ethers);
+      const { governance } = contracts;
+      await governance.connect(signers.bob).castVote(2, true);
+      await advance(ethers, await governance.VOTING_PERIOD());
+      const queued = await governance.connect(signers.stranger).queue(2);
+      const eta =
+        BigInt((await ethers.provider.getBlock((await queued.wait())!.blockNumber))!.timestamp) +
+        (await governance.TIMELOCK_DELAY());
+      const message = `The 7-day wait ends on ${date(eta)}.`;
+      const asStranger = new Contract(addresses.governance, ABI, signers.stranger);
+      // attest is the firm's, which this interface never sends.
+      const asFirm = new Contract(
+        addresses.governance,
+        ["function attest(uint256 proposalId, bytes32 evidenceHash)"],
+        signers.firm,
+      );
+      for (const call of [
+        () => asStranger.execute(2n),
+        () => asFirm.attest(2n, id("evidence: roof")),
+      ]) {
+        const error = await call().catch((e: unknown) => e);
+        expect(refusal(error)).to.deep.equal({ name: "NotReady", message });
+      }
+      expect(await noticeOf(carryOut(2n), () => asStranger.execute(2n))).to.deep.equal({
+        variant: "destructive",
+        title: "This proposal cannot be carried out yet",
+        description: message,
+        code: "NotReady",
+      });
+    });
+
+    it("ChargeNotDue: issuing a charge before its due date names the date", async () => {
+      const { ethers } = await network.getOrCreate();
+      const { addresses, signers, fromBlock } = await deployBuilding(ethers);
+      const ledger = new Contract(addresses.levyLedger, ABI, signers.stranger);
+      const derived = await replay(ethers.provider, addresses, fromBlock);
+      const dueDate = derived.charges.get(4n)!.dueDate;
+      expect(await noticeOf(issue(4n), () => ledger.issueCharges([4n]))).to.deep.equal({
+        variant: "destructive",
+        title: "The charge was not issued",
+        description: `This charge cannot be issued before ${date(dueDate)}.`,
+        code: "ChargeNotDue",
+      });
     });
   });
 

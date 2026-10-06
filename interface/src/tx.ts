@@ -15,6 +15,10 @@ export const ABI = new Interface([
   // Paying a levy: the token approval, then the ledger takes the payment
   "function approve(address spender, uint256 value) returns (bool)",
   "function payLevy(uint256 chargeId)",
+  // Anyone's actions: each waits for its date, and any wallet may call it
+  "function issueCharges(uint256[] chargeIds)",
+  "function queue(uint256 proposalId) returns (uint256 eta)",
+  "function execute(uint256 proposalId)",
   // Treasury, and the OpenZeppelin AccessControl it inherits
   "error AccessControlBadConfirmation()",
   "error AccessControlUnauthorizedAccount(address account, bytes32 neededRole)",
@@ -138,6 +142,29 @@ export const payment = (unitId: bigint, chargeId: bigint, amount: bigint) => ({
     body: `Charge #${chargeId}, ${nzd(amount)}, is paid for Unit ${unitId}.`,
   },
   refused: "Your payment was not made",
+});
+
+// The same for Anyone's actions, which take one signature each.
+export const issue = (chargeId: bigint) => ({
+  signing: `issuing Charge #${chargeId}`,
+  done: { title: "Charge issued", body: `Charge #${chargeId} is issued.` },
+  refused: "The charge was not issued",
+});
+export const queue = (proposalId: bigint) => ({
+  signing: `queueing Proposal #${proposalId}`,
+  done: {
+    title: "Proposal queued",
+    body: `Proposal #${proposalId} is queued for payment.`,
+  },
+  refused: "The proposal was not queued",
+});
+export const carryOut = (proposalId: bigint) => ({
+  signing: `carrying out Proposal #${proposalId}`,
+  done: {
+    title: "Proposal carried out",
+    body: `Proposal #${proposalId} has been carried out.`,
+  },
+  refused: "This proposal cannot be carried out yet",
 });
 
 /**
