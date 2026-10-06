@@ -2,6 +2,8 @@
 // Content).
 import { formatUnits } from "ethers";
 
+import type { View } from "./view.js";
+
 // The month is spelt here, not by the locale: en-NZ's short September is
 // "Sept", and the design system's dates use three letters.
 const MONTHS = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ");
@@ -37,3 +39,8 @@ export const unitsLabel = (units: bigint[]) =>
   units.length === 0
     ? "No unit"
     : `Unit${units.length > 1 ? "s" : ""} ${new Intl.ListFormat("en-NZ").format(units.map(String))}`;
+
+// A proposal's title: a Work proposal's description, or "Admit" and the
+// vendor's name.
+export const title = (p: View["proposals"][number]) =>
+  p.kind === "Work" ? p.description : `Admit ${p.description}`;

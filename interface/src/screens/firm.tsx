@@ -1,7 +1,7 @@
 // Screen 6, Firm (`#/firm`, #157, #173): propose work, propose a vendor,
-// confirm work done, collect due levies. Only the firm's wallet can
-// (`NotFirm` in Governance and LevyLedger), so for every
-// other viewer the same forms are drawn disabled. Each form reads its fields
+// collect due levies; Confirm work is on Proposal (#178). Only the firm's
+// wallet can (`NotFirm` in Governance and LevyLedger), so for every other
+// viewer the same forms are drawn disabled. Each form reads its fields
 // when submitted and holds only the hints for what failed; a malformed value
 // never reaches ethers. An empty name, identifier or description is left to
 // the contract, whose refusal the RefusalNotice words.
@@ -9,7 +9,7 @@ import { isAddress, isHexString, parseUnits } from "ethers";
 import { useState, type FormEvent, type ReactNode } from "react";
 
 import { FUND_NAMES } from "../components/kaitiaki.js";
-import { date, nzd } from "../format.js";
+import { date } from "../format.js";
 import { PageHead } from "../shell.js";
 import { Waiting } from "../states.js";
 import type { View } from "../view.js";
@@ -279,84 +279,6 @@ function ProposeWork({
   );
 }
 
-function ConfirmWork({
-  work,
-  act,
-  acting,
-}: {
-  work: View["toConfirm"][number];
-  act?: FirmActs;
-  acting?: Acting;
-}) {
-  const [hints, setHints] = useState<Hints>({});
-  const id = `a-hash-${work.id}`;
-  return (
-    <form
-      className="stack"
-      noValidate
-      onSubmit={submit(
-        acting !== undefined || !work.due,
-        setHints,
-        (f) => {
-          const hint = checkEvidence(f.evidence);
-          const hints: Hints = hint ? { evidence: hint } : {};
-          return { hints, value: hint ? undefined : f.evidence };
-        },
-        act && ((evidence) => act.onConfirm(work.id, evidence)),
-      )}
-    >
-      <div className="row">
-        <span className="proposal-id">#{String(work.id)}</span>
-        <b>{work.title}</b>
-        <span className="status" data-tone="wait">
-          Queued
-        </span>
-      </div>
-      <p className="body-sm">
-        Up to {nzd(work.limit)} from{" "}
-        <span className="fund-tag" data-fund={work.fund === 0n ? "op" : "ltm"}>
-          {FUND_NAMES[Number(work.fund)]}
-        </span>{" "}
-        to {work.vendor}.
-      </p>
-      <Field
-        id={id}
-        label="Evidence hash"
-        hint="The hash of the completion evidence, such as the signed-off job sheet."
-        error={hints.evidence}
-      >
-        <input
-          className="input mono"
-          id={id}
-          name="evidence"
-          placeholder="0x…"
-          disabled={!act}
-          {...invalid(id, hints.evidence)}
-        />
-      </Field>
-      <div className="row">
-        <button
-          className="btn"
-          type="submit"
-          disabled={!act}
-          aria-disabled={acting !== undefined || !work.due || undefined}
-        >
-          {acting?.action === "confirm" && acting.id === work.id ? (
-            <Waiting />
-          ) : (
-            "Confirm work is done"
-          )}
-        </button>
-        {!work.due && (
-          <span className="field-hint">
-            Available from {date(work.eta)}, when the 7-day wait ends.
-          </span>
-        )}
-      </div>
-    </form>
-  );
-}
-
 function ProposeVendor({ act, acting }: { act?: FirmActs; acting?: Acting }) {
   const [hints, setHints] = useState<Hints>({});
   return (
@@ -501,14 +423,12 @@ function CollectLevies({
 
 export function Firm({
   vendors,
-  toConfirm,
   toCollect,
   act,
   acting,
   fresh = { work: 0, vendor: 0 },
 }: {
   vendors: View["vendors"];
-  toConfirm: View["toConfirm"];
   toCollect: View["toCollect"];
   act?: FirmActs;
   acting?: Acting;
@@ -533,28 +453,7 @@ export function Firm({
       </div>
       <div className="grid-2">
         <ProposeWork key={fresh.work} vendors={vendors} act={act} acting={acting} />
-        <div className="stack" style={{ gap: "var(--space-6)" }}>
-          <section className="card">
-            <div className="card-header">
-              <h2 className="card-title">Confirm work is done</h2>
-              <p className="card-description">
-                Confirming releases payment to the vendor. No owner approval
-                follows.
-              </p>
-            </div>
-            <div className="card-content stack">
-              {toConfirm.length === 0 && (
-                <p className="muted-text">
-                  No work is waiting to be confirmed.
-                </p>
-              )}
-              {toConfirm.map((w) => (
-                <ConfirmWork key={String(w.id)} work={w} act={act} acting={acting} />
-              ))}
-            </div>
-          </section>
-          <ProposeVendor key={fresh.vendor} act={act} acting={acting} />
-        </div>
+        <ProposeVendor key={fresh.vendor} act={act} acting={acting} />
       </div>
       <CollectLevies charges={toCollect} act={act} acting={acting} />
     </>

@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Activity } from "./screens/activity.js";
 import { Building } from "./screens/building.js";
 import { Firm, type FirmActs } from "./screens/firm.js";
+import { FirmHome } from "./screens/firm-home.js";
 import { Home } from "./screens/home.js";
 import { Proposal, type Acting, type OnAct } from "./screens/proposal.js";
 import { Proposals } from "./screens/proposals.js";
@@ -97,11 +98,10 @@ export function workspaceOf(
 const proposals = (workspace: Workspace) => (c: Context) => (
   <Proposals workspace={workspace} proposals={c.view.proposals} />
 );
-// The firm's screens are one until #182, #184 and #185 split them.
+// The firm's other screens are one until #183, #184 and #185 split them.
 const firm = (c: Context) => (
   <Firm
     vendors={c.view.vendors}
-    toConfirm={c.view.toConfirm}
     toCollect={c.view.toCollect}
     act={c.onFirm}
     acting={c.acting}
@@ -144,7 +144,13 @@ const SCREENS: Record<Workspace, Record<string, (c: Context) => ReactNode>> = {
     "#/activity": (c) => <Activity workspace="owner" events={c.view.activity} />,
   },
   firm: {
-    "#/": firm,
+    "#/": (c) => (
+      <FirmHome
+        toCollect={c.view.toCollect}
+        toConfirm={c.view.toConfirm}
+        proposals={c.view.proposals}
+      />
+    ),
     "#/proposals": proposals("firm"),
     "#/propose": firm,
     "#/collect": firm,

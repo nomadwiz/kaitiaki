@@ -182,18 +182,17 @@ export type View = {
   // event for another owner's unit is the anonymous sentence and nothing
   // more (NFR10).
   activity: { time: bigint; kind: string; text: string }[];
-  // Every unpaid charge, for the firm to collect (Firm, ADR-020), listed
-  // without its unit or amount, as Anyone's actions listed them: `due` once
-  // its due date has arrived, `attempted` once a collection has issued it
-  // and taken nothing.
+  // Every unpaid charge, for the firm to collect (ADR-020), listed without
+  // its unit or amount: `due` once its due date has arrived, `attempted`
+  // once a collection has issued it and taken nothing.
   toCollect: {
     chargeId: bigint;
     dueDate: bigint;
     due: boolean;
     attempted: boolean;
   }[];
-  // Queued Work proposals the firm has not yet confirmed (Firm), `due` once
-  // the wait has ended.
+  // Queued Work proposals the firm has not yet confirmed (Firm Home), `due`
+  // once the wait has ended.
   toConfirm: {
     id: bigint;
     title: string;
@@ -367,7 +366,7 @@ export function buildView(
     const attested = derived.attested.has(p.proposalId);
     return {
       id: p.proposalId,
-      kind: p.kind === WORK ? "Work" : "Admit",
+      kind: work ? "Work" : "Admit",
       payee: p.payee,
       vendor: derived.payeeDetails.get(p.payee),
       description: p.description,

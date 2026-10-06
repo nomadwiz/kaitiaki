@@ -15,7 +15,7 @@ export const ABI = new Interface([
   // Paying a levy: the token approval, then the ledger takes the payment
   "function approve(address spender, uint256 value) returns (bool)",
   "function payLevy(uint256 chargeId)",
-  // Anyone's actions: each waits for its date, and any wallet may call it
+  // Queue and Carry out: each waits for its date, and any wallet may call it
   "function queue(uint256 proposalId) returns (uint256 eta)",
   "function execute(uint256 proposalId)",
   // The firm's: propose work, propose a vendor (the overload, ADR-018), and
@@ -230,7 +230,7 @@ export const directDebit = (total: bigint) => ({
   refused: "Direct debit was not set up",
 });
 
-// The same for Anyone's actions, which take one signature each.
+// The same for Queue and Carry out, which take one signature each.
 export const queue = (proposalId: bigint) => ({
   signing: `queueing Proposal #${proposalId}`,
   done: {
