@@ -48,6 +48,15 @@ const EXTENSION = 7n * 86_400n;
 export type ProposalState =
   "Open" | "Extended" | "Passed" | "Failed" | "Queued" | "Executed";
 
+export type QuorumParts = {
+  unitsVoted: bigint;
+  unitsNeeded: bigint;
+  unitsMet: boolean;
+  voters: number;
+  votersNeeded: number;
+  votersMet: boolean;
+};
+
 export async function replay(
   provider: Pick<Provider, "getLogs" | "getBlock">,
   addresses: {
@@ -283,17 +292,25 @@ export async function replay(
       againstVotes: BigInt(ballot.size - inFavour),
     });
   }
-  // Quorum as Governance.quorumReached decides it, for every proposal: units
-  // voted are at least a quarter of its principal units, rounded up, and at
-  // least two distinct wallets cast them.
+  // Quorum as Governance.quorumReached decides it, for every proposal, one
+  // condition at a time: units voted are at least a quarter of its principal
+  // units, and at least two distinct wallets cast them. `unitsNeeded` is the
+  // quarter rounded up, the most a meter's first bar can ask for.
+  const quorumParts = new Map<bigint, QuorumParts>();
   const quorum = new Map<bigint, boolean>();
   for (const [proposalId, units] of principalUnits) {
     const unitsVoted = BigInt(votes.get(proposalId)?.size ?? 0);
-    const wallets = voters.get(proposalId)?.size ?? 0;
-    quorum.set(
-      proposalId,
-      unitsVoted * QUORUM_UNIT_DIVISOR >= units && wallets >= QUORUM_MIN_VOTERS,
-    );
+    const distinct = voters.get(proposalId)?.size ?? 0;
+    const parts = {
+      unitsVoted,
+      unitsNeeded: (units + QUORUM_UNIT_DIVISOR - 1n) / QUORUM_UNIT_DIVISOR,
+      unitsMet: unitsVoted * QUORUM_UNIT_DIVISOR >= units,
+      voters: distinct,
+      votersNeeded: QUORUM_MIN_VOTERS,
+      votersMet: distinct >= QUORUM_MIN_VOTERS,
+    };
+    quorumParts.set(proposalId, parts);
+    quorum.set(proposalId, parts.unitsMet && parts.votersMet);
   }
 
   return {
@@ -301,6 +318,7 @@ export async function replay(
     releasedByProposal,
     tallies,
     quorum,
+    quorumParts,
     proposals,
     owners,
     payees,

@@ -12,6 +12,7 @@ import {
   closesAt,
   stateAt,
   type ProposalState,
+  type QuorumParts,
   type replay,
 } from "../../scripts/replay.js";
 
@@ -20,7 +21,109 @@ type Derived = Awaited<ReturnType<typeof replay>>;
 const WORK = 1n; // Governance.ProposalKind.Work
 const FUND_OPERATING = 0n; // Treasury.Fund.Operating
 
+// The lifecycle's steps for a proposal in `state` at `now`, in the contract's
+// order. Admit proposals have no "Firm confirms work" step.
+function stepsOf(
+  derived: Derived,
+  id: bigint,
+  state: ProposalState,
+  now: bigint,
+  work: boolean,
+  waived: boolean,
+): Step[] {
+  const p = derived.proposals.get(id)!;
+  const eta = derived.queued.get(id);
+  // closesAt as of the creation and of the window's end gives both ends.
+  const windowEnd = closesAt(derived, id, p.createdAt);
+  const extensionEnd = closesAt(derived, id, windowEnd);
+  const failed = state === "Failed";
+  const ready = state === "Queued" && eta !== undefined && now >= eta;
+  // The step each state is at.
+  const at = {
+    Open: 1,
+    Extended: 2,
+    Passed: 3,
+    Failed: 3,
+    Queued: !ready ? 4 : work && !derived.attested.has(id) ? 5 : 6,
+    Executed: 6,
+  }[state];
+  const status = (i: number): Step["step"] =>
+    i < at
+      ? "done"
+      : i === at
+        ? "current"
+        : failed && i > 3
+          ? "skipped"
+          : "todo";
+  const steps: Step[] = [
+    { name: "Proposed", step: "done", date: p.createdAt, note: "By the firm" },
+    {
+      name: "Open",
+      step: status(1),
+      date: windowEnd,
+      closing: true,
+      note: "14-day vote",
+    },
+    waived
+      ? {
+          name: "Extended",
+          step: status(2),
+          date: extensionEnd,
+          closing: true,
+          note:
+            state === "Extended"
+              ? "Quorum waived. One owner's vote can decide."
+              : "7-day extension, quorum waived",
+        }
+      : {
+          name: "Extended",
+          step: "skipped",
+          note:
+            at > 2
+              ? "Not needed: quorum was met"
+              : "Only if too few owners vote",
+        },
+    {
+      name: failed ? "Failed" : "Passed",
+      step: status(3),
+      date: at >= 3 ? (waived ? extensionEnd : windowEnd) : undefined,
+      note: failed
+        ? "Not more units for than against"
+        : "More units for than against",
+    },
+    {
+      name: "Queued",
+      step: status(4),
+      date: eta,
+      note: "Fixed 7-day wait",
+    },
+  ];
+  if (work) {
+    steps.push({
+      name: "Firm confirms work",
+      step: status(5),
+      note: "With an evidence hash",
+    });
+  }
+  steps.push({
+    name: "Executed",
+    step: status(6),
+    note: work ? "Vendor paid" : "Vendor admitted",
+  });
+  return steps;
+}
+
 export type Status = "current" | "in arrears";
+
+// One step of a proposal's lifecycle (LifecycleTimeline). A date that is a
+// vote's end is `closing`.
+export type Step = {
+  name: string;
+  step: "done" | "current" | "todo" | "skipped";
+  date?: bigint;
+  closing?: boolean;
+  note: string;
+};
 
 export type View = {
   viewer: string | undefined;
@@ -43,6 +146,13 @@ export type View = {
     unvoted: bigint[];
     // When voting closes, while it is Open or Extended.
     closes?: bigint;
+    // When it was proposed.
+    createdAt: bigint;
+    // Both quorum conditions, each as Governance.quorumReached has them.
+    quorum: QuorumParts;
+    // Voting was extended, so quorum is waived.
+    waived: boolean;
+    steps: Step[];
   }[];
   ownUnits: {
     unitId: bigint;
@@ -107,6 +217,14 @@ export function buildView(
         p.limit;
     }
     const open = state === "Open" || state === "Extended";
+    const quorum = derived.quorumParts.get(p.proposalId)!;
+    const proposal = derived.proposals.get(p.proposalId)!;
+    // Voting extends when quorum was missed at the window's close, or a vote
+    // came after it.
+    const waived =
+      state === "Extended" ||
+      (state !== "Open" &&
+        (proposal.votedInExtension || !derived.quorum.get(p.proposalId)));
     return {
       id: p.proposalId,
       kind: p.kind === WORK ? "Work" : "Admit",
@@ -120,6 +238,17 @@ export function buildView(
       canVote: open && unvoted.length > 0,
       unvoted,
       closes: open ? closesAt(derived, p.proposalId, now) : undefined,
+      createdAt: proposal.createdAt,
+      quorum,
+      waived,
+      steps: stepsOf(
+        derived,
+        p.proposalId,
+        state,
+        now,
+        p.kind === WORK,
+        waived,
+      ),
     };
   });
 
