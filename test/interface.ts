@@ -316,7 +316,7 @@ describe("Read interface (#72, #149)", () => {
       expect(html).to.not.contain('<button class="btn" type="button">Pay');
     });
 
-    it("says two signatures are needed in the signing Dialog", () => {
+    it("gives a levy payment's signing sentence the two signatures it needs", () => {
       // The Dialog renders through a portal, which react-dom/server leaves
       // out, so this checks the words it ends its sentence with.
       const { signing } = payment(14n, 57n, 1240n * 10n ** 18n);

@@ -315,8 +315,9 @@ export function approvedRefusal(error: unknown) {
 /**
  * Every transaction goes through here: the Dialog while a wallet asks the
  * viewer to sign, a toast once the block has it or if the viewer cancelled in
- * the wallet, a RefusalNotice if refused, then the log again. The Dialog never stays open, whatever happens. Resolves
- * true if the transaction was mined, so a form can be cleared only then.
+ * the wallet, a RefusalNotice if refused, then the log again. The Dialog
+ * closes once the wallet has signed, refused or cancelled. Resolves true if
+ * the transaction was mined, so a form can be cleared only then.
  *
  * @param sign asks for the signature and resolves once the wallet has signed
  * @param ui.prompt false when the local node signs, which asks nobody
