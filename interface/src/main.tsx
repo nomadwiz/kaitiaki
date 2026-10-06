@@ -14,11 +14,14 @@ import {
   type Eip1193Provider,
   type Signer,
 } from "ethers";
+import { X } from "lucide-react";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { createRoot } from "react-dom/client";
+import { toast } from "sonner";
 
 import { replay } from "../../scripts/replay.js";
 import { App, type Wallet } from "./app.js";
+import { Toaster } from "./components/ui/sonner.js";
 import { unitsLabel } from "./format.js";
 import type { Act, Acting } from "./screens/actions.js";
 import type { Done, Notice } from "./states.js";
@@ -90,6 +93,17 @@ async function start() {
 type Env = Awaited<ReturnType<typeof start>>;
 const started = start();
 
+// A Sonner toast: a transaction recorded, or a request cancelled.
+function notify({ title, body, cancelled }: Done) {
+  if (cancelled) {
+    toast(title, {
+      icon: <X aria-hidden="true" className="size-4 text-muted-foreground" />,
+    });
+  } else {
+    toast.success(title, { description: body });
+  }
+}
+
 // The route is the address's hash.
 // Source: https://react.dev/reference/react/useSyncExternalStore
 function subscribe(callback: () => void) {
@@ -108,7 +122,6 @@ function Root() {
   const [account, setAccount] = useState<string>();
   const [notice, setNotice] = useState<Notice>();
   const [signing, setSigning] = useState<string>();
-  const [toast, setToast] = useState<Done>();
   const [voting, setVoting] = useState<bigint>();
   const [paying, setPaying] = useState<bigint>();
   const [acting, setActing] = useState<Acting>();
@@ -168,11 +181,15 @@ function Root() {
       const [first] = await env!.browserWallet!.send("eth_requestAccounts", []);
       setAccount(first);
     } catch (error) {
-      setNotice({
-        variant: "destructive",
-        title: "The wallet did not connect.",
-        description: refusal(error).message,
-      });
+      const { message, cancelled } = refusal(error);
+      if (cancelled) notify({ title: message, cancelled });
+      else {
+        setNotice({
+          variant: "destructive",
+          title: "The wallet did not connect.",
+          description: message,
+        });
+      }
     }
   }
 
@@ -196,7 +213,7 @@ function Root() {
       {
         prompt: Boolean(env!.browserWallet),
         setSigning,
-        setToast,
+        toast: notify,
         setNotice,
         reload: () => load(env!),
       },
@@ -297,8 +314,6 @@ function Root() {
       wallet={wallet}
       notice={notice}
       signing={signing}
-      toast={toast}
-      onDismissToast={() => setToast(undefined)}
       voting={voting}
       paying={paying}
       acting={acting}
@@ -345,4 +360,9 @@ function Root() {
   );
 }
 
-createRoot(document.getElementById("app")!).render(<Root />);
+createRoot(document.getElementById("app")!).render(
+  <>
+    <Root />
+    <Toaster position="top-center" />
+  </>,
+);

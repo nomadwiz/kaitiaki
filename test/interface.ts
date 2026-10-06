@@ -20,7 +20,7 @@ import hre, { network } from "hardhat";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { App, ELSEWHERE, type Wallet } from "../interface/src/app.js";
+import { App, ELSEWHERE, isElsewhere, type Wallet } from "../interface/src/app.js";
 import { checkEvidence, checkVendor, checkWork } from "../interface/src/screens/firm.js";
 import { date, nzd, short } from "../interface/src/format.js";
 import { ABI, approvedRefusal, carryOut, collectLevies, confirmWork, payment, proposeVendor, proposeWork, refusal, send, standingApproval } from "../interface/src/tx.js";
@@ -37,7 +37,7 @@ async function outcome(
   await send(action, call, {
     prompt: false,
     setSigning() {},
-    setToast: (t) => void (shown.toast = t),
+    toast: (t) => void (shown.toast = t),
     setNotice: (n) => void (shown.notice = n),
     async reload() {},
   });
@@ -317,11 +317,12 @@ describe("Read interface (#72, #149)", () => {
     });
 
     it("says two signatures are needed in the signing Dialog", () => {
+      // The Dialog renders through a portal, which react-dom/server leaves
+      // out, so this checks the words it ends its sentence with.
       const { signing } = payment(14n, 57n, 1240n * 10n ** 18n);
-      const html = renderToStaticMarkup(createElement(App, { hash: "#/", signing }));
-      expect(html).to.contain("Two signatures are needed");
-      expect(html).to.contain("Charge #57");
-      expect(html).to.contain("NZD 1,240.00");
+      expect(signing).to.contain("Two signatures are needed");
+      expect(signing).to.contain("Charge #57");
+      expect(signing).to.contain("NZD 1,240.00");
     });
   });
 
@@ -1411,8 +1412,10 @@ describe("Read interface (#72, #149)", () => {
           expect(bar.map((l) => l.label), at).to.deep.equal(NAV_LABELS[workspace]);
           expect(bar.filter((l) => l.current).map((l) => l.label), at).to.deep.equal([current]);
         }
-        // Only a route of the other workspace says so; an unknown one does not.
-        expect(html.includes(ELSEWHERE), at).to.equal(at === "owner #/collect" || at === "firm #/units");
+        // Only a route of the other workspace says so, in a toast (#189), and
+        // never in the page; an unknown route does not.
+        expect(isElsewhere(workspace, hash), at).to.equal(at === "owner #/collect" || at === "firm #/units");
+        expect(html, at).to.not.contain(ELSEWHERE);
       }
     }
     expect((await render(signers.alice.address, "#/building")).html).to.contain(PRIVACY_LINE);
@@ -1483,38 +1486,27 @@ describe("Read interface (#72, #149)", () => {
     }
   });
 
-  it("shows the signing Dialog, the success Toast and a RefusalNotice in the design system's markup", () => {
+  it("shows a refusal as a destructive Alert with its error name, and no Toast or Dialog markup of its own (#189)", () => {
     const html = (props: object) =>
       renderToStaticMarkup(createElement(App, { hash: "#/", ...props }));
-    expect(
-      html({ signing: "a vote for Proposal #2 with Units 1 and 2" }),
-    ).to.contain(
-      '<dialog class="dialog" aria-labelledby="signing-title"><p class="dialog-title" id="signing-title">Sign in your wallet</p><p class="muted-text" style="margin-top:8px">Your wallet is asking you to confirm a vote for Proposal #2 with Units 1 and 2.</p><div class="dialog-footer"><button class="btn" type="button" aria-disabled="true"><span class="spinner" aria-hidden="true"></span>Waiting for your wallet…</button></div></dialog>',
+    const refused = html({
+      notice: {
+        variant: "destructive",
+        title: "Your vote was not recorded",
+        description:
+          "This wallet holds no unit in this building, so it cannot vote.",
+        code: "NotBoundOwner",
+      },
+    });
+    expect(refused).to.match(/<div data-slot="alert" role="alert" class="[^"]*bg-destructive-soft text-destructive[^"]*"><svg[^>]*lucide-circle-alert[^>]*>/);
+    expect(refused).to.contain(
+      '>Your vote was not recorded</div><div data-slot="alert-description" class="col-start-2 grid justify-items-start gap-1 text-base text-muted-foreground [&amp;_p]:leading-relaxed">This wallet holds no unit in this building, so it cannot vote.<p class="font-mono text-sm">NotBoundOwner</p></div></div>',
     );
-    expect(html({})).to.not.contain("<dialog");
-    expect(
-      html({
-        toast: {
-          title: "Vote recorded",
-          body: "Units 1 and 2 voted for Proposal #2.",
-        },
-      }),
-    ).to.contain(
-      '<div class="toast" role="status"><div><p class="alert-title">Vote recorded</p><p class="body-sm">Units 1 and 2 voted for Proposal #2.</p></div><button class="btn" data-variant="ghost" data-size="icon" type="button" aria-label="Dismiss">✕</button></div>',
-    );
-    expect(
-      html({
-        notice: {
-          variant: "destructive",
-          title: "Your vote was not recorded",
-          description:
-            "This wallet holds no unit in this building, so it cannot vote.",
-          code: "NotBoundOwner",
-        },
-      }),
-    ).to.contain(
-      '<div class="alert" data-variant="destructive" role="alert"><p class="alert-title">Your vote was not recorded</p><p class="alert-description">This wallet holds no unit in this building, so it cannot vote.</p><p class="alert-code">Contract refusal: NotBoundOwner</p></div>',
-    );
+    // The old states.tsx markup is gone; the Dialog is shadcn/ui's, in a
+    // portal react-dom/server does not render, and toasts are Sonner's.
+    for (const props of [{}, { signing: "a vote for Proposal #2 with Units 1 and 2" }]) {
+      expect(html(props)).to.not.match(/<dialog|class="dialog|class="toast|class="alert"/);
+    }
   });
 
   it("names a wallet on another chain and offers it nothing; asks an unconnected wallet to connect; tells a wallet with no unit", async () => {
@@ -1536,8 +1528,8 @@ describe("Read interface (#72, #149)", () => {
         "#/proposal/2",
         browser(account, 1n),
       );
-      expect(html, account).to.contain(
-        '<div class="alert" data-variant="destructive" role="alert"><p class="alert-title">Your wallet is on chain 1, and Kaitiaki is deployed on chain 31337.</p>',
+      expect(html, account).to.match(
+        /<div data-slot="alert" role="alert" class="[^"]*bg-warning-soft text-warning[^"]*"><svg[^>]*lucide-triangle-alert[^>]*>.*?<div data-slot="alert-title"[^>]*>Your wallet is on chain 1\.<\/div><div data-slot="alert-description"[^>]*>Switch it to chain 31337 to act\.<\/div>/,
       );
       expect(html, account).to.not.contain("<form");
       expect(html, account).to.not.contain("Connect wallet");
@@ -1573,8 +1565,8 @@ describe("Read interface (#72, #149)", () => {
         hash,
         browser(stranger.address, 31337n),
       );
-      expect(html, hash).to.contain(
-        '<p class="alert-title">This wallet holds no unit in this building, so it cannot vote.</p>',
+      expect(html, hash).to.match(
+        /<div data-slot="alert" role="status"[^>]*><div data-slot="alert-title"[^>]*>This wallet holds no unit in this building, so it cannot vote\.<\/div>/,
       );
       expect(html, hash).to.not.contain("<form");
       expect(html, hash).to.not.contain("Connect your wallet");
@@ -1597,8 +1589,8 @@ describe("Read interface (#72, #149)", () => {
     });
     expect(failed).to.not.contain("Reading the event log…");
     expect(failed).to.not.contain('class="skeleton"');
-    expect(failed).to.contain(
-      '<main class="shell-main"><div class="alert" data-variant="destructive" role="alert"><p class="alert-title">The event log could not be read.</p><p class="alert-description">connection refused</p></div></main>',
+    expect(failed).to.match(
+      /^<main class="shell-main"><div data-slot="alert" role="alert" class="[^"]*bg-destructive-soft[^"]*"><svg[^>]*>.*?<\/svg><div data-slot="alert-title"[^>]*>The event log could not be read\.<\/div><div data-slot="alert-description"[^>]*>connection refused<\/div><\/div><\/main>$/,
     );
   });
 
@@ -1736,6 +1728,7 @@ describe("Transactions (#150)", () => {
       ),
     ).to.deep.equal({
       message: "You cancelled the request in your wallet. Nothing was sent.",
+      cancelled: true,
     });
   });
 
@@ -1750,8 +1743,9 @@ describe("Transactions (#150)", () => {
     function page(prompt: boolean) {
       const state: Record<string, unknown> = {
         signing: undefined,
+        // Sonner's toasts, newest last; they close themselves.
+        toasts: [],
         // What the previous transaction left behind.
-        toast: { title: "Vote recorded", body: "earlier" },
         notice: { variant: "destructive", title: "earlier", description: "" },
         reloads: 0,
       };
@@ -1759,7 +1753,7 @@ describe("Transactions (#150)", () => {
       const ui = {
         prompt,
         setSigning: (v?: string) => (state.signing = v),
-        setToast: (v?: object) => (state.toast = v),
+        toast: (v: object) => (state.toasts = [...(state.toasts as object[]), v]),
         setNotice: (v?: object) => (state.notice = v),
         reload: async () => void (state.reloads = (state.reloads as number) + 1),
       };
@@ -1775,28 +1769,48 @@ describe("Transactions (#150)", () => {
       return { state, seen, ui, sign };
     }
 
-    it("shows the Dialog only while the wallet signs, then the Toast, then reads the log again", async () => {
+    it("shows the Dialog only while the wallet signs, then a toast, then reads the log again", async () => {
       const { state, seen, ui, sign } = page(true);
       await send(VOTE, sign(async () => {}), ui);
-      // The last transaction's Toast and notice go as the Dialog opens.
-      expect(seen.signing).to.include({
+      // The last transaction's Alert goes as the Dialog opens.
+      expect(seen.signing).to.deep.include({
         signing: VOTE.signing,
-        toast: undefined,
+        toasts: [],
         notice: undefined,
       });
       // Signed: the chain, not the wallet, is what is left, and the log is
       // read only once the block has it.
-      expect(seen.waiting).to.include({ signing: undefined, reloads: 0 });
+      expect(seen.waiting).to.deep.include({ signing: undefined, toasts: [], reloads: 0 });
       expect(state).to.deep.equal({
         signing: undefined,
-        toast: VOTE.done,
+        toasts: [VOTE.done],
         notice: undefined,
         reloads: 1,
       });
     });
 
+    it("shows a request cancelled in the wallet as a toast, not an Alert, unless a payment's approval was already mined", async () => {
+      const reject = makeError("user rejected action", "ACTION_REJECTED", {
+        action: "sendTransaction",
+        reason: "rejected",
+      });
+      const { state, ui } = page(true);
+      await send(VOTE, () => Promise.reject(reject), ui);
+      expect(state).to.deep.equal({
+        signing: undefined,
+        toasts: [{ title: "You cancelled the request in your wallet. Nothing was sent.", cancelled: true }],
+        notice: undefined,
+        reloads: 1,
+      });
+      // The charge is still to pay, so that stays until the viewer acts.
+      const paid = page(true);
+      await send({ ...VOTE, refuse: approvedRefusal }, () => Promise.reject(reject), paid.ui);
+      expect(paid.state.toasts).to.deep.equal([]);
+      expect(paid.state.notice).to.deep.include({ variant: "destructive", code: undefined });
+    });
+
     it("resolves true only when the transaction was mined, which is when a form is emptied", async () => {
-      const ui = { prompt: false, setSigning() {}, setToast() {}, setNotice() {}, async reload() {} };
+      const ui = { prompt: false, setSigning() {}, toast() {}, setNotice() {}, async reload() {} };
       const action = { signing: "x", done: { title: "t", body: "b" }, refused: "r" };
       expect(await send(action, async () => ({ wait: async () => {} }), ui)).to.equal(true);
       expect(await send(action, async () => { throw new Error("no"); }, ui)).to.equal(false);
@@ -1808,7 +1822,7 @@ describe("Transactions (#150)", () => {
       await send(VOTE, () => Promise.reject({ data }), ui);
       expect(state).to.deep.equal({
         signing: undefined,
-        toast: undefined,
+        toasts: [],
         notice: {
           variant: "destructive",
           title: "Your vote was not recorded",
@@ -1824,7 +1838,7 @@ describe("Transactions (#150)", () => {
       const { state, seen, ui, sign } = page(false);
       await send(VOTE, sign(async () => {}), ui);
       expect(seen.signing).to.include({ signing: undefined });
-      expect(state).to.include({ toast: VOTE.done, reloads: 1 });
+      expect(state).to.deep.include({ toasts: [VOTE.done], reloads: 1 });
     });
   });
 

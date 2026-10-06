@@ -257,13 +257,20 @@ export const collectLevies = (count: number) => ({
 
 /**
  * Why a transaction did not happen, in plain words. `name` is the contract
- * error's, absent when no contract refused. ethers puts a revert's data on
- * the error it throws, from a browser wallet or the node alike.
+ * error's, absent when no contract refused; `cancelled` is set when the
+ * viewer cancelled in the wallet, which is a toast, not an Alert. ethers puts
+ * a revert's data on the error it throws, from a browser wallet or the node
+ * alike.
  */
-export function refusal(error: unknown): { name?: string; message: string } {
+export function refusal(error: unknown): {
+  name?: string;
+  message: string;
+  cancelled?: true;
+} {
   if (isError(error, "ACTION_REJECTED")) {
     return {
       message: "You cancelled the request in your wallet. Nothing was sent.",
+      cancelled: true,
     };
   }
   const { data, shortMessage } =
@@ -297,18 +304,18 @@ export function approvedRefusal(error: unknown) {
   if (r.name === "ERC20InsufficientAllowance") return r;
   const stands =
     "The approval was already sent, so the levy ledger stays approved for that amount.";
-  return {
-    ...r,
-    message: isError(error, "ACTION_REJECTED")
-      ? `You cancelled the payment in your wallet. ${stands} Press Pay to try again.`
-      : `${r.message} ${stands}`,
-  };
+  // Not `cancelled`: the charge is still to pay, so this stays as an Alert.
+  return r.cancelled
+    ? {
+        message: `You cancelled the payment in your wallet. ${stands} Press Pay to try again.`,
+      }
+    : { ...r, message: `${r.message} ${stands}` };
 }
 
 /**
  * Every transaction goes through here: the Dialog while a wallet asks the
- * viewer to sign, a Toast once the block has it, a RefusalNotice if not, then
- * the log again. The Dialog never stays open, whatever happens. Resolves
+ * viewer to sign, a toast once the block has it or if the viewer cancelled in
+ * the wallet, a RefusalNotice if refused, then the log again. The Dialog never stays open, whatever happens. Resolves
  * true if the transaction was mined, so a form can be cleared only then.
  *
  * @param sign asks for the signature and resolves once the wallet has signed
@@ -326,13 +333,12 @@ export async function send(
   ui: {
     prompt: boolean;
     setSigning(signing?: string): void;
-    setToast(toast?: Done): void;
+    toast(toast: Done): void;
     setNotice(notice?: Notice): void;
     reload(): Promise<void>;
   },
 ) {
   ui.setNotice(undefined);
-  ui.setToast(undefined);
   let sent = false;
   if (ui.prompt) ui.setSigning(action.signing);
   try {
@@ -340,16 +346,20 @@ export async function send(
     // Signed: what is left is the chain's, not the wallet's.
     ui.setSigning(undefined);
     await tx.wait();
-    ui.setToast(action.done);
+    ui.toast(action.done);
     sent = true;
   } catch (error) {
-    const { name, message } = (action.refuse ?? refusal)(error);
-    ui.setNotice({
-      variant: "destructive",
-      title: action.refused,
-      description: message,
-      code: name,
-    });
+    const { name, message, cancelled } = (action.refuse ?? refusal)(error);
+    if (cancelled) {
+      ui.toast({ title: message, cancelled });
+    } else {
+      ui.setNotice({
+        variant: "destructive",
+        title: action.refused,
+        description: message,
+        code: name,
+      });
+    }
   }
   ui.setSigning(undefined);
   await ui.reload();
