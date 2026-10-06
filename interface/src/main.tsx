@@ -16,7 +16,8 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { createRoot } from "react-dom/client";
 
 import { replay } from "../../scripts/replay.js";
-import { App, type Notice, type Wallet } from "./app.js";
+import { App, type Wallet } from "./app.js";
+import type { Notice } from "./states.js";
 import { buildView } from "./view.js";
 
 // Written by scripts/demo.ts. `token`, `timelock` and `firm` are there too,
