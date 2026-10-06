@@ -7,11 +7,11 @@ import { useEffect, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { Activity } from "./screens/activity.js";
+import { Building } from "./screens/building.js";
 import { Firm, type FirmActs } from "./screens/firm.js";
 import { Home } from "./screens/home.js";
 import { Proposal, type Acting, type OnAct } from "./screens/proposal.js";
 import { Proposals } from "./screens/proposals.js";
-import { Register } from "./screens/register.js";
 import { YourUnits } from "./screens/units.js";
 import { NAV, Shell, type Workspace } from "./shell.js";
 import {
@@ -133,7 +133,13 @@ const SCREENS: Record<Workspace, Record<string, (c: Context) => ReactNode>> = {
       />
     ),
     "#/building": (c) => (
-      <Register units={c.view.otherUnits} vendors={c.view.vendors} />
+      <Building
+        funds={c.view.funds}
+        queued={c.view.queued}
+        ownUnits={c.view.ownUnits}
+        otherUnits={c.view.otherUnits}
+        vendors={c.view.vendors}
+      />
     ),
     "#/activity": (c) => <Activity events={c.view.activity} />,
   },
