@@ -508,7 +508,7 @@ contract TreasuryTest is Test {
             address(settlementAsset)
         );
         payeeRegistry.admit(payee);
-        uint256 admitId = realGovernance.propose(payee);
+        uint256 admitId = realGovernance.propose(payee, "Test Vendor Ltd", "TEST-0001");
 
         vm.expectRevert(abi.encodeWithSelector(Treasury.UnknownProposal.selector, admitId));
         vm.prank(timelock);

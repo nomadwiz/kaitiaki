@@ -74,10 +74,11 @@ contract GovernanceFalseAttestationTest is GovernanceLoopSetup {
             Fund fund,
             bytes32 quoteHash,
             string memory description,
+            ,
 
         ) = abi.decode(
                 logs[i].data,
-                (Governance.ProposalKind, uint256, Fund, bytes32, string, uint256)
+                (Governance.ProposalKind, uint256, Fund, bytes32, string, uint256, string)
             );
         assertEq(uint8(kind), uint8(Governance.ProposalKind.Work));
         assertEq(limit, LIMIT, "limit");

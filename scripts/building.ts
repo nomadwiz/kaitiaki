@@ -97,8 +97,10 @@ export async function deployBuilding(ethers: Ethers) {
 
   // Proposal 1 admits the vendor through the whole loop: two owners vote
   // for it, it waits out the window and the timelock, and anyone executes.
-  await governance.connect(firm).getFunction("propose(address)")(
+  await governance.connect(firm).getFunction("propose(address,string,string)")(
     vendor.address,
+    "Harbour Lifts Ltd",
+    "DEMO-0001",
   );
   await governance.connect(alice).castVote(1, true);
   await governance.connect(bob).castVote(1, true);

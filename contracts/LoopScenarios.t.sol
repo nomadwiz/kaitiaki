@@ -156,7 +156,7 @@ contract LoopScenariosTest is Test {
     /// The owners admit the roofer to the approved list: the first vote.
     function _admitRoofer() internal {
         vm.prank(firm);
-        uint256 admissionId = governance.propose(roofer);
+        uint256 admissionId = governance.propose(roofer, "Test Vendor Ltd", "TEST-0001");
         _ownersApprove(admissionId);
         _windowCloses(admissionId);
         _queueAndWait(admissionId);

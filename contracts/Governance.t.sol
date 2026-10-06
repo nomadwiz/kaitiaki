@@ -33,7 +33,8 @@ contract GovernanceProposeTest is Test {
         Fund fund,
         bytes32 quoteHash,
         string description,
-        uint256 principalUnits
+        uint256 principalUnits,
+        string companyId
     );
 
     TimelockController internal timelock;
@@ -86,7 +87,7 @@ contract GovernanceProposeTest is Test {
 
     function test_FirmProposesAdmit() public {
         vm.prank(firm);
-        uint256 id = governance.propose(vendor);
+        uint256 id = governance.propose(vendor, "Test Vendor Ltd", "TEST-0001");
 
         assertEq(id, 1);
         Governance.Proposal memory p = governance.proposal(id);
@@ -95,14 +96,27 @@ contract GovernanceProposeTest is Test {
         assertEq(p.limit, 0);
         assertEq(uint8(p.fund), uint8(Fund.Operating));
         assertEq(p.quoteHash, bytes32(0));
-        assertEq(p.description, "");
+        assertEq(p.description, "Test Vendor Ltd");
+        assertEq(p.companyId, "TEST-0001");
         assertEq(p.createdAt, block.timestamp);
+    }
+
+    function test_ProposeAdmitRefusesEmptyName() public {
+        vm.prank(firm);
+        vm.expectRevert(Governance.VendorNameIsEmpty.selector);
+        governance.propose(vendor, "", "TEST-0001");
+    }
+
+    function test_ProposeAdmitRefusesEmptyCompanyId() public {
+        vm.prank(firm);
+        vm.expectRevert(Governance.CompanyIdIsEmpty.selector);
+        governance.propose(vendor, "Test Vendor Ltd", "");
     }
 
     /// Raising an admit proposal admits nobody; only an executed vote does.
     function test_ProposeAdmitDoesNotRegisterVendor() public {
         vm.prank(firm);
-        governance.propose(vendor);
+        governance.propose(vendor, "Test Vendor Ltd", "TEST-0001");
         assertFalse(payees.isRegistered(vendor));
     }
 
@@ -111,22 +125,32 @@ contract GovernanceProposeTest is Test {
         members.bindUnit(2, owner);
 
         vm.expectEmit(address(governance));
-        emit ProposalCreated(1, Governance.ProposalKind.Admit, vendor, 0, Fund.Operating, 0, "", 2);
+        emit ProposalCreated(
+            1,
+            Governance.ProposalKind.Admit,
+            vendor,
+            0,
+            Fund.Operating,
+            0,
+            "Test Vendor Ltd",
+            2,
+            "TEST-0001"
+        );
         vm.prank(firm);
-        governance.propose(vendor);
+        governance.propose(vendor, "Test Vendor Ltd", "TEST-0001");
     }
 
     function test_ProposeAdmitRefusesZeroVendor() public {
         vm.prank(firm);
         vm.expectRevert(Governance.VendorIsZero.selector);
-        governance.propose(address(0));
+        governance.propose(address(0), "Test Vendor Ltd", "TEST-0001");
     }
 
     function testFuzz_ProposeAdmitRefusesNonFirm(address caller) public {
         vm.assume(caller != firm);
         vm.prank(caller);
         vm.expectRevert(abi.encodeWithSelector(Governance.NotFirm.selector, caller));
-        governance.propose(vendor);
+        governance.propose(vendor, "Test Vendor Ltd", "TEST-0001");
     }
 
     // --- FR17: the firm may propose work against an approved vendor ----------
@@ -150,6 +174,7 @@ contract GovernanceProposeTest is Test {
         assertEq(uint8(p.fund), uint8(Fund.LongTermMaintenance));
         assertEq(p.quoteHash, QUOTE_HASH);
         assertEq(p.description, "Repaint stairwell");
+        assertEq(p.companyId, "");
         assertEq(p.createdAt, block.timestamp);
     }
 
@@ -176,7 +201,7 @@ contract GovernanceProposeTest is Test {
 
     function test_ApprovedSpendRejectsAdmitAndUnknownIds() public {
         vm.prank(firm);
-        uint256 admitId = governance.propose(vendor);
+        uint256 admitId = governance.propose(vendor, "Test Vendor Ltd", "TEST-0001");
 
         (bool admitExists, , uint256 admitLimit, address admitPayee) = governance.approvedSpend(
             admitId
@@ -206,7 +231,8 @@ contract GovernanceProposeTest is Test {
             Fund.Operating,
             QUOTE_HASH,
             "Repaint stairwell",
-            1
+            1,
+            ""
         );
         vm.prank(firm);
         governance.propose("Repaint stairwell", 4_500e18, Fund.Operating, vendor, QUOTE_HASH);
@@ -236,9 +262,9 @@ contract GovernanceProposeTest is Test {
         payees.admit(vendor);
 
         vm.startPrank(firm);
-        assertEq(governance.propose(stranger), 1);
+        assertEq(governance.propose(stranger, "Test Vendor Ltd", "TEST-0001"), 1);
         assertEq(governance.propose("Roof", 1e18, Fund.Operating, vendor, QUOTE_HASH), 2);
-        assertEq(governance.propose(stranger), 3);
+        assertEq(governance.propose(stranger, "Test Vendor Ltd", "TEST-0001"), 3);
         vm.stopPrank();
 
         assertEq(governance.proposalCount(), 3);

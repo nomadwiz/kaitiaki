@@ -119,7 +119,11 @@ describe("QAS-4 replay", () => {
 
     // Proposal 1 admits the vendor through the whole loop: alice and bob vote
     // for it, it waits out the window and the delay, and anyone executes it.
-    await governance.getFunction("propose(address)")(vendor.address);
+    await governance.getFunction("propose(address,string,string)")(
+      vendor.address,
+      "Test Vendor Ltd",
+      "TEST-0001",
+    );
     await governance.connect(alice).castVote(1, true);
     await governance.connect(bob).castVote(1, true);
     await advance(await governance.VOTING_PERIOD());
@@ -339,14 +343,17 @@ describe("QAS-4 replay", () => {
   type Event = [name: string, args: unknown[], block?: number];
   const work: Event = [
     "ProposalCreated",
-    [1n, 1, vendor, 400n, 0, ZeroHash, "Roof", 1n],
+    [1n, 1, vendor, 400n, 0, ZeroHash, "Roof", 1n, ""],
   ];
   const admit: Event = [
     "ProposalCreated",
-    [1n, 0, vendor, 0n, 0, ZeroHash, "", 1n],
+    [1n, 0, vendor, 0n, 0, ZeroHash, "Test Vendor Ltd", 1n, "TEST-0001"],
   ];
   const bound: Event = ["UnitBound", [1n, alice]];
-  const admitted: Event = ["PayeeAdmitted", [vendor, 1n]];
+  const admitted: Event = [
+    "PayeeAdmitted",
+    [vendor, 1n, "Test Vendor Ltd", "TEST-0001"],
+  ];
   const issued: Event = ["ChargeIssued", [0n, 1n, 100n, 1n]];
   // Block 1's timestamp is 1: at this eta, so `queued` makes its proposal
   // executable in block 1 and `queuedLate` does not.
@@ -356,9 +363,12 @@ describe("QAS-4 replay", () => {
   const released: Event = ["PaymentReleased", [0, vendor, 1n, 1n]];
   // The vendor admitted by proposal 2, so a release on proposal 1 can pay it.
   const vendorAdmitted: Event[] = [
-    ["ProposalCreated", [2n, 0, vendor, 0n, 0, ZeroHash, "", 1n]],
+    [
+      "ProposalCreated",
+      [2n, 0, vendor, 0n, 0, ZeroHash, "Test Vendor Ltd", 1n, "TEST-0001"],
+    ],
     ["ProposalQueued", [2n, 1n]],
-    ["PayeeAdmitted", [vendor, 2n]],
+    ["PayeeAdmitted", [vendor, 2n, "Test Vendor Ltd", "TEST-0001"]],
   ];
   const cases: [string, Event[], string][] = [
     [
@@ -526,7 +536,7 @@ describe("QAS-4 replay", () => {
     const votedByTwo = (principalUnits: bigint): Event[] => [
       [
         "ProposalCreated",
-        [1n, 1, vendor, 400n, 0, ZeroHash, "Roof", principalUnits],
+        [1n, 1, vendor, 400n, 0, ZeroHash, "Roof", principalUnits, ""],
       ],
       bound,
       ["UnitBound", [2n, bob]],
@@ -546,7 +556,7 @@ describe("QAS-4 replay", () => {
     const windowEnd = 1 + 14 * 86_400;
     const extensionEnd = windowEnd + 7 * 86_400;
     const derived = await forge([
-      ["ProposalCreated", [1n, 1, vendor, 400n, 0, ZeroHash, "Roof", 4n]],
+      ["ProposalCreated", [1n, 1, vendor, 400n, 0, ZeroHash, "Roof", 4n, ""]],
       bound,
       ["UnitBound", [2n, bob]],
       ["VoteCast", [1n, alice, true, 1n, [1n]]],

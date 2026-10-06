@@ -53,7 +53,7 @@ contract GovernanceQuorumTest is Test {
 
         start = block.timestamp;
         vm.prank(firm);
-        proposalId = governance.propose(vendor);
+        proposalId = governance.propose(vendor, "Test Vendor Ltd", "TEST-0001");
     }
 
     function _bind(address holder, uint256 first, uint256 last) internal {

@@ -54,7 +54,7 @@ contract GovernanceVoteTest is Test {
         members.bindUnit(3, bob);
 
         vm.prank(firm);
-        proposalId = governance.propose(vendor);
+        proposalId = governance.propose(vendor, "Test Vendor Ltd", "TEST-0001");
     }
 
     // --- FR2: only bound wallets vote ----------------------------------------
