@@ -42,7 +42,7 @@ const title = (p: Proposal) =>
 // A name is shown only when owners voted on it (ADR-018).
 const vendor = (p: Proposal) => p.vendor?.name ?? short(p.payee);
 
-function Heading({ id, children }: { id: string; children: string }) {
+export function Heading({ id, children }: { id: string; children: string }) {
   return (
     <CardTitle>
       <h2 id={id} className="text-xl">
@@ -96,10 +96,12 @@ export function Home({
   funds,
   proposals,
   ownUnits,
+  ownWallet,
 }: {
   funds: View["funds"];
   proposals: Proposal[];
   ownUnits: View["ownUnits"];
+  ownWallet: View["ownWallet"];
 }) {
   const needVote = proposals.filter((p) => p.canVote);
   // Queued Work proposals: each pays its vendor once the wait has ended and
@@ -163,13 +165,27 @@ export function Home({
                   </Alert>
                 );
               })}
-            <dl className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-2.5 text-base">
-              <dt className="text-muted-foreground">Next charge</dt>
-              <dd className="text-right tabular-nums">
-                {next
-                  ? `${nzd(next.amount)} on ${date(next.dueDate)}`
-                  : "None scheduled"}
-              </dd>
+            <dl className="flex flex-col gap-2.5 text-base">
+              {[
+                ...(ownWallet
+                  ? [
+                      ["Direct debit approved for", nzd(ownWallet.approved)],
+                      ["Wallet balance", nzd(ownWallet.balance)],
+                    ]
+                  : []),
+                [
+                  "Next charge",
+                  next
+                    ? `${nzd(next.amount)} on ${date(next.dueDate)}`
+                    : "None scheduled",
+                ],
+              ].map(([term, value]) => (
+                // The value moves under its term when both do not fit.
+                <div key={term} className="flex flex-wrap justify-between gap-x-4">
+                  <dt className="text-muted-foreground">{term}</dt>
+                  <dd className="ml-auto text-right tabular-nums">{value}</dd>
+                </div>
+              ))}
             </dl>
           </CardContent>
           <CardFooter>

@@ -1,6 +1,7 @@
 // The read interface (#72, #149, FR41): reads events only and holds no key
 // and no role. It reads through `replay`, which asks the node for logs and
-// their blocks' headers and nothing else, plus the latest block's timestamp.
+// their blocks' headers and nothing else, plus the latest block's timestamp
+// and the token's logs for the viewer's own wallet (tx.ts).
 // Every write goes through `send` (#150), signed by the viewer's own wallet —
 // a browser wallet through EIP-1193 if one is present, otherwise an account
 // the local node itself unlocks, chosen with `?as=<address>`. The interface
@@ -39,8 +40,9 @@ import {
   refusal,
   send,
   standingApproval,
+  walletBalance,
 } from "./tx.js";
-import { buildView } from "./view.js";
+import { buildView, type View } from "./view.js";
 
 // Written by scripts/demo.ts. `token` is the MockNZD a levy is paid in;
 // `timelock` and `firm` are there too, for the screens that need them.
@@ -64,6 +66,11 @@ const injected = (
 injected?.on("accountsChanged", () => location.reload());
 injected?.on("chainChanged", () => location.reload());
 const as = new URLSearchParams(location.search).get("as") ?? undefined;
+type Derived = Awaited<ReturnType<typeof replay>>;
+// The local node signs for `?as=<address>`, or else for the first wallet a
+// UnitBound event names, so the page opens on an owner's workspace.
+const nodeViewer = (derived?: Derived) =>
+  as ?? derived?.owners.values().next().value;
 
 // What the page needs before it can read: the deployment file and, with a
 // browser wallet, its account and chain. Started at once; the root is
@@ -115,8 +122,9 @@ function Root() {
   const hash = useSyncExternalStore(subscribe, () => location.hash);
   const [env, setEnv] = useState<Env>();
   const [log, setLog] = useState<{
-    derived: Awaited<ReturnType<typeof replay>>;
+    derived: Derived;
     now: bigint;
+    ownWallet?: View["ownWallet"];
   }>();
   const [failed, setFailed] = useState(false);
   const [account, setAccount] = useState<string>();
@@ -138,11 +146,35 @@ function Root() {
     });
   };
 
-  async function load({ config, reader }: Env) {
+  // `browserAccount` is the connected account, which a browser wallet's
+  // viewer is; the node's viewer comes from the log.
+  async function load(
+    { config, reader, browserWallet }: Env,
+    browserAccount = account,
+  ) {
     try {
       const derived = await replay(reader, config.addresses, config.fromBlock);
       const now = BigInt((await reader.getBlock("latest"))!.timestamp);
-      setLog({ derived, now });
+      // The viewer's direct debit and balance, from the token's events.
+      const owner = browserWallet ? browserAccount : nodeViewer(derived);
+      const ownWallet = owner
+        ? {
+            approved: await standingApproval(
+              reader,
+              config.token,
+              config.addresses.levyLedger,
+              owner,
+              config.fromBlock,
+            ),
+            balance: await walletBalance(
+              reader,
+              config.token,
+              owner,
+              config.fromBlock,
+            ),
+          }
+        : undefined;
+      setLog({ derived, now, ownWallet });
     } catch (error) {
       fail("The event log could not be read.", error);
     }
@@ -152,7 +184,7 @@ function Root() {
       (env) => {
         setEnv(env);
         setAccount(env.connected);
-        return load(env);
+        return load(env, env.connected);
       },
       (error) => fail("Kaitiaki could not start.", error),
     );
@@ -169,17 +201,16 @@ function Root() {
     };
     viewer = account;
   } else if (env) {
-    // The local node signs for `?as=<address>`, or else for the first wallet
-    // a UnitBound event names, so the page opens on an owner's workspace.
     wallet = { kind: "node" };
-    viewer = as ?? log?.derived.owners.values().next().value;
+    viewer = nodeViewer(log?.derived);
   }
-  const view = log && buildView(log.derived, log.now, viewer);
+  const view = log && buildView(log.derived, log.now, viewer, log.ownWallet);
 
   async function connect() {
     try {
       const [first] = await env!.browserWallet!.send("eth_requestAccounts", []);
       setAccount(first);
+      await load(env!, first);
     } catch (error) {
       const { message, cancelled } = refusal(error);
       if (cancelled) notify({ title: message, cancelled });

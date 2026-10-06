@@ -455,3 +455,13 @@ The Proposal screen beside its mock-ups, [`Proposal`](https://github.com/nomadwi
 | `178-proposal-firm-375.png` | The same at 375 px | The same, with `evidence/week6/178-proposal-firm-375.png` and a trailing `375` |
 | `178-proposal-carry-out-1440.png` | **FR22, NFR7.** Proposal 2 as carol once the firm has confirmed the work: Executed current, "Now"; Carry out the payment with Carry out payment and "Signed in your wallet.", offered to an owner | `UNTIL=attested npm run demo:loop`, then `node scripts/screenshot.mjs evidence/week6/178-proposal-carry-out-1440.png 'http://localhost:5173/?as=<carol>#/proposal/2'` |
 | `178-proposal-carry-out-375.png` | The same at 375 px | The same, with `evidence/week6/178-proposal-carry-out-375.png` and a trailing `375` |
+
+### Issue #179 — Your units
+
+The owner's Your units screen beside its mock-ups, [`YourUnits`](https://github.com/nomadwiz/kaitiki-doc/blob/master/doc/asset/mockups/YourUnits.dc.html) and [`YourUnitsMobile`](https://github.com/nomadwiz/kaitiki-doc/blob/master/doc/asset/mockups/YourUnitsMobile.dc.html), and Home's Your levies beside [`OwnerHome`](https://github.com/nomadwiz/kaitiki-doc/blob/master/doc/asset/mockups/OwnerHome.dc.html). All three are as alice (units 1 and 2) at the seeded stage.
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `179-units-1440.png` | **UC1, FR5, ADR-020, information view R4.** Your units as alice: the Direct debit card, with Rules, the scheduled total of her unpaid charges (NZD 500.00), the approval the levy ledger holds (NZD 0.00) and her wallet balance (NZD 250.00), the last two rebuilt from MockNZD's `Approval`, `Transfer` and the ledger's `LevyPaid`; Approve NZD 500.00 and "Signed in your wallet.". Unit 1, current: charge #4 Scheduled, Pay early. Unit 2, in arrears: an Alert that charge #1 was not covered when the firm collected it, and its row in arrears with Pay now. Charge #0, paid before it was due, is not listed | `npm run demo`, then `node scripts/screenshot.mjs evidence/week6/179-units-1440.png 'http://localhost:5173/?as=<alice>#/units'` |
+| `179-units-375.png` | The same at 375 px: one column, the three figures stacked, each charge Table scrolling inside its card, the BottomBar | The same, with `evidence/week6/179-units-375.png` and a trailing `375` |
+| `179-home-1440.png` | **ADR-020.** Home as alice: Your levies gains "Direct debit approved for" and "Wallet balance" from the same replay, above Next charge | `npm run demo`, then `node scripts/screenshot.mjs evidence/week6/179-home-1440.png 'http://localhost:5173/?as=<alice>#/'` |

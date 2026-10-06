@@ -118,12 +118,14 @@ const SCREENS: Record<Workspace, Record<string, (c: Context) => ReactNode>> = {
         funds={c.view.funds}
         proposals={c.view.proposals}
         ownUnits={c.view.ownUnits}
+        ownWallet={c.view.ownWallet}
       />
     ),
     "#/proposals": proposals("owner"),
     "#/units": (c) => (
       <YourUnits
         units={c.view.ownUnits}
+        ownWallet={c.view.ownWallet}
         onPay={c.canAct ? c.onPay : undefined}
         paying={c.paying}
         onDebit={c.canAct ? c.onDebit : undefined}
