@@ -3,11 +3,75 @@
 // the only screen that offers a vote.
 import type { FormEvent } from "react";
 
-import { date } from "../format.js";
-import { PageHead } from "../shell.js";
-import { ProposalMeta, TONE, type Proposal as ProposalView } from "./proposals.js";
+import { FUND_NAMES, TONE } from "../components/kaitiaki.js";
+import { date, nzd } from "../format.js";
+import { Address, PageHead } from "../shell.js";
+import type { View } from "../view.js";
+
+type ProposalView = View["proposals"][number];
 
 type OnVote = (proposalId: bigint, inFavour: boolean) => void;
+
+// What a proposal buys, from where, and from whom.
+function ProposalMeta({
+  proposal: p,
+  withQuote,
+}: {
+  proposal: ProposalView;
+  // The Proposal screen adds the hash of the quote.
+  withQuote?: boolean;
+}) {
+  const work = p.kind === "Work";
+  return (
+    <dl className="meta">
+      {work ? (
+        <>
+          <div>
+            <dt>Spending cap</dt>
+            <dd>{nzd(p.limit)}</dd>
+          </div>
+          <div>
+            <dt>Pays from</dt>
+            <dd>
+              <span className="fund-tag" data-fund={p.fund === 0n ? "op" : "ltm"}>
+                {FUND_NAMES[Number(p.fund)]}
+              </span>
+            </dd>
+          </div>
+          <div>
+            <dt>Vendor</dt>
+            <dd>
+              {/* A name is shown only when owners voted on it (ADR-018). */}
+              {p.vendor && `${p.vendor.name} `}
+              <Address value={p.payee} />
+            </dd>
+          </div>
+          {withQuote && (
+            <div>
+              <dt>Quote hash</dt>
+              <dd>
+                <Address value={p.quoteHash} label="Copy quote hash" />
+              </dd>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <div>
+            <dt>Adds vendor</dt>
+            <dd>{p.description}</dd>
+          </div>
+          <div>
+            <dt>Vendor wallet</dt>
+            <dd>
+              <Address value={p.payee} />
+            </dd>
+          </div>
+        </>
+      )}
+    </dl>
+  );
+}
 
 function Timeline({ steps }: { steps: ProposalView["steps"] }) {
   return (

@@ -1,148 +1,203 @@
-// Proposals (`#/proposals`), until #177 rebuilds it from its mock-up: every
-// proposal as a card linking to its screen, and Queue and Carry out, which
-// #178 moves onto the proposal's timeline. The card, its meta and the state
-// tones are shared with the Proposal screen.
-import { date, nzd } from "../format.js";
-import { Address, PageHead } from "../shell.js";
+// Proposals (`#/proposals`, #177), composed from doc/asset/mockups/Proposals,
+// in both workspaces: every proposal under Voting, Waiting to pay or Closed,
+// each card linking to its screen. The owner's copy names the viewer's units
+// that have not voted; the firm's links to Propose work and to Vendors. Queue
+// and Carry out stay below until #178 moves them onto the Proposal screen.
+import { Plus, Store, TriangleAlert } from "lucide-react";
+
+import { Fund, QuorumMeter, StatusBadge } from "../components/kaitiaki.js";
+import { Alert, AlertTitle } from "../components/ui/alert.js";
+import { Badge } from "../components/ui/badge.js";
+import { Button, buttonVariants } from "../components/ui/button.js";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card.js";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs.js";
+import { date, nzd, short, unitsLabel } from "../format.js";
+import type { Workspace } from "../shell.js";
 import type { View } from "../view.js";
 import { Actions, type Acting, type OnAct } from "./actions.js";
 
-export type Proposal = View["proposals"][number];
+type Proposal = View["proposals"][number];
 
-export const TONE = {
-  Open: "info",
-  Extended: "wait",
-  Passed: "ok",
-  Failed: "fail",
-  Queued: "wait",
-  Executed: "done",
-} as const;
-
-export const FUNDS = [
-  ["op", "Operating", "Running costs: cleaning, power, insurance."],
-  ["ltm", "Long-term maintenance", "Roof, lifts, cladding. Saved over years."],
+// Each tab and the states it holds. Passed and Queued wait for Queue, the
+// wait and, for Work, the firm's confirmation before anything is paid.
+const GROUPS = [
+  ["voting", "Voting", ["Open", "Extended"], "No proposals are open for voting."],
+  ["waiting", "Waiting to pay", ["Passed", "Queued"], "No proposals are waiting to pay."],
+  ["closed", "Closed", ["Failed", "Executed"], "No proposals are closed."],
 ] as const;
 
-// What a proposal buys, from where, and from whom.
-export function ProposalMeta({
+// The date of what happens next, or of how it ended.
+function next(p: Proposal) {
+  const at = (name: string) => p.steps.find((s) => s.name === name)?.date;
+  const confirmed = p.steps.find((s) => s.dateLabel === "Confirmed")?.date;
+  switch (p.state) {
+    case "Open":
+    case "Extended":
+      return `Closes ${date(p.closes!)}`;
+    case "Passed":
+    case "Failed":
+      return `Voting closed ${date(at(p.state)!)}`;
+    case "Queued": {
+      if (confirmed !== undefined) return `Work confirmed ${date(confirmed)}`;
+      const waiting = p.steps.find((s) => s.name === "Queued")!.step === "current";
+      return `Wait ${waiting ? "ends" : "ended"} ${date(at("Queued")!)}`;
+    }
+    case "Executed":
+      return `Carried out ${date(at("Executed")!)}`;
+  }
+}
+
+function ProposalCard({
   proposal: p,
-  withQuote,
+  workspace,
 }: {
   proposal: Proposal;
-  // The Proposal screen adds the hash of the quote.
-  withQuote?: boolean;
+  workspace: Workspace;
 }) {
   const work = p.kind === "Work";
+  const vote = workspace === "owner" && p.canVote;
   return (
-    <dl className="meta">
-      {work ? (
-        <>
-          <div>
-            <dt>Spending cap</dt>
-            <dd>{nzd(p.limit)}</dd>
-          </div>
-          <div>
-            <dt>Pays from</dt>
-            <dd>
-              <span className="fund-tag" data-fund={FUNDS[Number(p.fund)][0]}>
-                {FUNDS[Number(p.fund)][1]}
-              </span>
-            </dd>
-          </div>
-          <div>
-            <dt>Vendor</dt>
-            <dd>
-              {/* A name is shown only when owners voted on it (ADR-018). */}
-              {p.vendor && `${p.vendor.name} `}
-              <Address value={p.payee} />
-            </dd>
-          </div>
-          {withQuote && (
-            <div>
-              <dt>Quote hash</dt>
-              <dd>
-                <Address value={p.quoteHash} label="Copy quote hash" />
-              </dd>
-            </div>
-          )}
-        </>
-      ) : (
-        <>
-          <div>
-            <dt>Adds vendor</dt>
-            <dd>{p.description}</dd>
-          </div>
-          <div>
-            <dt>Vendor wallet</dt>
-            <dd>
-              <Address value={p.payee} />
-            </dd>
-          </div>
-        </>
-      )}
-    </dl>
-  );
-}
-
-export function ProposalCard({ proposal: p }: { proposal: Proposal }) {
-  const work = p.kind === "Work";
-  return (
-    <article className="card proposal">
-      <div className="proposal-top">
-        <span className="proposal-id">#{String(p.id)}</span>
-        <span className="badge" data-variant="secondary">
-          {work ? "Work" : "Admit vendor"}
+    <Card className="relative">
+      <CardHeader>
+        <span className="flex flex-wrap gap-2">
+          <StatusBadge word={p.state} />
+          <Badge variant="outline">{work ? "Work" : "Admit vendor"}</Badge>
         </span>
-        <span className="status" data-tone={TONE[p.state]}>
-          {p.state}
-        </span>
-      </div>
-      <h3 className="proposal-title">
-        <a href={`#/proposal/${p.id}`}>
-          {work ? p.description : `Admit ${p.description}`}
-        </a>
-      </h3>
-      <ProposalMeta proposal={p} />
-      <div className="next">
-        <span>
-          {p.closes !== undefined && (
+        <CardTitle>
+          <h2 className="text-xl">
+            {/* Stretched over the card, so the whole card opens it. */}
+            <a
+              href={`#/proposal/${p.id}`}
+              className="text-foreground no-underline after:absolute after:inset-0 after:rounded-lg"
+            >
+              {work ? p.description : `Admit ${p.description}`}
+            </a>
+          </h2>
+        </CardTitle>
+        <CardAction>
+          {/* Not a second link: the stretched title takes the press. */}
+          <span className={buttonVariants({ variant: "outline" })}>
+            {vote ? "Vote" : "View"}
+          </span>
+        </CardAction>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        <span className="flex flex-wrap gap-x-4 gap-y-1 text-base text-muted-foreground">
+          {work ? (
             <>
-              <strong>Voting closes {date(p.closes)}.</strong>{" "}
+              {/* A name is shown only when owners voted on it (ADR-018). */}
+              <span>{p.vendor?.name ?? short(p.payee)}</span>
+              <span className="tabular-nums">Up to {nzd(p.limit)}</span>
+              <Fund fund={p.fund} />
+            </>
+          ) : (
+            <>
+              <span>{p.companyId}</span>
+              <span className="font-mono text-[0.9375rem]">{short(p.payee)}</span>
             </>
           )}
-          {String(p.forVotes)} for · {String(p.againstVotes)} against
+          <span>{next(p)}</span>
         </span>
-      </div>
-    </article>
+        {p.state === "Open" && <QuorumMeter quorum={p.quorum} />}
+        {p.state === "Extended" && (
+          <Alert variant="warning">
+            <TriangleAlert aria-hidden="true" />
+            <AlertTitle>Quorum waived. One owner's vote can decide.</AlertTitle>
+          </Alert>
+        )}
+        {vote && (
+          <span className="text-base font-semibold">
+            {unitsLabel(p.unvoted)} {p.unvoted.length === 1 ? "has" : "have"}{" "}
+            not voted.
+          </span>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
-
 export function Proposals({
+  workspace,
   proposals,
   actions,
   onAct,
   acting,
 }: {
+  workspace: Workspace;
   proposals: Proposal[];
   actions: View["actions"];
   onAct?: OnAct;
   acting?: Acting;
 }) {
+  const groups = GROUPS.map(([value, label, states, empty]) => ({
+    value,
+    label,
+    empty,
+    proposals: proposals.filter((p) =>
+      (states as readonly string[]).includes(p.state),
+    ),
+  }));
   return (
     <>
-      <PageHead title="Proposals" />
-      {proposals.length ? (
-        <div className="grid-2">
-          {proposals.map((p) => (
-            <ProposalCard key={String(p.id)} proposal={p} />
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <h1>Proposals</h1>
+        {workspace === "firm" && (
+          <span className="flex flex-wrap gap-3">
+            <Button asChild>
+              <a href="#/propose" className="no-underline">
+                <Plus aria-hidden="true" />
+                Propose work
+              </a>
+            </Button>
+            <Button variant="outline" asChild>
+              <a href="#/vendors" className="text-foreground no-underline">
+                <Store aria-hidden="true" />
+                Propose a vendor
+              </a>
+            </Button>
+          </span>
+        )}
+      </div>
+      <Tabs defaultValue="voting" className="gap-6 wide:gap-8">
+        <TabsList aria-label="Stage">
+          {groups.map((g) => (
+            <TabsTrigger key={g.value} value={g.value}>
+              {g.label}
+              <span className="font-medium text-muted-foreground tabular-nums">
+                {g.proposals.length}
+              </span>
+            </TabsTrigger>
           ))}
-        </div>
-      ) : (
-        <div className="empty">
-          <h3>No proposals yet</h3>
-        </div>
-      )}
+        </TabsList>
+        {groups.map((g) => (
+          // Every tab's cards are in the markup, so the tests read them all;
+          // an inactive tab's are hidden.
+          <TabsContent
+            key={g.value}
+            value={g.value}
+            forceMount
+            className="flex flex-col gap-4 data-[state=inactive]:hidden"
+          >
+            {g.proposals.length ? (
+              g.proposals.map((p) => (
+                <ProposalCard
+                  key={String(p.id)}
+                  proposal={p}
+                  workspace={workspace}
+                />
+              ))
+            ) : (
+              <p className="text-muted-foreground">{g.empty}</p>
+            )}
+          </TabsContent>
+        ))}
+      </Tabs>
       <Actions actions={actions} onAct={onAct} acting={acting} />
     </>
   );
