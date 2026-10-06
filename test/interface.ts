@@ -10,6 +10,8 @@ import {
   Contract,
   Interface,
   makeError,
+  parseUnits,
+  zeroPadValue,
   type FunctionFragment,
 } from "ethers";
 import { readFile, readdir } from "node:fs/promises";
@@ -21,7 +23,7 @@ import { App, type Wallet } from "../interface/src/app.js";
 import { date, nzd } from "../interface/src/format.js";
 import { ABI, refusal, send } from "../interface/src/tx.js";
 import { buildView } from "../interface/src/view.js";
-import { deployBuilding } from "../scripts/building.js";
+import { advance, deployBuilding } from "../scripts/building.js";
 import { replay } from "../scripts/replay.js";
 
 const STATES = ["Open", "Extended", "Passed", "Failed", "Queued", "Executed"];
@@ -187,6 +189,92 @@ describe("Read interface (#72, #149)", () => {
     expect(await check()).to.deep.equal(["Executed", "Extended"]);
     await advance(7);
     expect(await check()).to.deep.equal(["Executed", "Passed"]);
+  });
+
+  it("FR40: Home's queued-to-pay figure is the sum of the Queued limits on that fund, from events", async () => {
+    const { ethers, contracts, signers, render } = await setUp();
+    const { governance } = contracts;
+    let { view, html } = await render(signers.carol.address);
+    expect(view.queued).to.deep.equal({ operating: 0n, maintenance: 0n });
+    expect(html).to.contain('Queued to pay, at most: <b class="num">none</b>');
+
+    // Bob and carol vote with alice, so quorum holds and the window closes
+    // without an extension; anyone then queues it.
+    await governance.connect(signers.bob).castVote(2, true);
+    await governance.connect(signers.carol).castVote(2, true);
+    await advance(ethers, await governance.VOTING_PERIOD());
+    await governance.connect(signers.stranger).queue(2);
+    ({ view, html } = await render(signers.carol.address));
+    expect(view.queued).to.deep.equal({
+      operating: parseUnits("400", 18),
+      maintenance: 0n,
+    });
+    expect(html).to.contain(
+      `Queued to pay, at most: <b class="num">${nzd(parseUnits("400", 18))}</b>`,
+    );
+    // The other fund has nothing queued.
+    expect(
+      html.match(/Queued to pay, at most: <b class="num">none<\/b>/g),
+    ).to.have.length(1);
+  });
+
+  it("lists what needs the viewer's vote, each with the date voting closes", async () => {
+    const { ethers, contracts, signers, addresses, fromBlock, render } =
+      await setUp();
+    const { governance } = contracts;
+    const [created] = await ethers.provider.getLogs({
+      address: addresses.governance,
+      fromBlock,
+      topics: [
+        governance.interface.getEvent("ProposalCreated").topicHash,
+        zeroPadValue("0x02", 32),
+      ],
+    });
+    const createdAt = BigInt(
+      (await ethers.provider.getBlock(created.blockNumber))!.timestamp,
+    );
+    const window = await governance.VOTING_PERIOD();
+    const closes = createdAt + window;
+
+    // Carol's unit has not voted on proposal 2; alice's both have.
+    let { view, html } = await render(signers.carol.address);
+    expect(view.proposals.find((p) => p.id === 2n)?.closes).to.equal(closes);
+    expect(html).to.contain(`Voting closes ${date(closes)}.`);
+    expect(html).to.contain("1 proposal");
+    expect(html).to.match(/<form class="vote" data-proposal="2">/);
+    ({ html } = await render(signers.alice.address));
+    expect(html).to.contain("0 proposals");
+    expect(html).to.contain("Nothing needs your vote.");
+
+    // One wallet voted, so no quorum: voting extends by seven days.
+    await advance(ethers, window);
+    ({ view, html } = await render(signers.carol.address));
+    const extended = closes + 7n * 86_400n;
+    expect(view.proposals.find((p) => p.id === 2n)?.closes).to.equal(extended);
+    expect(html).to.contain(`Voting closes ${date(extended)}.`);
+  });
+
+  it("shows the viewer's own units and the Guarantees line on Home", async () => {
+    const { signers, render } = await setUp();
+    const { html } = await render(signers.alice.address);
+    expect(html).to.contain('<h2 id="h-units">Your levies</h2>');
+    expect(html).to.match(
+      /Unit 1<\/h3><span class="status" data-tone="ok">current/,
+    );
+    expect(html).to.match(
+      /Unit 2<\/h3><span class="status" data-tone="late">in arrears/,
+    );
+    expect(html).to.contain("Charge #1 · was due");
+    expect(html).to.not.contain("Unit 3");
+    expect(html).to.contain("The contract protects the money:");
+    for (const g of [
+      "Approved proposal",
+      "Approved vendor",
+      "Within the cap",
+      "Right fund",
+    ]) {
+      expect(html).to.contain(`<summary>${g}</summary>`);
+    }
   });
 
   it("offers a vote only to a unit that has not voted, and only while voting is open", async () => {

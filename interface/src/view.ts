@@ -9,6 +9,7 @@
 // not protection — anyone with a node reads the whole log.
 import {
   arrearsAt,
+  closesAt,
   stateAt,
   type ProposalState,
   type replay,
@@ -17,12 +18,15 @@ import {
 type Derived = Awaited<ReturnType<typeof replay>>;
 
 const WORK = 1n; // Governance.ProposalKind.Work
+const FUND_OPERATING = 0n; // Treasury.Fund.Operating
 
 export type Status = "current" | "in arrears";
 
 export type View = {
   viewer: string | undefined;
   funds: { operating: bigint; maintenance: bigint };
+  // The most each fund could still pay out: the limits of its Queued proposals.
+  queued: { operating: bigint; maintenance: bigint };
   proposals: {
     id: bigint;
     kind: "Admit" | "Work";
@@ -37,6 +41,8 @@ export type View = {
     canVote: boolean;
     // The viewer's units that have not voted on it, which vote together.
     unvoted: bigint[];
+    // When voting closes, while it is Open or Extended.
+    closes?: bigint;
   }[];
   ownUnits: {
     unitId: bigint;
@@ -91,28 +97,37 @@ export function buildView(
     isViewer(derived.owners.get(unitId)!),
   );
 
+  const queued = { operating: 0n, maintenance: 0n };
+  const proposals: View["proposals"] = created.map((p) => {
+    const state = stateAt(derived, p.proposalId, now);
+    const voted = votedUnits.get(p.proposalId) ?? new Set<bigint>();
+    const unvoted = viewerUnits.filter((unitId) => !voted.has(unitId));
+    if (state === "Queued") {
+      queued[p.fund === FUND_OPERATING ? "operating" : "maintenance"] +=
+        p.limit;
+    }
+    const open = state === "Open" || state === "Extended";
+    return {
+      id: p.proposalId,
+      kind: p.kind === WORK ? "Work" : "Admit",
+      payee: p.payee,
+      description: p.description,
+      limit: p.limit,
+      fund: p.fund,
+      state,
+      forVotes: derived.tallies.get(p.proposalId)?.forVotes ?? 0n,
+      againstVotes: derived.tallies.get(p.proposalId)?.againstVotes ?? 0n,
+      canVote: open && unvoted.length > 0,
+      unvoted,
+      closes: open ? closesAt(derived, p.proposalId, now) : undefined,
+    };
+  });
+
   return {
     viewer,
     funds: derived.funds,
-    proposals: created.map((p) => {
-      const state = stateAt(derived, p.proposalId, now);
-      const voted = votedUnits.get(p.proposalId) ?? new Set<bigint>();
-      const unvoted = viewerUnits.filter((unitId) => !voted.has(unitId));
-      return {
-        id: p.proposalId,
-        kind: p.kind === WORK ? "Work" : "Admit",
-        payee: p.payee,
-        description: p.description,
-        limit: p.limit,
-        fund: p.fund,
-        state,
-        forVotes: derived.tallies.get(p.proposalId)?.forVotes ?? 0n,
-        againstVotes: derived.tallies.get(p.proposalId)?.againstVotes ?? 0n,
-        canVote:
-          (state === "Open" || state === "Extended") && unvoted.length > 0,
-        unvoted,
-      };
-    }),
+    queued,
+    proposals,
     ownUnits: viewerUnits.map((unitId) => ({
       unitId,
       status: statusOf(unitId),

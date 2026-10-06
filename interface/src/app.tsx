@@ -71,7 +71,9 @@ const SCREENS: Record<string, (c: Context) => ReactNode> = {
   "#/": (c) => (
     <Home
       funds={c.view.funds}
+      queued={c.view.queued}
       proposals={c.view.proposals}
+      ownUnits={c.view.ownUnits}
       canAct={c.canAct}
       voting={c.voting}
       onVote={c.onVote}
