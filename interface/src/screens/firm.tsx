@@ -434,11 +434,14 @@ export function Firm({
   toConfirm,
   act,
   acting,
+  fresh = { work: 0, vendor: 0 },
 }: {
   vendors: View["vendors"];
   toConfirm: View["toConfirm"];
   act?: FirmActs;
   acting?: Acting;
+  // A new number empties that form: a new key mounts it afresh.
+  fresh?: { work: number; vendor: number };
 }) {
   return (
     <>
@@ -455,7 +458,7 @@ export function Firm({
         </p>
       </div>
       <div className="grid-2">
-        <ProposeWork vendors={vendors} act={act} acting={acting} />
+        <ProposeWork key={fresh.work} vendors={vendors} act={act} acting={acting} />
         <div className="stack" style={{ gap: "var(--space-6)" }}>
           <section className="card">
             <div className="card-header">
@@ -476,7 +479,7 @@ export function Firm({
               ))}
             </div>
           </section>
-          <ProposeVendor act={act} acting={acting} />
+          <ProposeVendor key={fresh.vendor} act={act} acting={acting} />
         </div>
       </div>
     </>

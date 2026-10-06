@@ -495,6 +495,10 @@ describe("Read interface (#72, #149)", () => {
         expect(text(html)).to.contain(limits);
         expect(html).to.not.contain("Management firm");
       }
+      // No firm in the config and no viewer must not match each other.
+      const { view } = await s.render(undefined, "#/firm");
+      const none = renderToStaticMarkup(createElement(App, { hash: "#/firm", view, onFirm: { onWork() {}, onVendor() {}, onConfirm() {} } }));
+      expect(none.match(/disabled=""/g)!.length).to.equal(10);
       // The firm's wallet on another chain is offered nothing either.
       const wrong = { kind: "browser", account: firm.address, chainId: 1n, deploymentChainId: 31337n } as const;
       expect((await firmPage(s, firm.address, wrong)).html).to.contain('disabled=""');
@@ -1698,6 +1702,13 @@ describe("Transactions (#150)", () => {
         notice: undefined,
         reloads: 1,
       });
+    });
+
+    it("resolves true only when the transaction was mined, which is when a form is emptied", async () => {
+      const ui = { prompt: false, setSigning() {}, setToast() {}, setNotice() {}, async reload() {} };
+      const action = { signing: "x", done: { title: "t", body: "b" }, refused: "r" };
+      expect(await send(action, async () => ({ wait: async () => {} }), ui)).to.equal(true);
+      expect(await send(action, async () => { throw new Error("no"); }, ui)).to.equal(false);
     });
 
     it("closes the Dialog and shows a RefusalNotice when the contract refuses", async () => {

@@ -64,6 +64,8 @@ type Props = {
   // The firm's address, from the deployment file, and what its wallet can do.
   firm?: string;
   onFirm?: FirmActs;
+  // Changes when a proposal form is to be emptied, after its send succeeded.
+  fresh?: { work: number; vendor: number };
 };
 
 // What each screen is given, once the log has been read.
@@ -80,6 +82,7 @@ type Context = {
   onAct?: Props["onAct"];
   // Set only for the firm's wallet, on the deployment's chain.
   onFirm?: FirmActs;
+  fresh?: Props["fresh"];
 };
 
 const SCREENS: Record<string, (c: Context) => ReactNode> = {
@@ -127,6 +130,7 @@ const SCREENS: Record<string, (c: Context) => ReactNode> = {
       toConfirm={c.view.toConfirm}
       act={c.onFirm}
       acting={c.acting}
+      fresh={c.fresh}
     />
   ),
 };
@@ -150,6 +154,7 @@ export function App({
   onAct,
   firm,
   onFirm,
+  fresh,
 }: Props) {
   const id = /^#\/proposal\/(\d+)$/.exec(hash)?.[1];
   const route = id ? "proposal" : Object.hasOwn(SCREENS, hash) ? hash : "#/";
@@ -206,9 +211,13 @@ export function App({
               acting,
               onAct,
               onFirm:
-                !wrongChain && viewer?.toLowerCase() === firm?.toLowerCase()
+                !wrongChain &&
+                !!firm &&
+                !!viewer &&
+                viewer.toLowerCase() === firm.toLowerCase()
                   ? onFirm
                   : undefined,
+              fresh,
             })
           : !failed && <Loading />}
       </main>

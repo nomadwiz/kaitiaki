@@ -110,6 +110,9 @@ function Root() {
   const [voting, setVoting] = useState<bigint>();
   const [paying, setPaying] = useState<bigint>();
   const [acting, setActing] = useState<Acting>();
+  // Bumped when a proposal form's transaction succeeds, which empties it. A
+  // refused one keeps its values, so the firm can correct them.
+  const [fresh, setFresh] = useState({ work: 0, vendor: 0 });
 
   const fail = (title: string, error: unknown) => {
     setFailed(true);
@@ -273,7 +276,13 @@ function Root() {
     call: (governance: Contract) => Promise<ContractTransactionResponse>,
   ) {
     setActing(acting);
-    await sendTx(action, (at) => call(at(env!.config.addresses.governance)));
+    const sent = await sendTx(action, (at) =>
+      call(at(env!.config.addresses.governance)),
+    );
+    const { action: form } = acting;
+    if (sent && (form === "work" || form === "vendor")) {
+      setFresh((f) => ({ ...f, [form]: f[form] + 1 }));
+    }
     setActing(undefined);
   }
 
@@ -296,6 +305,7 @@ function Root() {
       onPay={(unit, id, amount) => void pay(unit, id, amount)}
       onAct={(action, id) => void act(action, id)}
       firm={env?.config.firm}
+      fresh={fresh}
       onFirm={{
         onWork: (w) =>
           void firmSend({ action: "work", id: 0n }, proposeWork(w.description), (g) =>
