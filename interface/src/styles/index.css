@@ -1,0 +1,177 @@
+/* Tailwind and shadcn/ui on Kaitiaki's tokens (doc/asset/design-system/).
+   tokens.css holds every value, light and dark; this file names them for
+   Tailwind under shadcn/ui's variable names, and applies the design system's
+   overrides that are not a component's own classes.
+
+   The screens not yet rebuilt on shadcn/ui keep the old stylesheet,
+   bundle.css, in its own layer below Tailwind's components and utilities, so
+   a shadcn/ui class always wins over its element rules. */
+@layer theme, base, legacy, components, utilities;
+
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "./tokens.css";
+@import "./bundle.css" layer(legacy);
+
+/* Kaitiaki's tokens already change with the theme, so shadcn/ui's own
+   `dark:` adjustments, made for its default palette, never apply. */
+@custom-variant dark (&:where(.never-dark *));
+
+:root {
+  --popover: var(--card);
+  --popover-foreground: var(--card-foreground);
+  --sidebar: var(--card);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--accent-foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+  --sidebar-width: 264px;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-destructive: var(--destructive);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-fund-operating: var(--fund-operating);
+  --color-fund-ltm: var(--fund-ltm);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: 4px;
+  --radius-md: var(--radius);
+  --radius-lg: var(--radius);
+  --radius-xl: 12px;
+  --shadow-xs: var(--shadow-sm);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-lg);
+  --shadow-lg: var(--shadow-lg);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  /* The design system's one breakpoint: the Sidebar from here up, the
+     BottomBar below. */
+  --breakpoint-wide: 50rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-size: 1.125rem;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1 {
+    font-size: 2rem;
+    line-height: 1.25;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  h2 {
+    font-size: 1.5rem;
+    line-height: 1.3;
+    font-weight: 650;
+  }
+  a {
+    color: var(--primary);
+    text-underline-offset: 3px;
+  }
+}
+
+/* Unlayered, so it wins over every component's `outline-none`: a 3px solid
+   ring, 2px off the edge, on every focusable thing. */
+:focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* StatusBadge: the word is the element's only text; the shape beside it is
+   drawn here, so status is never colour alone. */
+@layer components {
+  .status::before {
+    content: "";
+    flex: none;
+    width: 10px;
+    height: 10px;
+    background: currentColor;
+  }
+  .status[data-tone="info"] {
+    background: var(--info-soft);
+    color: var(--info);
+  }
+  .status[data-tone="info"]::before {
+    border-radius: 50%;
+    background: transparent;
+    border: 2px solid currentColor;
+  }
+  .status[data-tone="wait"] {
+    background: var(--warning-soft);
+    color: var(--warning);
+  }
+  .status[data-tone="wait"]::before {
+    height: 12px;
+    clip-path: polygon(0 0, 100% 0, 50% 50%, 100% 100%, 0 100%, 50% 50%);
+  }
+  .status[data-tone="ok"] {
+    background: var(--success-soft);
+    color: var(--success);
+  }
+  .status[data-tone="ok"]::before {
+    border-radius: 50%;
+  }
+  .status[data-tone="fail"] {
+    background: var(--destructive-soft);
+    color: var(--destructive);
+  }
+  .status[data-tone="fail"]::before {
+    clip-path: polygon(20% 0, 50% 30%, 80% 0, 100% 20%, 70% 50%, 100% 80%, 80% 100%, 50% 70%, 20% 100%, 0 80%, 30% 50%, 0 20%);
+  }
+  .status[data-tone="done"] {
+    background: var(--secondary);
+    color: var(--secondary-foreground);
+  }
+  .status[data-tone="done"]::before {
+    clip-path: polygon(0 55%, 15% 40%, 38% 62%, 85% 12%, 100% 27%, 38% 92%);
+  }
+  .status[data-tone="late"] {
+    background: var(--destructive-soft);
+    color: var(--destructive);
+  }
+  .status[data-tone="late"]::before {
+    width: 9px;
+    height: 9px;
+    transform: rotate(45deg);
+  }
+}

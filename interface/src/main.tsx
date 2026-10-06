@@ -106,7 +106,7 @@ function Root() {
   }>();
   const [failed, setFailed] = useState(false);
   const [account, setAccount] = useState<string>();
-  const [chosen, setChosen] = useState(as);
+  const chosen = as;
   const [notice, setNotice] = useState<Notice>();
   const [signing, setSigning] = useState<string>();
   const [toast, setToast] = useState<Done>();
@@ -157,23 +157,10 @@ function Root() {
     };
     viewer = account;
   } else if (env) {
-    // Bound wallets, from UnitBound, each with its units. `?as=` picks one,
-    // or any other address, so a page can be seen as any owner or none.
-    const unitsOf = new Map<string, bigint[]>();
-    for (const [unitId, w] of log?.derived.owners ?? []) {
-      unitsOf.set(w, [...(unitsOf.get(w) ?? []), unitId]);
-    }
-    const choices = [...unitsOf].map(([address, units]) => ({
-      address,
-      units,
-    }));
-    const same = (c: { address: string }) =>
-      c.address.toLowerCase() === chosen?.toLowerCase();
-    if (log && chosen && !choices.some(same)) {
-      choices.push({ address: chosen, units: [] });
-    }
-    wallet = { kind: "node", choices };
-    viewer = (choices.find(same) ?? choices[0])?.address;
+    // The local node signs for `?as=<address>`, or else for the first wallet
+    // a UnitBound event names, so the page opens on an owner's workspace.
+    wallet = { kind: "node" };
+    viewer = chosen ?? log?.derived.owners.values().next().value;
   }
   const view = log && buildView(log.derived, log.now, viewer);
 
@@ -318,7 +305,6 @@ function Root() {
       acting={acting}
       failed={failed}
       onConnect={() => void connect()}
-      onViewer={setChosen}
       onVote={(id, inFavour) => void vote(id, inFavour)}
       onPay={(unit, id, amount) => void pay(unit, id, amount)}
       onDebit={(total) => void debit(total)}

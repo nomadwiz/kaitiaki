@@ -77,8 +77,7 @@ npm run demo                  # terminal 2: deploys, seeds, writes interface/pub
 npm run interface             # terminal 3: then open the URL it prints
 ```
 
-- **As an owner.** Without a browser wallet, "Viewing as" lists the wallets bound to units. `?as=<wallet>` in the URL adds and selects any other address.
-- **As the firm.** Use `?as=<firm>`, with `firm` taken from `interface/public/deployment.json`.
+- **Whose workspace.** The address picks it ([ADR-021](https://github.com/nomadwiz/kaitiki-doc/blob/master/doc/design/decisions/adr/021-workspace-per-role.md)): the firm's address opens the Firm workspace, a wallet bound to a unit the Owner workspace, and any other address one screen with no building data. Without a browser wallet, `?as=<address>` in the URL picks the address, and with none the page opens as the first wallet bound to a unit. `firm` is in `interface/public/deployment.json`.
 - **Signing.** Every action is signed by the viewer's wallet: a browser wallet shows its signing dialog, and the unlocked local account signs with no dialog ([`interface.md` §3](https://github.com/nomadwiz/kaitiki-doc/blob/master/doc/design/interface.md)).
 - **Time.** The local node's clock moves only when a script moves it: `npm run demo` while seeding, then `npm run demo:loop`, which carries proposal 2 through the rest of the loop, and `UNTIL` stops it part-way so each stage can be seen: `UNTIL=passed` (the voting window has closed), `UNTIL=ready` (queued, delay passed), `UNTIL=attested` (the firm has attested), and with no `UNTIL` it runs to executed. Each run does only the steps still to do. Reload the interface after each.
 
@@ -90,7 +89,7 @@ The screenshots under `evidence/week6/` are captured with [`scripts/screenshot.m
 | --- | --- |
 | `contracts/` | Solidity sources, each with its Solidity tests (`*.t.sol`) beside it; `interfaces/` for the interfaces contracts call each other through, `stubs/` for stand-ins used before a real contract exists |
 | `test/` | TypeScript tests, only for claims that are off-chain by definition |
-| `interface/` | The interface: the Vite and React app, its design-system styles, and the screens |
+| `interface/` | The interface: the Vite and React app, shadcn/ui's components in `src/components/ui/` (added with `scripts/shadcn-add.sh`), Kaitiaki's own in `src/components/kaitiaki.tsx`, its styles, and the screens |
 | `scripts/` | Scripts run with `hardhat run` or `node`: deployment, the demo seeding and its stages, the event-log replay, the screenshot capture, and configuration checks |
 | `evidence/` | Test output, gas tables and screenshots the report cites: one folder per week (`week1/`, `week2/`, …), each file named `<issue>-<slug>.<ext>`; its `README.md` says what each file shows |
 | `.github/workflows/` | CI, run on every pull request, and the automated review |

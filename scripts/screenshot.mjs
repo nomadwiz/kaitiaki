@@ -1,19 +1,22 @@
 // Captures one interface page as a light-theme PNG: headless Chrome at
-// 1440 px wide, 2x device scale, cut to the page's content. Chrome's
+// 1440 px wide, or the width given, 2x device scale, cut to the page's content. Chrome's
 // headless mode follows the operating system's colour scheme, so this drives
 // it over the DevTools protocol to ask for light (evidence/README.md, #158).
 //
 // Usage, with the interface running (`npm run interface`):
-//   node scripts/screenshot.mjs <out.png> '<url>'
+//   node scripts/screenshot.mjs <out.png> '<url>' [width]
 //   node scripts/screenshot.mjs evidence/week6/158-units-as-alice.png 'http://localhost:5173/?as=<alice>#/units'
+//   node scripts/screenshot.mjs evidence/week6/176-home-375.png 'http://localhost:5173/?as=<alice>#/' 375
 // Set CHROME to another Chrome or Chromium binary if it is not the macOS one.
 import { spawn } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const [out, url] = process.argv.slice(2);
-if (!out || !url) throw new Error("usage: screenshot.mjs <out.png> <url>");
+const [out, url, width = "1440"] = process.argv.slice(2);
+if (!out || !url) throw new Error("usage: screenshot.mjs <out.png> <url> [width]");
+// Below 800 px the interface is the phone layout, so Chrome emulates a phone.
+const mobile = Number(width) < 800;
 const chrome = process.env.CHROME ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const port = 9333 + Math.floor(Math.random() * 500);
 const profile = mkdtempSync(join(tmpdir(), "shot-"));
@@ -54,10 +57,10 @@ try {
     return reply.result;
   };
   const size = (height) =>
-    send("Emulation.setDeviceMetricsOverride", { width: 1440, height, deviceScaleFactor: 2, mobile: false });
+    send("Emulation.setDeviceMetricsOverride", { width: Number(width), height, deviceScaleFactor: 2, mobile });
 
   await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: "light" }] });
-  await size(900);
+  await size(mobile ? 812 : 900);
   await send("Page.navigate", { url });
   await sleep(6000); // the log replay
   // The lowest edge of any element, plus a margin: the page's own height is
@@ -69,7 +72,7 @@ try {
   await size(result.value);
   await sleep(500);
   writeFileSync(out, Buffer.from((await send("Page.captureScreenshot", { format: "png" })).data, "base64"));
-  console.log(`${out}: 1440 x ${result.value}`);
+  console.log(`${out}: ${width} x ${result.value}`);
 } finally {
   const exited = new Promise((r) => proc.once("exit", r));
   proc.kill();

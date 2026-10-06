@@ -403,3 +403,12 @@ That the contracts can be read by anyone is a property of the public test networ
 The tests bite, checked on 06-10-2026, one change at a time. With the firm check removed from `collect`, `testFuzz_OnlyTheFirmCollects` fails. With the approval-and-balance check replaced by `true`, six tests fail, `test_FullLevyCycle` among them. With the standing approval ignoring payments, the direct-debit test fails. With the paid-charge skip removed, so a paid charge is collected again, `test_CollectingSkipsAPaidChargeAndCollectsTheRest` and Scenario 6 fail. Each was restored before this output was captured.
 
 **What this changes in earlier rows.** The rows for #58, #60, #71 and #158 keep their dated results. #158's `158-units-as-alice.png`, `158-firm-as-firm.png`, `158-firm-as-firm-ready.png`, `158-actions-as-carol-passed.png` and `158-actions-as-carol-attested.png` show the interface before #173: an Issue card on Anyone's actions, no Collect on the Firm workspace and no Set up direct debit. The Sepolia deployment (#73) predates #173, as ADR-020 says.
+
+### Issue #176 — Owner Home and the workspace shell
+
+The first screen built on shadcn/ui to its Gate 3 mock-up, [`OwnerHome`](https://github.com/nomadwiz/kaitiki-doc/blob/master/doc/asset/mockups/OwnerHome.dc.html) and [`OwnerHomeMobile`](https://github.com/nomadwiz/kaitiki-doc/blob/master/doc/asset/mockups/OwnerHomeMobile.dc.html), and the checkpoint the project owner compares with them before the other screens proceed.
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `176-home-1440.png` | **ADR-021.** Home as carol (unit 4), from 800 px up: the Sidebar with the owner's five items, Home current, and the shortened address beside "Every action is signed in your wallet." Needs your vote lists proposal 2, Open, with its vendor, cap, fund and closing date, and links to it. Your levies says unit 4 is in arrears for charge #3. Both cards have a Rules button. The two funds sit side by side | `npm run demo`, then `node scripts/screenshot.mjs evidence/week6/176-home-1440.png 'http://localhost:5173/?as=<carol>#/'` |
+| `176-home-375.png` | The same page at 375 px: the top bar naming the role and address, one column, and the BottomBar with the same five items, Home marked by colour, weight and a bar on its top edge | `npm run demo`, then `node scripts/screenshot.mjs evidence/week6/176-home-375.png 'http://localhost:5173/?as=<carol>#/' 375` |

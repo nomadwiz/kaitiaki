@@ -1,13 +1,25 @@
 {
   "compilerOptions": {
-    "lib": ["es2023", "dom", "dom.iterable"],
+    "lib": [
+      "es2023",
+      "dom",
+      "dom.iterable"
+    ],
     "jsx": "react-jsx",
     "module": "node20",
     "target": "es2023",
     "strict": true,
     "skipLibCheck": true,
     "outDir": "dist",
-    "types": ["node", "mocha"],
-    "verbatimModuleSyntax": true
+    "types": [
+      "node",
+      "mocha"
+    ],
+    "verbatimModuleSyntax": true,
+    "paths": {
+      "@/*": [
+        "./interface/src/*"
+      ]
+    }
   }
 }
