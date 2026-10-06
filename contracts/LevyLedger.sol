@@ -39,6 +39,15 @@ contract LevyLedger {
     /// @notice The schedule, indexed by charge id.
     Charge[] public charges;
 
+    /// @notice A charge was stored at construction, one event per charge, so
+    /// the schedule is in the log and a reader needs no storage read (FR39,
+    /// FR40, ADR-019). `chargeId` is the charge's index in `charges`.
+    event ChargeScheduled(
+        uint256 indexed chargeId,
+        uint256 indexed unitId,
+        uint256 amount,
+        uint256 dueDate
+    );
     /// @notice A charge has fallen due and been issued. With `LevyPaid`, enough
     /// to derive every unit's arrears from the log alone (FR9, FR40).
     event ChargeIssued(
@@ -80,6 +89,7 @@ contract LevyLedger {
         settlementAsset = IERC20(Treasury(treasury_).settlementAsset());
         for (uint256 i = 0; i < unitIds.length; ++i) {
             charges.push(Charge(unitIds[i], amounts[i], dueDates[i], false, false));
+            emit ChargeScheduled(i, unitIds[i], amounts[i], dueDates[i]);
         }
     }
 

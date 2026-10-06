@@ -14,6 +14,12 @@ import {PayeeRegistryStub} from "./stubs/PayeeRegistryStub.sol";
 /// Issue #58 — FR5–FR9, NFR7, ADR-016. Runs against the real Treasury, so a
 /// payment is shown reaching both funds through `Treasury.deposit`.
 contract LevyLedgerTest is Test {
+    event ChargeScheduled(
+        uint256 indexed chargeId,
+        uint256 indexed unitId,
+        uint256 amount,
+        uint256 dueDate
+    );
     event ChargeIssued(
         uint256 indexed chargeId,
         uint256 indexed unitId,
@@ -101,6 +107,21 @@ contract LevyLedgerTest is Test {
             abi.encodeWithSelector(LevyLedger.ScheduleLengthMismatch.selector, 1, 2, 1)
         );
         new LevyLedger(address(treasury), new uint256[](1), new uint256[](2), new uint256[](1));
+    }
+
+    function test_ConstructionEmitsOneChargeScheduledPerCharge() public {
+        uint256[] memory unitIds = new uint256[](3);
+        uint256[] memory amounts = new uint256[](3);
+        uint256[] memory dueDates = new uint256[](3);
+        (unitIds[0], amounts[0], dueDates[0]) = (1, 1_000e18, DUE);
+        (unitIds[1], amounts[1], dueDates[1]) = (2, 500e18, DUE);
+        (unitIds[2], amounts[2], dueDates[2]) = (1, 1_000e18, LATER);
+        address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)));
+        for (uint256 i = 0; i < 3; ++i) {
+            vm.expectEmit(predicted);
+            emit ChargeScheduled(i, unitIds[i], amounts[i], dueDates[i]);
+        }
+        new LevyLedger(address(treasury), unitIds, amounts, dueDates);
     }
 
     // --- issueCharges: FR5, FR6, B1 ---

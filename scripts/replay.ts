@@ -25,6 +25,7 @@ const events = new Interface([
   "event PaymentReleased(uint8 indexed fund, address indexed payee, uint256 amount, uint256 proposalId)",
   "event ProposalCreated(uint256 indexed proposalId, uint8 kind, address indexed payee, uint256 limit, uint8 fund, bytes32 quoteHash, string description, uint256 principalUnits, string companyId)",
   "event VoteCast(uint256 indexed proposalId, address indexed voter, bool inFavour, uint256 weight, uint256[] unitIds)",
+  "event ChargeScheduled(uint256 indexed chargeId, uint256 indexed unitId, uint256 amount, uint256 dueDate)",
   "event ChargeIssued(uint256 indexed chargeId, uint256 indexed unitId, uint256 amount, uint256 dueDate)",
   "event LevyPaid(uint256 indexed chargeId, uint256 indexed unitId, address indexed payer, uint256 amount)",
   "event PayeeAdmitted(address indexed payee, uint256 indexed proposalId, string name, string companyId)",
@@ -90,9 +91,15 @@ export async function replay(
   // ponytail: roles are Treasury's alone; key them by contract address once a
   // second replayed contract uses AccessControl.
   const roles = new Map<string, Set<string>>();
-  // Charges by id. A charge may be paid before it is issued (ADR-016), so
-  // either event may come first.
-  type Charge = { unitId: bigint; dueDate?: bigint; paid: boolean };
+  // Charges by id, created by ChargeScheduled. A charge may be paid before it
+  // is issued (ADR-016), so either of the other two events may come first.
+  type Charge = {
+    unitId: bigint;
+    amount: bigint;
+    dueDate: bigint;
+    issued: boolean;
+    paid: boolean;
+  };
   const charges = new Map<bigint, Charge>();
   const transitions = [];
   // The logs are in block order, so each header is fetched once.
@@ -179,21 +186,36 @@ export async function replay(
       });
     }
     if (event.name === "UnitBound") owners.set(a.unitId, a.wallet);
-    if (event.name === "ChargeIssued" || event.name === "LevyPaid") {
-      const charge: Charge = charges.get(a.chargeId) ?? {
+    if (event.name === "ChargeScheduled") {
+      if (charges.has(a.chargeId))
+        refuse(`charge ${a.chargeId} scheduled twice`);
+      charges.set(a.chargeId, {
         unitId: a.unitId,
+        amount: a.amount,
+        dueDate: a.dueDate,
+        issued: false,
         paid: false,
-      };
-      charges.set(a.chargeId, charge);
+      });
+    }
+    if (event.name === "ChargeIssued" || event.name === "LevyPaid") {
+      // LevyLedger emits both only for a charge its constructor stored.
+      const verb = event.name === "ChargeIssued" ? "issued" : "paid";
+      const charge =
+        charges.get(a.chargeId) ??
+        refuse(`charge ${a.chargeId} ${verb} before it was scheduled`);
       if (charge.unitId !== a.unitId) {
         refuse(
-          `charge ${a.chargeId} names units ${charge.unitId} and ${a.unitId}`,
+          `charge ${a.chargeId} ${verb} for unit ${a.unitId}, scheduled for unit ${charge.unitId}`,
         );
       }
       if (event.name === "ChargeIssued") {
-        if (charge.dueDate !== undefined)
-          refuse(`charge ${a.chargeId} issued twice`);
-        charge.dueDate = a.dueDate;
+        if (charge.amount !== a.amount || charge.dueDate !== a.dueDate) {
+          refuse(
+            `charge ${a.chargeId} issued with amount ${a.amount} and due date ${a.dueDate}, scheduled with amount ${charge.amount} and due date ${charge.dueDate}`,
+          );
+        }
+        if (charge.issued) refuse(`charge ${a.chargeId} issued twice`);
+        charge.issued = true;
       } else {
         if (charge.paid) refuse(`charge ${a.chargeId} paid twice`);
         charge.paid = true;
@@ -299,11 +321,7 @@ export function arrearsAt(
   timestamp: bigint,
 ) {
   return [...charges.values()].some(
-    (c) =>
-      c.unitId === unitId &&
-      c.dueDate !== undefined &&
-      !c.paid &&
-      timestamp > c.dueDate,
+    (c) => c.unitId === unitId && c.issued && !c.paid && timestamp > c.dueDate,
   );
 }
 

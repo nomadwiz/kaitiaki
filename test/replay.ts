@@ -69,16 +69,16 @@ describe("QAS-4 replay", () => {
       token.target,
     ]);
     expect(treasury.target).to.equal(treasuryAddress);
-    // Three charges, all due at `due`: unit 1's is paid early, unit 3's
-    // late, and unit 4's never. 333 does not split evenly, so rounding is
-    // exercised.
+    // Three charges due at `due`: unit 1's is paid early, unit 3's late, and
+    // unit 4's never. A fourth, unit 2's, is due long after and never issued
+    // or paid. 333 does not split evenly, so rounding is exercised.
     const due =
       BigInt((await ethers.provider.getBlock("latest"))!.timestamp) + 1_000n;
     const ledger = await ethers.deployContract("LevyLedger", [
       treasury.target,
-      [1n, 3n, 4n],
-      [1_000n, 333n, 50n],
-      [due, due, due],
+      [1n, 3n, 4n, 2n],
+      [1_000n, 333n, 50n, 70n],
+      [due, due, due, due + 1_000_000n],
     ]);
     expect(ledger.target).to.equal(ledgerAddress);
     // Governance is the Timelock's only proposer and executor, and nobody
@@ -288,6 +288,29 @@ describe("QAS-4 replay", () => {
     expect(arrearsAt(derived.charges, 4n, now)).to.equal(true);
     expect(arrearsAt(derived.charges, 4n, due)).to.equal(false);
 
+    // FR39, FR40: each charge's record, from ChargeScheduled, ChargeIssued and
+    // LevyPaid alone, matches the contract's storage: scheduled only (3),
+    // paid before issue (0), issued then paid (1), issued and overdue (2).
+    expect(derived.charges.size).to.equal(4);
+    for (let i = 0n; i < 4n; i++) {
+      const [unitId, amount, dueDate, issued, paid] = await ledger.charges(i);
+      expect(derived.charges.get(i), `charge ${i}`).to.deep.equal({
+        unitId,
+        amount,
+        dueDate,
+        issued,
+        paid,
+      });
+    }
+    expect(
+      [...derived.charges.values()].map((c) => [c.issued, c.paid]),
+    ).to.deep.equal([
+      [true, true],
+      [true, true],
+      [true, false],
+      [false, false],
+    ]);
+
     // From the log alone: only the Timelock may release, only the LevyLedger
     // may deposit, and nobody administers either role (rule 1, QAS-8).
     expect(derived.roles.get(await treasury.RELEASER_ROLE())).to.deep.equal(
@@ -298,7 +321,8 @@ describe("QAS-4 replay", () => {
     );
     expect(derived.roles.get(ZeroHash)).to.deep.equal(new Set());
 
-    // Treasury's four role events at construction, then four bindings, an
+    // Treasury's four role events at construction, the four charges
+    // scheduled at the ledger's, then four bindings, an
     // early payment, three charges issued, a late payment, the admission
     // proposal with two votes, queued and executed, four work proposals, a
     // fifth binding, six votes, proposal 2 queued, attested and paid, then
@@ -308,6 +332,7 @@ describe("QAS-4 replay", () => {
       "RoleGranted",
       "RoleGranted",
       "RoleRevoked",
+      ...Array(4).fill("ChargeScheduled"),
       ...Array(4).fill("UnitBound"),
       "Deposited",
       "LevyPaid",
@@ -354,6 +379,7 @@ describe("QAS-4 replay", () => {
     "PayeeAdmitted",
     [vendor, 1n, "Test Vendor Ltd", "TEST-0001"],
   ];
+  const scheduled: Event = ["ChargeScheduled", [0n, 1n, 100n, 1n]];
   const issued: Event = ["ChargeIssued", [0n, 1n, 100n, 1n]];
   // Block 1's timestamp is 1: at this eta, so `queued` makes its proposal
   // executable in block 1 and `queuedLate` does not.
@@ -412,14 +438,44 @@ describe("QAS-4 replay", () => {
       "no work proposal 1",
     ],
     [
-      "a charge paid for a unit other than the one it was issued to",
-      [issued, ["LevyPaid", [0n, 2n, alice, 100n]]],
-      "charge 0 names units 1 and 2",
+      "a charge paid for a unit other than the one it was scheduled for",
+      [scheduled, ["LevyPaid", [0n, 2n, alice, 100n]]],
+      "charge 0 paid for unit 2, scheduled for unit 1",
     ],
-    ["a charge issued twice", [issued, issued], "charge 0 issued twice"],
+    [
+      "a charge issued for a different amount than it was scheduled for",
+      [scheduled, ["ChargeIssued", [0n, 1n, 99n, 1n]]],
+      "charge 0 issued with amount 99 and due date 1, scheduled with amount 100 and due date 1",
+    ],
+    [
+      "a charge issued for a different due date than it was scheduled for",
+      [scheduled, ["ChargeIssued", [0n, 1n, 100n, 2n]]],
+      "charge 0 issued with amount 100 and due date 2, scheduled with amount 100 and due date 1",
+    ],
+    [
+      "a charge issued that was never scheduled",
+      [issued],
+      "charge 0 issued before it was scheduled",
+    ],
+    [
+      "a charge paid that was never scheduled",
+      [["LevyPaid", [0n, 1n, alice, 100n]]],
+      "charge 0 paid before it was scheduled",
+    ],
+    [
+      "a charge scheduled twice",
+      [scheduled, scheduled],
+      "charge 0 scheduled twice",
+    ],
+    [
+      "a charge issued twice",
+      [scheduled, issued, issued],
+      "charge 0 issued twice",
+    ],
     [
       "a charge paid twice",
       [
+        scheduled,
         ["LevyPaid", [0n, 1n, alice, 100n]],
         ["LevyPaid", [0n, 1n, alice, 100n]],
       ],
