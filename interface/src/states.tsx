@@ -1,8 +1,23 @@
-// Screen 8's states and the Alert they use, shown wherever they arise, and
-// the signing Dialog and success Toast of every transaction (#150). Markup
-// copied from doc/asset/design-system/components/Screen8States, Alert,
-// RefusalNotice, Dialog and Toast.
-import { useEffect, useRef } from "react";
+// Screen 8's states (#150, #189): an outcome that needs nothing more is a
+// Sonner toast, fired by main.tsx; a condition that stays until the viewer
+// acts is shadcn/ui's Alert; shadcn/ui's Dialog only while a wallet signs.
+// Words from doc/asset/design-system/README.md's States, RefusalNotice and
+// the States mock-up.
+import { CircleAlert, LoaderCircle, TriangleAlert, Wallet } from "lucide-react";
+import { useState } from "react";
+
+import {
+  AlertDescription,
+  AlertTitle,
+  Alert as Callout,
+} from "./components/ui/alert.js";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogTitle,
+} from "./components/ui/dialog.js";
 
 // What a button shows while the viewer's wallet signs.
 export function Waiting() {
@@ -15,80 +30,57 @@ export function Waiting() {
 }
 
 export type Notice = {
-  variant: "default" | "success" | "destructive";
+  variant: "default" | "warning" | "destructive";
   title: string;
   description: string;
   // A contract error's name: the Alert is then a RefusalNotice.
   code?: string;
 };
 
+const ICON = { warning: TriangleAlert, destructive: CircleAlert };
+
 export function Alert({ variant, title, description, code }: Notice) {
+  const Icon = variant === "default" ? undefined : ICON[variant];
   return (
-    <div
-      className="alert"
-      data-variant={variant === "default" ? undefined : variant}
-      role={variant === "destructive" ? "alert" : "status"}
-    >
-      <p className="alert-title">{title}</p>
-      <p className="alert-description">{description}</p>
-      {code && <p className="alert-code">Contract refusal: {code}</p>}
-    </div>
+    <Callout variant={variant} role={variant === "default" ? "status" : "alert"}>
+      {Icon && <Icon aria-hidden="true" />}
+      <AlertTitle>{title}</AlertTitle>
+      <AlertDescription>
+        {description}
+        {code && <p className="font-mono text-sm">{code}</p>}
+      </AlertDescription>
+    </Callout>
   );
 }
 
-// Open only while the wallet signs. It never asks for a key or password.
+// Open while the wallet signs, unless the viewer closes it: closing hides
+// only this Dialog, and the wallet's own request stays until it is answered.
+// It never asks for a key or password.
 export function SigningDialog({ signing }: { signing: string }) {
-  const dialog = useRef<HTMLDialogElement>(null);
-  useEffect(() => dialog.current?.showModal(), []);
+  const [open, setOpen] = useState(true);
   return (
-    <dialog
-      ref={dialog}
-      className="dialog"
-      aria-labelledby="signing-title"
-      // Escape would hide it while the wallet still signs; the wallet ends it.
-      onCancel={(e) => e.preventDefault()}
-    >
-      <p className="dialog-title" id="signing-title">
-        Sign in your wallet
-      </p>
-      <p className="muted-text" style={{ marginTop: 8 }}>
-        Your wallet is asking you to confirm {signing}.
-      </p>
-      <div className="dialog-footer">
-        <button className="btn" type="button" aria-disabled="true">
-          <Waiting />
-        </button>
-      </div>
-    </dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent>
+        <DialogTitle className="flex items-center gap-2.5">
+          <Wallet aria-hidden="true" className="size-6 text-primary" />
+          Confirm in your wallet
+        </DialogTitle>
+        <DialogDescription>
+          Your wallet is asking you to confirm {signing}.
+        </DialogDescription>
+        <p role="status" className="flex items-center gap-2 text-muted-foreground">
+          <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+          Waiting for your wallet
+        </p>
+        <DialogFooter showCloseButton />
+      </DialogContent>
+    </Dialog>
   );
 }
 
-export type Done = { title: string; body: string };
-
-export function Toast({
-  title,
-  body,
-  onDismiss,
-}: Done & { onDismiss?: () => void }) {
-  return (
-    <div className="toast" role="status">
-      <div>
-        <p className="alert-title">{title}</p>
-        <p className="body-sm">{body}</p>
-      </div>
-      <button
-        className="btn"
-        data-variant="ghost"
-        data-size="icon"
-        type="button"
-        aria-label="Dismiss"
-        onClick={onDismiss}
-      >
-        ✕
-      </button>
-    </div>
-  );
-}
+// A Sonner toast's words: a transaction recorded, with what it did, or a
+// request cancelled in the wallet, which needs only its one line.
+export type Done = { title: string; body?: string; cancelled?: true };
 
 export function Loading() {
   return (

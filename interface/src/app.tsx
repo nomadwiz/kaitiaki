@@ -3,10 +3,8 @@
 // address's hash. Every component is a pure function of its props, so
 // test/interface.ts renders them with react-dom/server and checks exactly
 // what a viewer would see.
-import { Info } from "lucide-react";
-import type { ReactNode } from "react";
-
-import { Alert as Callout, AlertTitle } from "./components/ui/alert.js";
+import { useEffect, type ReactNode } from "react";
+import { toast } from "sonner";
 
 import { type Acting, type OnAct } from "./screens/actions.js";
 import { Activity } from "./screens/activity.js";
@@ -23,8 +21,6 @@ import {
   Loading,
   NoUnit,
   SigningDialog,
-  Toast,
-  type Done,
   type Notice,
 } from "./states.js";
 import type { View } from "./view.js";
@@ -48,9 +44,6 @@ type Props = {
   notice?: Notice;
   // What the wallet is signing, as the Dialog's sentence ends it.
   signing?: string;
-  // The last transaction that succeeded, until dismissed or the next one.
-  toast?: Done;
-  onDismissToast?: () => void;
   // The proposal whose vote the wallet is signing.
   voting?: bigint;
   // The charge whose payment the wallet is signing.
@@ -175,6 +168,11 @@ for (const [workspace, routes] of Object.entries(SCREENS)) {
 
 export const ELSEWHERE =
   "That page belongs to another workspace. Kaitiaki opened your Home instead.";
+// Whether `hash` is a route of the other workspace only, which opens this
+// one's Home.
+export const isElsewhere = (workspace: Workspace, hash: string) =>
+  !Object.hasOwn(SCREENS[workspace], hash) &&
+  Object.values(SCREENS).some((r) => Object.hasOwn(r, hash));
 
 export function App({
   hash,
@@ -182,8 +180,6 @@ export function App({
   wallet,
   notice,
   signing,
-  toast,
-  onDismissToast,
   voting,
   paying,
   failed,
@@ -207,11 +203,14 @@ export function App({
     workspace === "owner" || workspace === "firm" ? SCREENS[workspace] : {};
   const id = /^#\/proposal\/(\d+)$/.exec(hash)?.[1];
   const route = id ? "proposal" : Object.hasOwn(routes, hash) ? hash : "#/";
-  // A route of the other workspace opens this one's Home, and says so.
+  // A route of the other workspace opens this one's Home, and a toast says
+  // so once on arrival. react-dom/server never runs an effect.
   const elsewhere =
-    route === "#/" &&
-    hash !== "#/" &&
-    Object.values(SCREENS).some((r) => Object.hasOwn(r, hash));
+    (workspace === "owner" || workspace === "firm") &&
+    isElsewhere(workspace, hash);
+  useEffect(() => {
+    if (elsewhere) toast(ELSEWHERE, { id: ELSEWHERE });
+  }, [elsewhere, hash]);
   // A proposal, and Propose work, are reached from Proposals, which stays
   // the current link.
   const current = id || route === "#/propose" ? "#/proposals" : route;
@@ -220,13 +219,12 @@ export function App({
     <>
       {wrongChain && (
         <Alert
-          variant="destructive"
-          title={`Your wallet is on chain ${browser.chainId}, and Kaitiaki is deployed on chain ${browser.deploymentChainId}.`}
-          description={`Switch your wallet to chain ${browser.deploymentChainId}. Nothing can be signed until then.`}
+          variant="warning"
+          title={`Your wallet is on chain ${browser.chainId}.`}
+          description={`Switch it to chain ${browser.deploymentChainId} to act.`}
         />
       )}
       {notice && <Alert {...notice} />}
-      {toast && <Toast {...toast} onDismiss={onDismissToast} />}
     </>
   );
 
@@ -258,12 +256,6 @@ export function App({
         viewer={viewer!}
         units={view.ownUnits.map((u) => u.unitId)}
       >
-        {elsewhere && (
-          <Callout role="status" className="border-transparent bg-accent text-accent-foreground">
-            <Info aria-hidden="true" />
-            <AlertTitle>{ELSEWHERE}</AlertTitle>
-          </Callout>
-        )}
         {notices}
         {routes[route]({
           view,
@@ -286,7 +278,7 @@ export function App({
   return (
     <>
       {page}
-      {signing && <SigningDialog signing={signing} />}
+      {signing && <SigningDialog key={signing} signing={signing} />}
     </>
   );
 }

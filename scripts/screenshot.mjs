@@ -8,6 +8,10 @@
 //   node scripts/screenshot.mjs evidence/week6/158-units-as-alice.png 'http://localhost:5173/?as=<alice>#/units'
 //   node scripts/screenshot.mjs evidence/week6/176-home-375.png 'http://localhost:5173/?as=<alice>#/' 375
 // Set CHROME to another Chrome or Chromium binary if it is not the macOS one.
+// For a state an action brings about (#189): INIT is a script run before the
+// page's own, such as a stand-in EIP-1193 wallet, and ACT an expression run
+// once the log is read, such as a click, AFTER milliseconds (default 1500)
+// before the capture, so a toast is still showing.
 import { spawn } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -61,8 +65,14 @@ try {
 
   await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: "light" }] });
   await size(mobile ? 812 : 900);
+  await send("Page.enable");
+  if (process.env.INIT) await send("Page.addScriptToEvaluateOnNewDocument", { source: process.env.INIT });
   await send("Page.navigate", { url });
   await sleep(6000); // the log replay
+  if (process.env.ACT) {
+    await send("Runtime.evaluate", { expression: process.env.ACT });
+    await sleep(Number(process.env.AFTER ?? 1500));
+  }
   // The lowest edge of any element, plus a margin: the page's own height is
   // never below the window's, which would leave an empty tail.
   const { result } = await send("Runtime.evaluate", {
