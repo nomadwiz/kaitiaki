@@ -375,7 +375,7 @@ contract Governance {
     /// delay has elapsed. Anyone may call it; the timelock accepts it from
     /// this contract alone, so the checks here cannot be bypassed — a `Work`
     /// proposal also needs the firm's attestation (FR25, ADR-015). Emits none
-    /// of the ten events itself: its effect is `PayeeAdmitted` or
+    /// of the eleven events itself: its effect is `PayeeAdmitted` or
     /// `PaymentReleased` (doc/design/spec.md §6).
     function execute(uint256 proposalId) external {
         ProposalState current = state(proposalId);

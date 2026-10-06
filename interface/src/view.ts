@@ -64,7 +64,6 @@ export function buildView(
   };
   const created: Created[] = [];
   const votedUnits = new Map<bigint, Set<bigint>>();
-  const issued = new Map<bigint, { amount: bigint }>();
   for (const t of derived.transitions) {
     const a = t.args as Record<string, unknown>;
     if (t.name === "ProposalCreated") created.push(a as Created);
@@ -77,9 +76,6 @@ export function buildView(
         units.add(unitId);
       }
       votedUnits.set(id, units);
-    }
-    if (t.name === "ChargeIssued") {
-      issued.set(a.chargeId as bigint, { amount: a.amount as bigint });
     }
   }
   const isViewer = (wallet: string) =>
@@ -121,15 +117,12 @@ export function buildView(
       overdue: [...derived.charges]
         .filter(
           ([, c]) =>
-            c.unitId === unitId &&
-            c.dueDate !== undefined &&
-            !c.paid &&
-            now > c.dueDate,
+            c.unitId === unitId && c.issued && !c.paid && now > c.dueDate,
         )
         .map(([chargeId, c]) => ({
           chargeId,
-          amount: issued.get(chargeId)!.amount,
-          dueDate: c.dueDate!,
+          amount: c.amount,
+          dueDate: c.dueDate,
         })),
     })),
     otherUnits: units
