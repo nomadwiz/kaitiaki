@@ -181,9 +181,10 @@ describe("Read interface (#72, #149)", () => {
     // Vendor rows are not unit rows, so NFR10's check never reads them.
     expect(otherUnitRows(html).join()).to.not.contain("Harbour");
 
-    // Proposal 2 pays the vendor: its card names it.
+    // Proposal 2 pays the vendor: its card names it, then its address and
+    // company identifier, as interface.md §4 has every vendor appear.
     const proposals = (await render(signers.alice.address, "#/proposals")).html;
-    expect(proposals).to.contain("<span>Harbour Lifts Ltd</span><span class=\"tabular-nums\">Up to NZD 400.00</span>");
+    expect(proposals).to.contain(`<span>Harbour Lifts Ltd</span><span class="font-mono text-[0.9375rem]">${short}</span><span>DEMO-0001</span><span class="tabular-nums">Up to NZD 400.00</span>`);
   });
 
   it("shows the viewer's own arrears, and stops surfacing a resolved arrear (R4)", async () => {
@@ -1409,14 +1410,14 @@ describe("Read interface (#72, #149)", () => {
         .slice(1)
         .map((card) => card.slice(card.indexOf(">") + 1));
 
-    it("FR19-FR21: groups every proposal under Voting, Waiting to pay and Closed, each card with its badge, kind, vendor, limit, fund and date", async () => {
+    it("FR19: groups every proposal under Voting, Waiting to pay and Closed, each card with its badge, kind, vendor, limit, fund and date", async () => {
       const { signers, render } = await setUp();
       const { view, html } = await render(signers.carol.address, "#/proposals");
       expect(tabs(html)).to.deep.equal(["Voting 1", "Waiting to pay 0", "Closed 1"]);
       const [open] = cards(html, "voting");
       const closes = view.proposals.find((p) => p.id === 2n)!.closes!;
       expect(text(open)).to.equal(
-        `Open Work Roof repair Vote Harbour Lifts Ltd Up to NZD 400.00 Operating Closes ${date(closes)} ` +
+        `Open Work Roof repair Vote Harbour Lifts Ltd ${short(signers.vendor.address)} DEMO-0001 Up to NZD 400.00 Operating Closes ${date(closes)} ` +
           "Units voted (25% of the building) 2 of 1 units met Different owners voted 1 of 2 owners not yet met Unit 4 has not voted.",
       );
       expect(open).to.contain('data-tone="info">Open</span>');
@@ -1448,7 +1449,7 @@ describe("Read interface (#72, #149)", () => {
       expect(html).to.not.match(/not voted|>Vote</);
     });
 
-    it("moves a proposal from Voting to Waiting to pay to Closed, naming what happens next, and waives quorum in an Alert", async () => {
+    it("FR20, FR21: moves a proposal from Voting to Waiting to pay to Closed, naming what happens next, and waives quorum in an Alert", async () => {
       const { ethers, contracts, signers, render } = await setUp();
       const { governance } = contracts;
       const page = async () => {
@@ -1499,7 +1500,7 @@ describe("Read interface (#72, #149)", () => {
       ({ html } = await page());
       expect(tabs(html)).to.deep.equal(["Voting 0", "Waiting to pay 0", "Closed 3"]);
       const failed = text(cards(html, "closed")[2]);
-      expect(failed).to.match(/^Failed Work Paint the hallway View Harbour Lifts Ltd Up to NZD 100\.00 Long-term maintenance Voting closed \d{1,2} [A-Z][a-z]{2} \d{4}$/);
+      expect(failed).to.match(/^Failed Work Paint the hallway View Harbour Lifts Ltd 0x[0-9a-fA-F]{4}…[0-9a-fA-F]{4} DEMO-0001 Up to NZD 100\.00 Long-term maintenance Voting closed \d{1,2} [A-Z][a-z]{2} \d{4}$/);
     });
   });
 

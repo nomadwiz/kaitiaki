@@ -91,8 +91,11 @@ function ProposalCard({
         <span className="flex flex-wrap gap-x-4 gap-y-1 text-base text-muted-foreground">
           {work ? (
             <>
-              {/* A name is shown only when owners voted on it (ADR-018). */}
-              <span>{p.vendor?.name ?? short(p.payee)}</span>
+              {/* A name is shown only when owners voted on it (ADR-018);
+                  then the address and identifier, as every vendor appears. */}
+              {p.vendor && <span>{p.vendor.name}</span>}
+              <span className="font-mono text-[0.9375rem]">{short(p.payee)}</span>
+              {p.vendor && <span>{p.vendor.companyId}</span>}
               <span className="tabular-nums">Up to {nzd(p.limit)}</span>
               <Fund fund={p.fund} />
             </>
