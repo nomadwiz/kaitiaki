@@ -57,7 +57,7 @@ type Props = {
   onConnect?: () => void;
   onViewer?: (address: string) => void;
   onVote?: (proposalId: bigint, inFavour: boolean) => void;
-  onPay?: (chargeId: bigint) => void;
+  onPay?: (unitId: bigint, chargeId: bigint, amount: bigint) => void;
 };
 
 // What each screen is given, once the log has been read.

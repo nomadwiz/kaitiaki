@@ -173,6 +173,24 @@ export function refusal(error: unknown): { name?: string; message: string } {
 }
 
 /**
+ * `refusal` for a payment whose approval was already mined: "Nothing was
+ * sent" would be untrue, because the levy ledger stays approved.
+ */
+export function approvedRefusal(error: unknown) {
+  const r = refusal(error);
+  // Its own message says the approval fell short, so "stands" would contradict.
+  if (r.name === "ERC20InsufficientAllowance") return r;
+  const stands =
+    "The approval was already sent, so the levy ledger stays approved for that amount.";
+  return {
+    ...r,
+    message: isError(error, "ACTION_REJECTED")
+      ? `You cancelled the payment in your wallet. ${stands} Press Pay to try again.`
+      : `${r.message} ${stands}`,
+  };
+}
+
+/**
  * Every transaction goes through here: the Dialog while a wallet asks the
  * viewer to sign, a Toast once the block has it, a RefusalNotice if not, then
  * the log again. The Dialog never stays open, whatever happens.
@@ -181,7 +199,13 @@ export function refusal(error: unknown): { name?: string; message: string } {
  * @param ui.prompt false when the local node signs, which asks nobody
  */
 export async function send(
-  action: { signing: string; done: Done; refused: string },
+  action: {
+    signing: string;
+    done: Done;
+    refused: string;
+    // Words the refusal in place of `refusal`, when the action knows more.
+    refuse?: typeof refusal;
+  },
   sign: () => Promise<{ wait(): Promise<unknown> }>,
   ui: {
     prompt: boolean;
@@ -201,7 +225,7 @@ export async function send(
     await tx.wait();
     ui.setToast(action.done);
   } catch (error) {
-    const { name, message } = refusal(error);
+    const { name, message } = (action.refuse ?? refusal)(error);
     ui.setNotice({
       variant: "destructive",
       title: action.refused,

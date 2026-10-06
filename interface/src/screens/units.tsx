@@ -18,11 +18,12 @@ export function OwnUnits({
   // Home lists only overdue charges; Your units lists every unpaid one.
   overdueOnly?: boolean;
   // Without it, no charge has a Pay button.
-  onPay?: (chargeId: bigint) => void;
+  onPay?: (unitId: bigint, chargeId: bigint, amount: bigint) => void;
   // The charge whose payment the wallet is signing.
   paying?: bigint;
   children?: ReactNode;
 }) {
+  const busy = paying !== undefined;
   return (
     <div className="card">
       <div
@@ -64,25 +65,29 @@ export function OwnUnits({
                         {c.issued ? "issued" : "scheduled"}
                       </p>
                     </div>
-                    {onPay &&
-                      (paying === c.chargeId ? (
-                        <button
-                          className="btn"
-                          type="button"
-                          aria-disabled="true"
-                        >
-                          <span className="spinner" aria-hidden="true"></span>
-                          Waiting for your wallet…
-                        </button>
-                      ) : (
-                        <button
-                          className="btn"
-                          type="button"
-                          onClick={() => onPay(c.chargeId)}
-                        >
-                          Pay {nzd(c.amount)}
-                        </button>
-                      ))}
+                    {onPay && (
+                      // One payment at a time: each approval sets the
+                      // allowance, so a second would starve the first.
+                      <button
+                        className="btn"
+                        type="button"
+                        aria-disabled={busy || undefined}
+                        onClick={
+                          busy
+                            ? undefined
+                            : () => onPay(u.unitId, c.chargeId, c.amount)
+                        }
+                      >
+                        {paying === c.chargeId ? (
+                          <>
+                            <span className="spinner" aria-hidden="true"></span>
+                            Waiting for your wallet…
+                          </>
+                        ) : (
+                          `Pay ${nzd(c.amount)}`
+                        )}
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -102,7 +107,7 @@ export function YourUnits({
   children,
 }: {
   units: View["ownUnits"];
-  onPay?: (chargeId: bigint) => void;
+  onPay?: (unitId: bigint, chargeId: bigint, amount: bigint) => void;
   paying?: bigint;
   // The wallet's Screen 8 state, if any.
   children?: ReactNode;
