@@ -164,7 +164,11 @@ const admitReceipt = await measure(
   "propose (admit a vendor)",
   "firm",
   "firm",
-  call(governance, firm, "propose(address)")(roofer.address),
+  call(governance, firm, "propose(address,string,string)")(
+    roofer.address,
+    "Harbour Lifts Ltd",
+    "DEMO-0001",
+  ),
 );
 const admitId = BigInt(admitReceipt.logs[0].topics[1]);
 await vote("admission", admitId);

@@ -29,6 +29,8 @@ abstract contract GovernanceLoopSetup is Test {
     address internal stranger = makeAddr("stranger");
 
     uint256 internal constant LIMIT = 400e18;
+    string internal constant VENDOR_NAME = "Test Vendor Ltd";
+    string internal constant COMPANY_ID = "TEST-0001";
 
     function setUp() public {
         token = new MockNZD();
@@ -85,7 +87,7 @@ abstract contract GovernanceLoopSetup is Test {
 
     function _passedAdmit() internal returns (uint256 proposalId) {
         vm.prank(firm);
-        proposalId = governance.propose(vendor);
+        proposalId = governance.propose(vendor, VENDOR_NAME, COMPANY_ID);
         _pass(proposalId);
     }
 

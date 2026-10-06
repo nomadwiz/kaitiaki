@@ -14,7 +14,12 @@ import {IAdmit} from "./interfaces/IAdmit.sol";
 /// executor. FR21, FR22, FR31, NFR8. Every contract here is the real one.
 contract GovernanceTimelockTest is GovernanceLoopSetup {
     event ProposalQueued(uint256 indexed proposalId, uint256 eta);
-    event PayeeAdmitted(address indexed payee, uint256 indexed proposalId);
+    event PayeeAdmitted(
+        address indexed payee,
+        uint256 indexed proposalId,
+        string name,
+        string companyId
+    );
 
     // --- Role holders (ADR-015, FR31, NFR8) ------------------------------------
 
@@ -126,12 +131,12 @@ contract GovernanceTimelockTest is GovernanceLoopSetup {
         (address target, bytes memory data, ) = governance.operation(proposalId);
 
         assertEq(target, address(payees));
-        assertEq(data, abi.encodeCall(IAdmit.admit, (vendor, proposalId)));
+        assertEq(data, abi.encodeCall(IAdmit.admit, (vendor, proposalId, VENDOR_NAME, COMPANY_ID)));
     }
 
     function test_QueueRefusesOpenProposal() public {
         vm.prank(firm);
-        uint256 proposalId = governance.propose(vendor);
+        uint256 proposalId = governance.propose(vendor, "Test Vendor Ltd", "TEST-0001");
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -145,7 +150,7 @@ contract GovernanceTimelockTest is GovernanceLoopSetup {
 
     function test_QueueRefusesFailedProposal() public {
         vm.prank(firm);
-        uint256 proposalId = governance.propose(vendor);
+        uint256 proposalId = governance.propose(vendor, "Test Vendor Ltd", "TEST-0001");
         vm.warp(block.timestamp + 21 days);
 
         vm.expectRevert(
@@ -198,11 +203,15 @@ contract GovernanceTimelockTest is GovernanceLoopSetup {
         vm.warp(governance.queue(proposalId));
 
         vm.expectEmit(address(payees));
-        emit PayeeAdmitted(vendor, proposalId);
+        emit PayeeAdmitted(vendor, proposalId, VENDOR_NAME, COMPANY_ID);
         vm.prank(stranger);
         governance.execute(proposalId);
 
         assertTrue(payees.isRegistered(vendor));
+        (string memory name, string memory companyId, uint256 admittedBy) = payees.records(vendor);
+        assertEq(name, VENDOR_NAME);
+        assertEq(companyId, COMPANY_ID);
+        assertEq(admittedBy, proposalId);
         assertEq(_state(proposalId), uint8(Governance.ProposalState.Executed));
     }
 

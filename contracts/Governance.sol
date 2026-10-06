@@ -49,8 +49,10 @@ contract Governance {
     }
 
     /// @notice Everything doc/design/decisions/views/information-view.md §2.1 lists
-    /// for a proposal. `limit`, `fund`, `description` and `quoteHash` are
-    /// unused by an `Admit` proposal and left zero.
+    /// for a proposal. `limit`, `fund` and `quoteHash` are unused by an
+    /// `Admit` proposal and left zero; it carries the vendor's name in
+    /// `description` and its company identifier in `companyId` (ADR-018).
+    /// `companyId` is empty for a `Work` proposal.
     struct Proposal {
         ProposalKind kind;
         address payee;
@@ -63,6 +65,7 @@ contract Governance {
         uint256 principalUnits;
         bytes32 quoteHash;
         string description;
+        string companyId;
     }
 
     /// @notice Votes cast so far, weighted by unit (FR19).
@@ -152,7 +155,8 @@ contract Governance {
         Fund fund,
         bytes32 quoteHash,
         string description,
-        uint256 principalUnits
+        uint256 principalUnits,
+        string companyId
     );
 
     /// @notice One event per `castVote` call, naming the units that voted in
@@ -185,6 +189,10 @@ contract Governance {
     error TimelockIsZero();
     error TreasuryIsZero();
     error VendorIsZero();
+    /// FR15, ADR-018: an admission names the vendor.
+    error VendorNameIsEmpty();
+    /// FR15, ADR-018: an admission carries the vendor's company identifier.
+    error CompanyIdIsEmpty();
     error NotFirm(address caller);
     /// B2: a work proposal names a vendor the owners have not admitted.
     error PayeeNotRegistered(address payee);
@@ -241,12 +249,27 @@ contract Governance {
         _;
     }
 
-    /// @notice FR16. Propose admitting `vendor` to the approved list. The
-    /// vendor is admitted only if the owners vote for it and the proposal
-    /// executes; raising it changes nothing.
-    function propose(address vendor) external onlyFirm returns (uint256 proposalId) {
+    /// @notice FR15, FR16. Propose admitting `vendor`, under `name` and
+    /// `companyId`, to the approved list. The vendor is admitted only if the
+    /// owners vote for it and the proposal executes; raising it changes
+    /// nothing. The identifier's format is not checked (ADR-018).
+    function propose(
+        address vendor,
+        string calldata name,
+        string calldata companyId
+    ) external onlyFirm returns (uint256 proposalId) {
         if (vendor == address(0)) revert VendorIsZero();
-        proposalId = _store(ProposalKind.Admit, vendor, Fund.Operating, 0, bytes32(0), "");
+        if (bytes(name).length == 0) revert VendorNameIsEmpty();
+        if (bytes(companyId).length == 0) revert CompanyIdIsEmpty();
+        proposalId = _store(
+            ProposalKind.Admit,
+            vendor,
+            Fund.Operating,
+            0,
+            bytes32(0),
+            name,
+            companyId
+        );
     }
 
     /// @notice FR17, FR18. Propose work paid to `vendor` from `fund`, up to
@@ -261,7 +284,7 @@ contract Governance {
         bytes32 quoteHash
     ) external onlyFirm returns (uint256 proposalId) {
         if (!payees.isRegistered(vendor)) revert PayeeNotRegistered(vendor);
-        proposalId = _store(ProposalKind.Work, vendor, fund, limit, quoteHash, description);
+        proposalId = _store(ProposalKind.Work, vendor, fund, limit, quoteHash, description, "");
     }
 
     /// @notice FR2, FR19. Vote on `proposalId` with every unit the caller
@@ -412,7 +435,10 @@ contract Governance {
 
         if (stored.kind == ProposalKind.Admit) {
             target = address(payees);
-            data = abi.encodeCall(IAdmit.admit, (stored.payee, proposalId));
+            data = abi.encodeCall(
+                IAdmit.admit,
+                (stored.payee, proposalId, stored.description, stored.companyId)
+            );
         } else {
             target = address(treasury);
             data = abi.encodeCall(
@@ -464,7 +490,8 @@ contract Governance {
         Fund fund,
         uint256 limit,
         bytes32 quoteHash,
-        string memory description
+        string memory description,
+        string memory companyId
     ) private returns (uint256 proposalId) {
         proposalId = ++proposalCount;
         uint256 principalUnits = members.boundUnitCount();
@@ -476,7 +503,8 @@ contract Governance {
             limit: limit,
             principalUnits: principalUnits,
             quoteHash: quoteHash,
-            description: description
+            description: description,
+            companyId: companyId
         });
         emit ProposalCreated(
             proposalId,
@@ -486,7 +514,8 @@ contract Governance {
             fund,
             quoteHash,
             description,
-            principalUnits
+            principalUnits,
+            companyId
         );
     }
 }

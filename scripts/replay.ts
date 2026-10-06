@@ -23,11 +23,11 @@ const events = new Interface([
   "event UnitBound(uint256 indexed unitId, address indexed wallet)",
   "event Deposited(uint256 amount, uint256 operatingAmount, uint256 maintenanceAmount)",
   "event PaymentReleased(uint8 indexed fund, address indexed payee, uint256 amount, uint256 proposalId)",
-  "event ProposalCreated(uint256 indexed proposalId, uint8 kind, address indexed payee, uint256 limit, uint8 fund, bytes32 quoteHash, string description, uint256 principalUnits)",
+  "event ProposalCreated(uint256 indexed proposalId, uint8 kind, address indexed payee, uint256 limit, uint8 fund, bytes32 quoteHash, string description, uint256 principalUnits, string companyId)",
   "event VoteCast(uint256 indexed proposalId, address indexed voter, bool inFavour, uint256 weight, uint256[] unitIds)",
   "event ChargeIssued(uint256 indexed chargeId, uint256 indexed unitId, uint256 amount, uint256 dueDate)",
   "event LevyPaid(uint256 indexed chargeId, uint256 indexed unitId, address indexed payer, uint256 amount)",
-  "event PayeeAdmitted(address indexed payee, uint256 indexed proposalId)",
+  "event PayeeAdmitted(address indexed payee, uint256 indexed proposalId, string name, string companyId)",
   "event ProposalQueued(uint256 indexed proposalId, uint256 eta)",
   "event WorkAttested(uint256 indexed proposalId, address indexed attester, bytes32 evidenceHash)",
   // OpenZeppelin AccessControl, emitted by Treasury at construction.

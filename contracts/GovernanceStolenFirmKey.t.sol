@@ -62,7 +62,7 @@ contract GovernanceStolenFirmKeyTest is GovernanceLoopSetup {
         // 4. Admit the new address directly: only the timelock may (FR12).
         vm.expectRevert(abi.encodeWithSelector(PayeeRegistry.UnauthorizedExecutor.selector, firm));
         vm.prank(firm);
-        payees.admit(newAddress, workId);
+        payees.admit(newAddress, workId, "Test Vendor Ltd", "TEST-0001");
 
         // 5. Propose work paying the new address: refused at creation (B2).
         vm.expectRevert(abi.encodeWithSelector(Governance.PayeeNotRegistered.selector, newAddress));
@@ -73,7 +73,7 @@ contract GovernanceStolenFirmKeyTest is GovernanceLoopSetup {
         // as far as the key can. Neither the key nor the new address holds a
         // unit, so neither can vote (B8), and the owners do nothing.
         vm.prank(firm);
-        uint256 admitId = governance.propose(newAddress);
+        uint256 admitId = governance.propose(newAddress, "Test Vendor Ltd", "TEST-0001");
         vm.expectRevert(abi.encodeWithSelector(Governance.NotBoundOwner.selector, firm));
         vm.prank(firm);
         governance.castVote(admitId, true);

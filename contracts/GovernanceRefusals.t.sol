@@ -24,7 +24,7 @@ contract GovernanceRefusalsTest is GovernanceLoopSetup {
     function _bringAdmissionTo(address candidate, AdmissionStage stage) internal {
         if (stage == AdmissionStage.NeverProposed) return;
         vm.prank(firm);
-        uint256 admissionId = governance.propose(candidate);
+        uint256 admissionId = governance.propose(candidate, "Test Vendor Ltd", "TEST-0001");
         if (stage == AdmissionStage.VoteOpen) return;
         _pass(admissionId);
         if (stage == AdmissionStage.PassedNotQueued) return;
@@ -98,7 +98,7 @@ contract GovernanceRefusalsTest is GovernanceLoopSetup {
     ) public {
         vm.assume(caller != alice && caller != bob && caller != carol);
         vm.prank(firm);
-        uint256 proposalId = governance.propose(vendor);
+        uint256 proposalId = governance.propose(vendor, "Test Vendor Ltd", "TEST-0001");
         // Nobody votes, so quorum is never met and voting stays open for the
         // window and the extension.
         vm.warp(block.timestamp + bound(elapsed, 0, 21 days - 1));
@@ -121,7 +121,7 @@ contract GovernanceRefusalsTest is GovernanceLoopSetup {
     /// gives it.
     function test_BoundOwnerVotesWithEveryUnitItHolds() public {
         vm.prank(firm);
-        uint256 proposalId = governance.propose(vendor);
+        uint256 proposalId = governance.propose(vendor, "Test Vendor Ltd", "TEST-0001");
 
         vm.prank(alice);
         assertEq(governance.castVote(proposalId, true), 2);
