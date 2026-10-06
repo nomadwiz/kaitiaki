@@ -22,6 +22,10 @@ export function nzd(amount: bigint | string) {
 export const date = (timestamp: bigint) =>
   DATE.format(new Date(Number(timestamp) * 1000));
 
+// An address or hash shortened to its ends: `0x7a3F…c91E`.
+export const short = (value: string) =>
+  `${value.slice(0, 6)}…${value.slice(-4)}`;
+
 // "No unit", "Unit 3", "Units 1 and 2".
 export const unitsLabel = (units: bigint[]) =>
   units.length === 0

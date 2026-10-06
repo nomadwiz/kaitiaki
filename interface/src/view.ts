@@ -7,6 +7,7 @@
 // amount or date for it ever reaches the renderer. A paid charge is never
 // listed, so a resolved arrear stops being surfaced. This is presentation,
 // not protection — anyone with a node reads the whole log.
+import { date, nzd, short, unitsLabel } from "./format.js";
 import {
   arrearsAt,
   closesAt,
@@ -179,6 +180,10 @@ export type View = {
   }[];
   // Status only, by construction.
   otherUnits: { unitId: bigint; status: Status }[];
+  // Every event, newest first, as its plain sentence (Activity). A levy
+  // event for another owner's unit is the anonymous sentence and nothing
+  // more (NFR10).
+  activity: { time: bigint; kind: string; text: string }[];
   // Approved vendors, in the order owners admitted them.
   vendors: {
     payee: string;
@@ -233,6 +238,63 @@ export function buildView(
   const viewerUnits = units.filter((unitId) =>
     isViewer(derived.owners.get(unitId)!),
   );
+
+  const ownUnitIds = new Set(viewerUnits);
+  const fundName = (fund: unknown) =>
+    fund === FUND_OPERATING ? "Operating" : "Long-term maintenance";
+  // A vendor by the name its Admit proposal carried, else its address: never
+  // a guessed name.
+  const vendorName = (payee: string) =>
+    derived.payeeDetails.get(payee)?.name ?? short(payee);
+  // One sentence per event, EventRow's (the design system's README), and
+  // interface.md §4's for ChargeScheduled. The viewer's own levy events name
+  // the unit, charge and amount; another owner's name none of them.
+  const sentence = (name: string, a: Record<string, any>): string => {
+    const own = ownUnitIds.has(a.unitId);
+    switch (name) {
+      case "ProposalCreated":
+        return a.kind === WORK
+          ? `The firm proposed #${a.proposalId}: ${a.description}, up to ${nzd(a.limit)}, from ${fundName(a.fund)}, to ${vendorName(a.payee)}.`
+          : `The firm proposed #${a.proposalId}: admit ${vendorName(a.payee)} as a vendor.`;
+      case "VoteCast": {
+        const votes = Object.values(a.unitIds as object) as bigint[];
+        return `${unitsLabel(votes)} voted ${a.inFavour ? "for" : "against"} Proposal #${a.proposalId} (${votes.length} unit${votes.length === 1 ? "" : "s"}).`;
+      }
+      case "ProposalQueued":
+        return `Proposal #${a.proposalId} queued. Payment possible from ${date(a.eta)}.`;
+      case "WorkAttested":
+        return `The firm confirmed the work on Proposal #${a.proposalId} is done (evidence ${short(a.evidenceHash)}).`;
+      case "PaymentReleased":
+        return `${nzd(a.amount)} paid to ${vendorName(a.payee)} from ${fundName(a.fund)} for Proposal #${a.proposalId}.`;
+      case "Deposited":
+        return `${nzd(a.amount)} deposited: ${nzd(a.operatingAmount)} to Operating, ${nzd(a.maintenanceAmount)} to Long-term maintenance.`;
+      case "ChargeScheduled":
+      case "ChargeIssued":
+        return own
+          ? `Charge #${a.chargeId} ${name === "ChargeIssued" ? "issued" : "scheduled"} for your Unit ${a.unitId}: ${nzd(a.amount)}, due ${date(a.dueDate)}.`
+          : `A levy charge was ${name === "ChargeIssued" ? "issued" : "scheduled"} for another owner's unit.`;
+      case "LevyPaid":
+        return own
+          ? `Your Unit ${a.unitId}'s levy of ${nzd(a.amount)} was paid.`
+          : "A levy was paid for another owner's unit.";
+      case "PayeeAdmitted":
+        return `Proposal #${a.proposalId} executed. ${a.name} is now an approved vendor.`;
+      case "UnitBound":
+        return isViewer(a.wallet)
+          ? `Unit ${a.unitId} linked to your wallet.`
+          : `Unit ${a.unitId} linked to an owner's wallet.`;
+      default:
+        // RoleGranted and RoleRevoked: replay decodes no other event.
+        return "Contract permission set at deployment.";
+    }
+  };
+  const activity = derived.transitions
+    .map((t) => ({
+      time: t.time,
+      kind: t.name,
+      text: sentence(t.name, t.args as Record<string, any>),
+    }))
+    .reverse();
 
   const queued = { operating: 0n, maintenance: 0n };
   const proposals: View["proposals"] = created.map((p) => {
@@ -297,6 +359,7 @@ export function buildView(
           overdue: c.issued && now > c.dueDate,
         })),
     })),
+    activity,
     otherUnits: units
       .filter((unitId) => !isViewer(derived.owners.get(unitId)!))
       .map((unitId) => ({ unitId, status: statusOf(unitId) })),
