@@ -355,6 +355,20 @@ export function stateAt(
   return "Passed";
 }
 
+// When voting on a proposal closes, as of `timestamp`: the end of the window
+// while it is Open, the end of the extension once it has extended. Meaningful
+// only for a proposal still Open or Extended at `timestamp` (see stateAt).
+export function closesAt(
+  derived: Awaited<ReturnType<typeof replay>>,
+  proposalId: bigint,
+  timestamp: bigint,
+): bigint {
+  const p = derived.proposals.get(proposalId);
+  if (!p) throw new Error(`unknown proposal ${proposalId}`);
+  const windowEnd = p.createdAt + VOTING_PERIOD;
+  return timestamp < windowEnd ? windowEnd : windowEnd + EXTENSION;
+}
+
 // The read interface (#72) loads this module in a browser, where there is no
 // `process` and no `node:url`, so both are reached only under Node.
 if (

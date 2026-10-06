@@ -1,8 +1,9 @@
-// Screen 1, Home (`#/`): the two funds and the proposals. Until #151 fills
-// it, a proposal the viewer can vote on carries its VoteControl here.
-import { type FormEvent, type ReactNode } from "react";
+// Screen 1, Home (`#/`): the two funds, what needs the viewer's vote, their
+// levies and the four guarantees. A proposal the viewer can vote on carries
+// its VoteControl here until #152 moves the vote to the proposal screen.
+import { Fragment, type FormEvent, type ReactNode } from "react";
 
-import { nzd } from "../format.js";
+import { date, nzd } from "../format.js";
 import { Address, PageHead } from "../shell.js";
 import type { View } from "../view.js";
 
@@ -22,6 +23,36 @@ const FUNDS = [
   ["op", "Operating", "Running costs: cleaning, power, insurance."],
   ["ltm", "Long-term maintenance", "Roof, lifts, cladding. Saved over years."],
 ] as const;
+
+const GUARANTEES = [
+  [
+    "Approved proposal",
+    "No one can spend without a proposal that owners passed.",
+  ],
+  [
+    "Approved vendor",
+    "Money goes only to a vendor owners approved, and only the one the proposal names.",
+  ],
+  ["Within the cap", "A proposal never pays more than its spending cap."],
+  [
+    "Right fund",
+    "A proposal pays only from the fund it names. The two funds never mix.",
+  ],
+] as const;
+
+function Guarantees() {
+  return (
+    <div className="guarantees">
+      <strong>The contract protects the money:</strong>
+      {GUARANTEES.map(([name, sentence]) => (
+        <details key={name}>
+          <summary>{name}</summary>
+          <p>{sentence}</p>
+        </details>
+      ))}
+    </div>
+  );
+}
 
 function VoteControl({
   proposal: p,
@@ -154,6 +185,11 @@ function ProposalCard({
       </dl>
       <div className="next">
         <span>
+          {p.closes !== undefined && (
+            <>
+              <strong>Voting closes {date(p.closes)}.</strong>{" "}
+            </>
+          )}
           {String(p.forVotes)} for · {String(p.againstVotes)} against
         </span>
       </div>
@@ -166,14 +202,18 @@ function ProposalCard({
 
 export function Home({
   funds,
+  queued,
   proposals,
+  ownUnits,
   canAct,
   voting,
   onVote,
   children,
 }: {
   funds: View["funds"];
+  queued: View["queued"];
   proposals: Proposal[];
+  ownUnits: View["ownUnits"];
   // False when the wallet is on another chain: no vote is offered.
   canAct: boolean;
   voting?: bigint;
@@ -182,9 +222,23 @@ export function Home({
   children?: ReactNode;
 }) {
   const balances = [funds.operating, funds.maintenance];
+  const queuedToPay = [queued.operating, queued.maintenance];
+  const needVote = proposals.filter((p) => p.canVote);
+  const others = proposals.filter((p) => !p.canVote);
+  const card = (p: Proposal) => (
+    <ProposalCard
+      key={String(p.id)}
+      proposal={p}
+      canAct={canAct}
+      voting={voting}
+      onVote={onVote}
+    />
+  );
   return (
     <>
-      <PageHead title="Home" />
+      <PageHead title="Home">
+        <Guarantees />
+      </PageHead>
       {children}
       <section aria-labelledby="h-funds">
         <div className="section-head">
@@ -205,30 +259,95 @@ export function Home({
               </div>
               <div className="card-content">
                 <p className="fund-balance">{nzd(balances[i])}</p>
+                <p className="fund-meta">
+                  <span>
+                    Queued to pay, at most:{" "}
+                    <b className="num">
+                      {queuedToPay[i] ? nzd(queuedToPay[i]) : "none"}
+                    </b>
+                  </span>
+                </p>
               </div>
             </section>
           ))}
         </div>
       </section>
-      <section aria-labelledby="h-proposals">
-        <div className="section-head">
-          <h2 id="h-proposals">Proposals</h2>
-        </div>
-        {proposals.length ? (
-          <div className="grid-2">
-            {proposals.map((p) => (
-              <ProposalCard
-                key={String(p.id)}
-                proposal={p}
-                canAct={canAct}
-                voting={voting}
-                onVote={onVote}
-              />
-            ))}
+      <div className="grid-main">
+        <section aria-labelledby="h-vote">
+          <div className="section-head">
+            <h2 id="h-vote">Needs your vote</h2>
+            <span className="muted-text">
+              {needVote.length === 1
+                ? "1 proposal"
+                : `${needVote.length} proposals`}
+            </span>
           </div>
+          {needVote.length ? (
+            needVote.map(card)
+          ) : (
+            <div className="empty">
+              <h3>Nothing needs your vote.</h3>
+            </div>
+          )}
+        </section>
+        <section aria-labelledby="h-units">
+          <div className="section-head">
+            <h2 id="h-units">Your levies</h2>
+            <a href="#/units">Your units</a>
+          </div>
+          {ownUnits.length > 0 && (
+            <div className="card">
+              <div
+                className="card-content stack"
+                style={{ paddingTop: "var(--space-6)" }}
+              >
+                {ownUnits.map((u, i) => (
+                  <Fragment key={String(u.unitId)}>
+                    {i > 0 && <hr className="separator" />}
+                    <div className="own-unit">
+                      <div className="row">
+                        <h3 className="card-title">Unit {String(u.unitId)}</h3>
+                        <span
+                          className="status"
+                          data-tone={u.status === "current" ? "ok" : "late"}
+                        >
+                          {u.status}
+                        </span>
+                      </div>
+                      {u.overdue.length === 0 && (
+                        <p className="muted-text">No overdue charges.</p>
+                      )}
+                      {u.overdue.map((c) => (
+                        <div key={String(c.chargeId)} className="charge">
+                          <div>
+                            <p className="charge-amount">{nzd(c.amount)}</p>
+                            <p
+                              className="field-hint"
+                              style={{ color: "var(--foreground)" }}
+                            >
+                              Charge #{String(c.chargeId)} · was due{" "}
+                              {date(c.dueDate)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </Fragment>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+      </div>
+      <section aria-labelledby="h-all">
+        <div className="section-head">
+          <h2 id="h-all">Other proposals</h2>
+        </div>
+        {others.length ? (
+          <div className="grid-2">{others.map(card)}</div>
         ) : (
           <div className="empty">
-            <h3>No proposals yet</h3>
+            <h3>No other proposals</h3>
             <p>
               The management firm proposes work and vendors. Owners then vote.
               New proposals will appear here.
