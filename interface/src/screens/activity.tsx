@@ -1,41 +1,100 @@
-// Screen 5, Activity (`#/activity`): every event, newest first, as EventRow's
-// markup. The sentences, and which levy events stay anonymous (NFR10), are
-// built in view.ts; this only lays them out.
+// Activity (`#/activity`, #181), composed from doc/asset/mockups/Activity
+// and FirmActivity: every event, newest first, ten a page, as EventRow's
+// rows. The sentences, and which levy events stay anonymous for each role
+// (NFR10), are built in view.ts; this only lays them out. The page is state,
+// so it starts at 1 each time the viewer opens Activity.
+import { useState } from "react";
+
+import { RulesPopover } from "../components/kaitiaki.js";
+import { Card } from "../components/ui/card.js";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "../components/ui/pagination.js";
 import { date } from "../format.js";
-import { PageHead } from "../shell.js";
-import { Alert } from "../states.js";
+import type { Workspace } from "../shell.js";
 import type { View } from "../view.js";
 
-export function Activity({ events }: { events: View["activity"] }) {
+export const PER_PAGE = 10;
+
+export const ACTIVITY_RULES = {
+  owner: [
+    "This is every event the contracts recorded, newest first.",
+    "Another owner's levy events name no unit and no amount.",
+  ],
+  firm: [
+    "This is every event the contracts recorded, newest first.",
+    "Levy events name a charge, never a unit.",
+  ],
+} as const;
+
+export function Activity({
+  workspace,
+  events,
+  initialPage = 1,
+}: {
+  workspace: Workspace;
+  events: View["activity"];
+  // Only the tests start elsewhere: react-dom/server renders no press.
+  initialPage?: number;
+}) {
+  const [page, setPage] = useState(initialPage);
+  const pages = Math.ceil(events.length / PER_PAGE);
+  // A link to page `n`: it changes the state, not the address.
+  const to = (n: number) => ({
+    href: "#/activity",
+    onClick: (e: { preventDefault(): void }) => {
+      e.preventDefault();
+      setPage(n);
+    },
+  });
   return (
     <>
-      <PageHead title="Activity">
-        <p className="muted-text">
-          Every event the building’s contracts have recorded, newest first.
-        </p>
-      </PageHead>
-      <Alert
-        variant="default"
-        title="Every figure on this site is recalculated from this list."
-        description="Kaitiaki stores nothing of its own. It reads these public events and adds them up. Anyone can do the same from their own copy of the chain."
-      />
-      <section className="card">
-        <div className="card-content" style={{ paddingTop: "var(--space-3)" }}>
-          {events.length === 0 ? (
-            <p className="muted-text">No events yet.</p>
-          ) : (
-            <ol className="events" reversed>
-              {events.map((e, i) => (
-                <li key={i} className="event">
-                  <time>{date(e.time)}</time>
-                  <span className="event-text">{e.text}</span>
-                  <span className="event-kind">{e.kind}</span>
-                </li>
-              ))}
-            </ol>
-          )}
-        </div>
-      </section>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <h1>Activity</h1>
+        <RulesPopover rules={ACTIVITY_RULES[workspace]} />
+      </div>
+      <Card className="gap-0 py-2 max-wide:py-2">
+        {events.length === 0 ? (
+          <p className="px-6 py-3.5 text-muted-foreground max-wide:px-4">No events yet.</p>
+        ) : (
+          <ol aria-label="Events" className="[&>li+li]:border-t">
+            {events.slice((page - 1) * PER_PAGE, page * PER_PAGE).map((e, i) => (
+              <li
+                key={i}
+                className="grid items-baseline gap-x-5 gap-y-1 px-6 py-3.5 text-base max-wide:px-4 max-wide:py-3 wide:grid-cols-[140px_minmax(0,1fr)_auto]"
+              >
+                <time className="text-muted-foreground tabular-nums">{date(e.time)}</time>
+                <span>{e.text}</span>
+                <span className="font-mono text-sm text-muted-foreground">{e.kind}</span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </Card>
+      {pages > 1 && (
+        <Pagination aria-label="Pages">
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious {...(page > 1 ? to(page - 1) : { "aria-disabled": true })} />
+            </PaginationItem>
+            {Array.from({ length: pages }, (_, i) => i + 1).map((n) => (
+              <PaginationItem key={n}>
+                <PaginationLink isActive={n === page} {...to(n)}>
+                  {n}
+                </PaginationLink>
+              </PaginationItem>
+            ))}
+            <PaginationItem>
+              <PaginationNext {...(page < pages ? to(page + 1) : { "aria-disabled": true })} />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
     </>
   );
 }

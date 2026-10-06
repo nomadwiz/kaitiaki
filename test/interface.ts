@@ -21,6 +21,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { App, ELSEWHERE, isElsewhere, type Wallet } from "../interface/src/app.js";
+import { ACTIVITY_RULES, Activity, PER_PAGE } from "../interface/src/screens/activity.js";
 import { GUARANTEES } from "../interface/src/screens/building.js";
 import { votesRules } from "../interface/src/screens/proposal.js";
 import { checkEvidence, checkVendor, checkWork } from "../interface/src/screens/firm.js";
@@ -146,7 +147,7 @@ describe("Read interface (#72, #149)", () => {
             balance: await walletBalance(ethers.provider, token, viewer, building.fromBlock),
           }
         : undefined;
-      const view = buildView(derived, now, viewer, ownWallet);
+      const view = buildView(derived, now, viewer, ownWallet, building.signers.firm.address);
       return {
         view,
         html: renderToStaticMarkup(
@@ -1233,18 +1234,27 @@ describe("Read interface (#72, #149)", () => {
     });
   });
 
-  describe("Activity (#155)", () => {
+  describe("Activity (#155, #181)", () => {
     // The rows as a viewer reads them, newest first.
     const eventRows = (html: string) =>
       [
         ...html.matchAll(
-          /<li class="event"><time>([^<]*)<\/time><span class="event-text">([^<]*)<\/span><span class="event-kind">([^<]*)<\/span><\/li>/g,
+          /<li[^>]*><time[^>]*>([^<]*)<\/time><span>([^<]*)<\/span><span[^>]*>([^<]*)<\/span><\/li>/g,
         ),
       ].map(([, time, text, kind]) => ({
         time,
         kind,
         text: text.replace(/&#x27;/g, "'"),
       }));
+    // Every page of a workspace's Activity, as markup. The App renders page
+    // 1; react-dom/server renders no press, so each later page is rendered
+    // from its initial page.
+    const pagesOf = (html: string, workspace: "owner" | "firm", events: { time: bigint; kind: string; text: string }[]) => [
+      html,
+      ...Array.from({ length: Math.ceil(events.length / PER_PAGE) - 1 }, (_, i) =>
+        renderToStaticMarkup(createElement(Activity, { workspace, events, initialPage: i + 2 })),
+      ),
+    ];
     const sentences = (rows: ReturnType<typeof eventRows>, kind: string) =>
       rows.filter((r) => r.kind === kind).map((r) => r.text);
 
@@ -1265,9 +1275,15 @@ describe("Read interface (#72, #149)", () => {
 
     it("lists every event newest first, each as its plain sentence, and names the viewer's own levy events", async () => {
       const { signers, render } = await finished();
-      const { html } = await render(signers.alice.address, "#/activity");
+      const { view, html: first } = await render(signers.alice.address, "#/activity");
+      // Every page, in order: ten rows on each but the last.
+      const pages = pagesOf(first, "owner", view.activity);
+      const html = pages.join("");
       const rows = eventRows(html);
-      expect(html).to.contain('<ol class="events" reversed="">');
+      expect(rows).to.have.length(view.activity.length);
+      expect(pages.map((p) => eventRows(p).length)).to.deep.equal(
+        pages.map((_, i) => Math.min(PER_PAGE, view.activity.length - i * PER_PAGE)),
+      );
       // The log's order, reversed: the payment is last in the log.
       expect(rows[0].kind).to.equal("PaymentReleased");
       expect(rows.at(-1)!.kind).to.equal("RoleGranted");
@@ -1289,9 +1305,9 @@ describe("Read interface (#72, #149)", () => {
       expect(rows[0].time).to.match(/^\d{1,2} [A-Z][a-z]{2} \d{4}$/);
       expect(html).to.not.contain(short(signers.vendor.address));
       expect(sentences(rows, "VoteCast")).to.deep.equal([
-        "Unit 3 voted for Proposal #2 (1 unit).",
+        "An owner voted for Proposal #2.",
         "Units 1 and 2 voted for Proposal #2 (2 units).",
-        "Unit 3 voted for Proposal #1 (1 unit).",
+        "An owner voted for Proposal #1.",
         "Units 1 and 2 voted for Proposal #1 (2 units).",
       ]);
       expect(sentences(rows, "ProposalCreated")).to.deep.equal([
@@ -1333,8 +1349,36 @@ describe("Read interface (#72, #149)", () => {
       );
     });
 
+    it("pages ten events at a time under shadcn/ui's Pagination, from page 1, and has no subtitle", async () => {
+      const { signers, render } = await finished();
+      const { view, html } = await render(signers.alice.address, "#/activity");
+      const pages = pagesOf(html, "owner", view.activity);
+      expect(pages.length).to.be.greaterThan(2);
+      // The links in the Pages navigation: each one's label, and whether it
+      // is the current page or disabled.
+      const links = (page: string) =>
+        [...page.split('aria-label="Pages"')[1].split("</nav>")[0].matchAll(/<a ([^>]*)>([\s\S]*?)<\/a>/g)].map(
+          ([, attrs, label]) =>
+            text(label) +
+            (attrs.includes('aria-current="page"') ? " current" : "") +
+            (attrs.includes('aria-disabled="true"') ? " disabled" : ""),
+        );
+      const numbers = pages.map((_, i) => String(i + 1));
+      const mark = (n: number) => numbers.map((label, i) => (i === n ? `${label} current` : label));
+      expect(links(pages[0])).to.deep.equal(["Previous disabled", ...mark(0), "Next"]);
+      expect(links(pages[1])).to.deep.equal(["Previous", ...mark(1), "Next"]);
+      expect(links(pages.at(-1)!)).to.deep.equal(["Previous", ...mark(pages.length - 1), "Next disabled"]);
+      // Each page's rows are the next ten of the list.
+      expect(eventRows(pages[1]).map((r) => r.text)).to.deep.equal(view.activity.slice(10, 20).map((e) => e.text));
+      // No subtitle; the rules are in the Rules popover.
+      const page = text(html.split("<h1>")[1]);
+      expect(page.startsWith(`Activity Rules ${date(view.activity[0].time)} `), page.slice(0, 80)).to.equal(true);
+      expect(ACTIVITY_RULES.owner[1]).to.equal("Another owner's levy events name no unit and no amount.");
+      expect(ACTIVITY_RULES.firm[1]).to.equal("Levy events name a charge, never a unit.");
+    });
+
     it("NFR10: a levy event for another owner's unit names no unit, amount or charge, and with no viewer every levy event is anonymous", async () => {
-      const { signers, contracts, render } = await finished();
+      const { signers, contracts, render, ethers, addresses, fromBlock } = await finished();
       const anonymous = {
         ChargeScheduled: "A levy charge was scheduled for another owner's unit.",
         ChargeIssued: "The firm asked for payment of a levy charge for another owner's unit.",
@@ -1353,11 +1397,22 @@ describe("Read interface (#72, #149)", () => {
         signers.stranger,
         undefined,
       ]) {
-        const { view, html } = await render(viewer?.address, "#/activity");
+        const { view, html: first } = await render(viewer?.address, "#/activity");
         const own = new Set(view.ownUnits.map((u) => u.unitId));
+        // A vote names only the viewer's own units, and for anyone else no
+        // unit and no count.
+        for (const r of view.activity.filter((e) => e.kind === "VoteCast")) {
+          for (const [, n] of r.text.matchAll(/Unit (\d+)/g)) {
+            expect(own.has(BigInt(n)), r.text).to.equal(true);
+          }
+          if (r.text.startsWith("An owner")) expect(r.text).to.not.match(/\(\d/);
+        }
         // A wallet with no unit, and no wallet, see no Activity (ADR-021);
         // the sentences are still checked where they are built.
         const page = own.size > 0;
+        // Every page's markup, not only the first.
+        const html = page ? pagesOf(first, "owner", view.activity).join("") : first;
+        if (page) expect(eventRows(html)).to.have.length(view.activity.length);
         expect(eventRows(html).length > 0, String(viewer?.address)).to.equal(page);
         const levy = view.activity.filter((r) => r.kind in anonymous);
         expect(levy).to.have.length(10);
@@ -1398,6 +1453,31 @@ describe("Read interface (#72, #149)", () => {
           const due = dueOf.get(chargeId)!;
           if (!legitimate.has(due)) expect(html, due).to.not.contain(due);
         });
+      }
+
+      // The firm's copy, every page: each levy event names its charge, and
+      // never a unit, an amount or a due date (interface.md §4.2).
+      const { view, html } = await render(signers.firm.address, "#/activity");
+      const pages = pagesOf(html, "firm", view.activity);
+      const rows = eventRows(pages.join(""));
+      expect(rows).to.have.length(view.activity.length);
+      expect(sentences(rows, "ChargeScheduled")).to.deep.equal([4, 3, 2, 1, 0].map((n) => `Charge #${n} was scheduled.`));
+      expect(sentences(rows, "ChargeIssued")).to.deep.equal([3, 2, 1].map((n) => `The firm asked for payment of Charge #${n}.`));
+      expect(sentences(rows, "LevyPaid")).to.deep.equal([2, 0].map((n) => `Charge #${n} was paid.`));
+      // Every vote the firm sees names no unit and no count, even one cast
+      // by the firm's own address when it holds units (alice, named as the
+      // firm here).
+      for (const t of sentences(rows, "VoteCast")) expect(t).to.match(/^An owner voted (for|against) Proposal #\d+\.$/);
+      const now = BigInt((await ethers.provider.getBlock("latest"))!.timestamp);
+      const derived = await replay(ethers.provider, addresses, fromBlock);
+      const asFirm = buildView(derived, now, signers.alice.address, undefined, signers.alice.address);
+      const votes = asFirm.activity.filter((e) => e.kind === "VoteCast").map((e) => e.text);
+      expect(votes).to.have.length.above(0);
+      for (const t of votes) expect(t).to.match(/^An owner voted (for|against) Proposal #\d+\.$/);
+      const times = new Set(rows.map((r) => r.time));
+      for (let chargeId = 0; chargeId < unitOf.length; chargeId++) {
+        const due = date((await contracts.ledger.charges(chargeId)).dueDate);
+        if (!times.has(due)) expect(pages.join(""), due).to.not.contain(due);
       }
     });
 
