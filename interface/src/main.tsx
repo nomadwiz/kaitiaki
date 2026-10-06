@@ -20,7 +20,7 @@ import { replay } from "../../scripts/replay.js";
 import { App, type Wallet } from "./app.js";
 import { unitsLabel } from "./format.js";
 import type { Done, Notice } from "./states.js";
-import { ABI, payment, refusal, send } from "./tx.js";
+import { ABI, approvedRefusal, payment, refusal, send } from "./tx.js";
 import { buildView } from "./view.js";
 
 // Written by scripts/demo.ts. `token` is the MockNZD a levy is paid in;
@@ -218,17 +218,21 @@ function Root() {
 
   // Two signatures: the token approves the ledger for the amount, then the
   // ledger takes it. If the second is refused, the approval stands.
-  async function pay(chargeId: bigint) {
-    const unit = view!.ownUnits.find((u) =>
-      u.charges.some((c) => c.chargeId === chargeId),
-    )!;
-    const { amount } = unit.charges.find((c) => c.chargeId === chargeId)!;
+  async function pay(unitId: bigint, chargeId: bigint, amount: bigint) {
     const { levyLedger } = env!.config.addresses;
+    let approved = false;
     setPaying(chargeId);
-    await sendTx(payment(unit.unitId, chargeId, amount), async (at) => {
-      await (await at(env!.config.token).approve(levyLedger, amount)).wait();
-      return at(levyLedger).payLevy(chargeId);
-    });
+    await sendTx(
+      {
+        ...payment(unitId, chargeId, amount),
+        refuse: (error) => (approved ? approvedRefusal(error) : refusal(error)),
+      },
+      async (at) => {
+        await (await at(env!.config.token).approve(levyLedger, amount)).wait();
+        approved = true;
+        return at(levyLedger).payLevy(chargeId);
+      },
+    );
     setPaying(undefined);
   }
 
@@ -247,7 +251,7 @@ function Root() {
       onConnect={() => void connect()}
       onViewer={setChosen}
       onVote={(id, inFavour) => void vote(id, inFavour)}
-      onPay={(id) => void pay(id)}
+      onPay={(unit, id, amount) => void pay(unit, id, amount)}
     />
   );
 }

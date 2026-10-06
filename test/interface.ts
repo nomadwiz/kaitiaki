@@ -21,7 +21,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { App, type Wallet } from "../interface/src/app.js";
 import { date, nzd } from "../interface/src/format.js";
-import { ABI, payment, refusal, send } from "../interface/src/tx.js";
+import { ABI, approvedRefusal, payment, refusal, send } from "../interface/src/tx.js";
 import { buildView } from "../interface/src/view.js";
 import { advance, deployBuilding } from "../scripts/building.js";
 import { replay } from "../scripts/replay.js";
@@ -79,7 +79,8 @@ describe("Read interface (#72, #149)", () => {
       const view = buildView(derived, now, viewer);
       return {
         view,
-        html: renderToStaticMarkup(createElement(App, { hash, view, wallet, onPay: () => {} }),
+        html: renderToStaticMarkup(
+          createElement(App, { hash, view, wallet, onPay: () => {} }),
         ),
       };
     };
@@ -221,6 +222,25 @@ describe("Read interface (#72, #149)", () => {
       expect(home.html).to.contain("Charge #1 · was due");
       expect(home.html).to.contain('<p class="muted-text">No overdue charges.</p>');
       expect(units.html).to.contain("Charge #4 · due");
+    });
+
+    it("disables every other Pay while one payment is in progress", async () => {
+      const { signers, render } = await setUp();
+      const { view } = await render(signers.alice.address, "#/units");
+      const html = renderToStaticMarkup(
+        createElement(App, {
+          hash: "#/units",
+          view,
+          onPay: () => {},
+          paying: 1n,
+        }),
+      );
+      // Charge 1 shows the wait; charge 4's Pay stays but cannot be pressed.
+      expect(html).to.contain("Waiting for your wallet…");
+      expect(html).to.contain(
+        '<button class="btn" type="button" aria-disabled="true">Pay NZD 250.00</button>',
+      );
+      expect(html).to.not.contain('<button class="btn" type="button">Pay');
     });
 
     it("says two signatures are needed in the signing Dialog", () => {
@@ -1050,6 +1070,26 @@ describe("Transactions (#150)", () => {
       });
     }
     expect(refusal(undefined)).to.deep.equal({ message: "undefined" });
+  });
+
+  it("tells the truth when a payment is refused after its approval was mined", () => {
+    const reject = makeError("user rejected action", "ACTION_REJECTED", {
+      action: "sendTransaction",
+      reason: "rejected",
+    });
+    expect(approvedRefusal(reject)).to.deep.equal({
+      message:
+        "You cancelled the payment in your wallet. The approval was already sent, so the levy ledger stays approved for that amount. Press Pay to try again.",
+    });
+    expect(
+      approvedRefusal({ data: ABI.encodeErrorResult("ChargeAlreadyPaid", [1]) }),
+    ).to.deep.equal({
+      name: "ChargeAlreadyPaid",
+      message:
+        "This charge has already been paid. The approval was already sent, so the levy ledger stays approved for that amount.",
+    });
+    // Every other action keeps the generic sentence.
+    expect(refusal(reject).message).to.contain("Nothing was sent.");
   });
 
   it("has its own sentence for a wallet rejection", () => {
