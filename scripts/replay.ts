@@ -137,6 +137,7 @@ export async function replay(
     transitions.push({
       name: event.name,
       blockNumber: log.blockNumber,
+      time,
       args: a.toObject(true),
     });
 

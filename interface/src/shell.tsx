@@ -3,7 +3,7 @@
 // doc/asset/design-system/components/AppShell and Sheet.
 import { useRef, useState, type ReactNode } from "react";
 
-import { unitsLabel } from "./format.js";
+import { short, unitsLabel } from "./format.js";
 
 export const NAV = [
   ["#/", "Home"],
@@ -24,7 +24,7 @@ export function Address({
 }) {
   return (
     <span className="addr">
-      {`${value.slice(0, 6)}…${value.slice(-4)}`}
+      {short(value)}
       <button
         className="btn"
         type="button"

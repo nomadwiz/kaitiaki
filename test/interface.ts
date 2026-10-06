@@ -9,6 +9,7 @@ import { expect } from "chai";
 import {
   Contract,
   Interface,
+  id,
   makeError,
   parseUnits,
   zeroPadValue,
@@ -811,6 +812,194 @@ describe("Read interface (#72, #149)", () => {
       const { html } = await render(signers.carol.address, "#/proposal/99");
       expect(html).to.contain("<h1>Proposal #99</h1>");
       expect(html).to.contain("There is no proposal #99.");
+    });
+  });
+
+  describe("Activity (#155)", () => {
+    // The rows as a viewer reads them, newest first.
+    const eventRows = (html: string) =>
+      [
+        ...html.matchAll(
+          /<li class="event"><time>([^<]*)<\/time><span class="event-text">([^<]*)<\/span><span class="event-kind">([^<]*)<\/span><\/li>/g,
+        ),
+      ].map(([, time, text, kind]) => ({
+        time,
+        kind,
+        text: text.replace(/&#x27;/g, "'"),
+      }));
+    const sentences = (rows: ReturnType<typeof eventRows>, kind: string) =>
+      rows.filter((r) => r.kind === kind).map((r) => r.text);
+
+    // The seeded building, then proposal 2 carried through to payment, so
+    // every kind of event has been emitted.
+    async function finished() {
+      const s = await setUp();
+      const { governance } = s.contracts;
+      const { alice, bob, firm, stranger } = s.signers;
+      await governance.connect(bob).castVote(2, true);
+      await advance(s.ethers, await governance.VOTING_PERIOD());
+      await governance.connect(stranger).queue(2);
+      await advance(s.ethers, await governance.TIMELOCK_DELAY());
+      await governance.connect(firm).attest(2, id("evidence: roof"));
+      await governance.connect(stranger).execute(2);
+      return { ...s, alice, bob };
+    }
+
+    it("lists every event newest first, each as its plain sentence, and names the viewer's own levy events", async () => {
+      const { signers, render } = await finished();
+      const { html } = await render(signers.alice.address, "#/activity");
+      const rows = eventRows(html);
+      expect(html).to.contain('<ol class="events" reversed="">');
+      // The log's order, reversed: the payment is last in the log.
+      expect(rows[0].kind).to.equal("PaymentReleased");
+      expect(rows.at(-1)!.kind).to.equal("RoleGranted");
+      expect(rows.map((r) => r.kind).slice(0, 4)).to.deep.equal([
+        "PaymentReleased",
+        "WorkAttested",
+        "ProposalQueued",
+        "VoteCast",
+      ]);
+      const vendor = signers.vendor.address;
+      const short = `${vendor.slice(0, 6)}…${vendor.slice(-4)}`;
+      expect(rows[0].text).to.equal(
+        "NZD 400.00 paid to Harbour Lifts Ltd from Operating for Proposal #2.",
+      );
+      expect(rows[1].text).to.match(
+        /^The firm confirmed the work on Proposal #2 is done \(evidence 0x[0-9a-f]{4}…[0-9a-f]{4}\)\.$/,
+      );
+      expect(rows[2].text).to.match(
+        /^Proposal #2 queued\. Payment possible from \d{1,2} [A-Z][a-z]{2} \d{4}\.$/,
+      );
+      expect(rows[0].time).to.match(/^\d{1,2} [A-Z][a-z]{2} \d{4}$/);
+      expect(rows.map((r) => r.text)).to.not.contain(short);
+      expect(sentences(rows, "VoteCast")).to.deep.equal([
+        "Unit 3 voted for Proposal #2 (1 unit).",
+        "Units 1 and 2 voted for Proposal #2 (2 units).",
+        "Unit 3 voted for Proposal #1 (1 unit).",
+        "Units 1 and 2 voted for Proposal #1 (2 units).",
+      ]);
+      expect(sentences(rows, "ProposalCreated")).to.deep.equal([
+        "The firm proposed #2: Roof repair, up to NZD 400.00, from Operating, to Harbour Lifts Ltd.",
+        "The firm proposed #1: admit Harbour Lifts Ltd as a vendor.",
+      ]);
+      expect(sentences(rows, "PayeeAdmitted")).to.deep.equal([
+        "Proposal #1 executed. Harbour Lifts Ltd is now an approved vendor.",
+      ]);
+      expect(sentences(rows, "Deposited")).to.deep.equal([
+        "NZD 250.00 deposited: NZD 200.00 to Operating, NZD 50.00 to Long-term maintenance.",
+        "NZD 250.00 deposited: NZD 200.00 to Operating, NZD 50.00 to Long-term maintenance.",
+      ]);
+      expect(sentences(rows, "UnitBound")).to.deep.equal([
+        "Unit 4 linked to an owner's wallet.",
+        "Unit 3 linked to an owner's wallet.",
+        "Unit 2 linked to your wallet.",
+        "Unit 1 linked to your wallet.",
+      ]);
+      expect(sentences(rows, "RoleGranted")).to.deep.equal(
+        Array(3).fill("Contract permission set at deployment."),
+      );
+      expect(sentences(rows, "RoleRevoked")).to.deep.equal([
+        "Contract permission set at deployment.",
+      ]);
+      // Alice's own levy events name unit, amount, charge and date.
+      expect(sentences(rows, "ChargeScheduled")).to.include(
+        "Charge #4 scheduled for your Unit 1: NZD 250.00, due " +
+          html.match(/Charge #4 scheduled for your Unit 1: NZD 250\.00, due ([^<]*?)\.</)![1] +
+          ".",
+      );
+      expect(sentences(rows, "ChargeIssued")).to.include.members([
+        "Charge #0 issued for your Unit 1: NZD 250.00, due " +
+          html.match(/Charge #0 issued for your Unit 1: NZD 250\.00, due ([^<]*?)\.</)![1] +
+          ".",
+      ]);
+      expect(sentences(rows, "LevyPaid")).to.include(
+        "Your Unit 1's levy of NZD 250.00 was paid.",
+      );
+    });
+
+    it("NFR10: a levy event for another owner's unit names no unit, amount or charge, and with no viewer every levy event is anonymous", async () => {
+      const { signers, contracts, render } = await finished();
+      const anonymous = {
+        ChargeScheduled: "A levy charge was scheduled for another owner's unit.",
+        ChargeIssued: "A levy charge was issued for another owner's unit.",
+        LevyPaid: "A levy was paid for another owner's unit.",
+      };
+      // The unit of each charge, and the charges the log scheduled, issued
+      // and paid: five levy events of the first kind, four of the second and
+      // two of the third.
+      const unitOf = [1n, 2n, 3n, 4n, 1n];
+      const events = { ChargeScheduled: [0, 1, 2, 3, 4], ChargeIssued: [0, 1, 2, 3], LevyPaid: [0, 2] };
+      for (const viewer of [
+        signers.alice,
+        signers.bob,
+        signers.carol,
+        signers.stranger,
+        undefined,
+      ]) {
+        const { view, html } = await render(viewer?.address, "#/activity");
+        const own = new Set(view.ownUnits.map((u) => u.unitId));
+        const levy = eventRows(html).filter((r) => r.kind in anonymous);
+        expect(levy).to.have.length(11);
+        let named = 0;
+        for (const r of levy) {
+          if (r.text === anonymous[r.kind as keyof typeof anonymous]) {
+            // Nothing in the sentence is a unit, an amount or a charge.
+            expect(r.text).to.not.match(/\d|NZD|#/);
+          } else {
+            named += 1;
+            // Only a unit the viewer owns is ever named.
+            expect(own.has(BigInt(r.text.match(/Unit (\d+)/)![1])), r.text).to.equal(true);
+          }
+        }
+        const expected = Object.values(events)
+          .flat()
+          .filter((chargeId) => own.has(unitOf[chargeId])).length;
+        expect(named, String(viewer?.address)).to.equal(expected);
+
+        // The whole page, not only the sentences: nothing of another
+        // owner's charge reaches the time column, an attribute or any other
+        // markup. Amount is not asserted: every seeded charge is NZD 250.00,
+        // which the viewer's own charges and the Deposited rows legitimately
+        // show. A due date is asserted only where no own charge and no row's
+        // block time shares it.
+        const legitimate = new Set<string>(eventRows(html).map((r) => r.time));
+        const dueOf = new Map<number, string>();
+        for (let chargeId = 0; chargeId < unitOf.length; chargeId++) {
+          dueOf.set(chargeId, date((await contracts.ledger.charges(chargeId)).dueDate));
+        }
+        unitOf.forEach((unit, chargeId) => {
+          if (own.has(unit)) legitimate.add(dueOf.get(chargeId)!);
+        });
+        unitOf.forEach((unit, chargeId) => {
+          if (own.has(unit)) return;
+          expect(html, `Charge #${chargeId}`).to.not.contain(`Charge #${chargeId}`);
+          const due = dueOf.get(chargeId)!;
+          if (!legitimate.has(due)) expect(html, due).to.not.contain(due);
+        });
+      }
+    });
+
+    it("names a payee not yet admitted by its shortened address, never a guessed name", async () => {
+      const { signers, contracts, render } = await setUp();
+      const other = signers.stranger.address;
+      await contracts.governance
+        .connect(signers.firm)
+        .getFunction("propose(address,string,string)")(other, "Not Yet Ltd", "DEMO-0002");
+      const { html } = await render(signers.alice.address, "#/activity");
+      expect(sentences(eventRows(html), "ProposalCreated")[0]).to.equal(
+        `The firm proposed #3: admit ${other.slice(0, 6)}…${other.slice(-4)} as a vendor.`,
+      );
+      expect(html).to.not.contain("Not Yet Ltd");
+    });
+
+    it("shows a plain line for an empty log", async () => {
+      const { signers, render } = await setUp();
+      const { view } = await render(signers.alice.address);
+      const html = renderToStaticMarkup(
+        createElement(App, { hash: "#/activity", view: { ...view, activity: [] } }),
+      );
+      expect(html).to.contain("No events yet.");
+      expect(eventRows(html)).to.have.length(0);
     });
   });
 
