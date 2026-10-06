@@ -25,7 +25,19 @@ await mkdir(new URL(".", out), { recursive: true });
 await writeFile(
   out,
   JSON.stringify(
-    { rpcUrl: "http://127.0.0.1:8545", fromBlock, addresses },
+    {
+      chainId: Number((await ethers.provider.getNetwork()).chainId),
+      rpcUrl: "http://127.0.0.1:8545",
+      fromBlock,
+      // Replayed: every log these emit is decoded.
+      addresses,
+      // Not replayed, so outside `addresses`: the token's and the timelock's
+      // logs are not the building's events. No event carries the firm's
+      // address (Governance.firm is set in the constructor).
+      token: String(contracts.token.target),
+      timelock: String(contracts.timelock.target),
+      firm: signers.firm.address,
+    },
     null,
     2,
   ) + "\n",

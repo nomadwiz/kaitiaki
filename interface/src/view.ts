@@ -35,6 +35,8 @@ export type View = {
     againstVotes: bigint;
     // Voting is open and one of the viewer's units has not yet voted.
     canVote: boolean;
+    // The viewer's units that have not voted on it, which vote together.
+    unvoted: bigint[];
   }[];
   ownUnits: {
     unitId: bigint;
@@ -95,6 +97,7 @@ export function buildView(
     proposals: created.map((p) => {
       const state = stateAt(derived, p.proposalId, now);
       const voted = votedUnits.get(p.proposalId) ?? new Set<bigint>();
+      const unvoted = viewerUnits.filter((unitId) => !voted.has(unitId));
       return {
         id: p.proposalId,
         kind: p.kind === WORK ? "Work" : "Admit",
@@ -106,8 +109,8 @@ export function buildView(
         forVotes: derived.tallies.get(p.proposalId)?.forVotes ?? 0n,
         againstVotes: derived.tallies.get(p.proposalId)?.againstVotes ?? 0n,
         canVote:
-          (state === "Open" || state === "Extended") &&
-          viewerUnits.some((unitId) => !voted.has(unitId)),
+          (state === "Open" || state === "Extended") && unvoted.length > 0,
+        unvoted,
       };
     }),
     ownUnits: viewerUnits.map((unitId) => ({
