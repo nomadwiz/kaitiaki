@@ -4,6 +4,7 @@ pragma solidity 0.8.36;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {Treasury} from "./Treasury.sol";
+import {IMembershipQuery} from "./interfaces/IMembershipQuery.sol";
 
 /// @title Levy charges, payment and arrears: the money-in side of the loop.
 /// @notice Issue #58 — FR5–FR9, NFR7; B1. A charge names a unit, an amount and
@@ -11,8 +12,10 @@ import {Treasury} from "./Treasury.sol";
 /// role, because deriving it from the maintenance plan (FR11) is designed, not
 /// built (doc/design/spec.md §4). A charge's index in the schedule is its id.
 ///
-/// Anyone may issue a charge once it is due, and nobody may issue it before
-/// (FR5, FR6, B1). Anyone may pay a charge, issued or not, once and in full;
+/// Only the management firm collects a charge, and not before it is due
+/// (FR5, B1, ADR-020). Collecting issues the charge and takes the amount from
+/// the unit's bound wallet, if that wallet has approved this contract for it
+/// and holds it. Anyone may pay a charge, issued or not, once and in full;
 /// the payment credits the charge's unit, never the payer (FR7, ADR-016).
 /// Receipts reach the Treasury only through `Treasury.deposit`, which pulls
 /// them and splits them across the two funds (FR8).
@@ -36,6 +39,14 @@ contract LevyLedger {
     /// can never name different assets.
     IERC20 public immutable settlementAsset;
 
+    /// @notice Where a charge's unit is bound, and so whom `collect` takes the
+    /// levy from. Fixed at deployment.
+    IMembershipQuery public immutable members;
+
+    /// @notice The management firm: the only caller of `collect` (ADR-020).
+    /// Fixed at deployment, as `Governance.firm` is.
+    address public immutable firm;
+
     /// @notice The schedule, indexed by charge id.
     Charge[] public charges;
 
@@ -48,8 +59,9 @@ contract LevyLedger {
         uint256 amount,
         uint256 dueDate
     );
-    /// @notice A charge has fallen due and been issued. With `LevyPaid`, enough
-    /// to derive every unit's arrears from the log alone (FR9, FR40).
+    /// @notice The firm has collected a due charge: it demanded payment
+    /// (ADR-020). With `LevyPaid`, enough to derive every unit's arrears from
+    /// the log alone (FR9, FR40).
     event ChargeIssued(
         uint256 indexed chargeId,
         uint256 indexed unitId,
@@ -66,46 +78,67 @@ contract LevyLedger {
     );
 
     error TreasuryIsZero();
+    error MembershipRegistryIsZero();
+    error FirmIsZero();
+    /// Only the management firm may collect (ADR-020).
+    error NotFirm(address caller);
     error ScheduleLengthMismatch(uint256 unitIds, uint256 amounts, uint256 dueDates);
     error UnknownCharge(uint256 chargeId);
-    /// B1: a charge cannot be issued before its due date.
+    /// B1: a charge cannot be collected before its due date.
     error ChargeNotDue(uint256 chargeId, uint256 dueDate);
-    error ChargeAlreadyIssued(uint256 chargeId);
     error ChargeAlreadyPaid(uint256 chargeId);
     error LevyTransferFailed(address payer, uint256 amount);
     error TreasuryApprovalFailed(uint256 amount);
 
     constructor(
         address treasury_,
+        IMembershipQuery members_,
+        address firm_,
         uint256[] memory unitIds,
         uint256[] memory amounts,
         uint256[] memory dueDates
     ) {
         if (treasury_ == address(0)) revert TreasuryIsZero();
+        if (address(members_) == address(0)) revert MembershipRegistryIsZero();
+        if (firm_ == address(0)) revert FirmIsZero();
         if (unitIds.length != amounts.length || unitIds.length != dueDates.length) {
             revert ScheduleLengthMismatch(unitIds.length, amounts.length, dueDates.length);
         }
         treasury = Treasury(treasury_);
         settlementAsset = IERC20(Treasury(treasury_).settlementAsset());
+        members = members_;
+        firm = firm_;
         for (uint256 i = 0; i < unitIds.length; ++i) {
             charges.push(Charge(unitIds[i], amounts[i], dueDates[i], false, false));
             emit ChargeScheduled(i, unitIds[i], amounts[i], dueDates[i]);
         }
     }
 
-    /// @notice FR5, FR6, NFR7. Issue each charge in `chargeIds`. Any caller,
-    /// but refused for a charge whose due date has not arrived (B1).
-    function issueCharges(uint256[] calldata chargeIds) external {
+    /// @notice FR5, ADR-020. The firm collects each charge in `chargeIds`:
+    /// it issues the charge, then takes the amount from the unit's bound
+    /// wallet if that wallet has approved this contract for it and holds it.
+    /// If not, nothing is taken and nothing reverts: the charge stays issued
+    /// and unpaid, so it falls into arrears once past due, and the firm may
+    /// collect it again. Refused for a charge not yet due (B1) or already paid.
+    function collect(uint256[] calldata chargeIds) external {
+        if (msg.sender != firm) revert NotFirm(msg.sender);
         for (uint256 i = 0; i < chargeIds.length; ++i) {
             uint256 chargeId = chargeIds[i];
             Charge storage charge = _charge(chargeId);
             if (block.timestamp < charge.dueDate) {
                 revert ChargeNotDue(chargeId, charge.dueDate);
             }
-            if (charge.issued) revert ChargeAlreadyIssued(chargeId);
+            if (charge.paid) revert ChargeAlreadyPaid(chargeId);
 
-            charge.issued = true;
-            emit ChargeIssued(chargeId, charge.unitId, charge.amount, charge.dueDate);
+            if (!charge.issued) {
+                charge.issued = true;
+                emit ChargeIssued(chargeId, charge.unitId, charge.amount, charge.dueDate);
+            }
+            address owner = members.ownerOf(charge.unitId);
+            if (
+                settlementAsset.allowance(owner, address(this)) >= charge.amount &&
+                settlementAsset.balanceOf(owner) >= charge.amount
+            ) _pay(chargeId, charge, owner);
         }
     }
 
@@ -115,18 +148,7 @@ contract LevyLedger {
     function payLevy(uint256 chargeId) external {
         Charge storage charge = _charge(chargeId);
         if (charge.paid) revert ChargeAlreadyPaid(chargeId);
-        charge.paid = true;
-
-        uint256 amount = charge.amount;
-        if (!settlementAsset.transferFrom(msg.sender, address(this), amount)) {
-            revert LevyTransferFailed(msg.sender, amount);
-        }
-        if (!settlementAsset.approve(address(treasury), amount)) {
-            revert TreasuryApprovalFailed(amount);
-        }
-        treasury.deposit(amount);
-
-        emit LevyPaid(chargeId, charge.unitId, msg.sender, amount);
+        _pay(chargeId, charge, msg.sender);
     }
 
     /// @notice FR9. Whether `unitId` has a charge that is issued, unpaid and
@@ -144,6 +166,22 @@ contract LevyLedger {
             ) return true;
         }
         return false;
+    }
+
+    /// The one path a levy takes into the Treasury, from `payer`.
+    function _pay(uint256 chargeId, Charge storage charge, address payer) private {
+        charge.paid = true;
+
+        uint256 amount = charge.amount;
+        if (!settlementAsset.transferFrom(payer, address(this), amount)) {
+            revert LevyTransferFailed(payer, amount);
+        }
+        if (!settlementAsset.approve(address(treasury), amount)) {
+            revert TreasuryApprovalFailed(amount);
+        }
+        treasury.deposit(amount);
+
+        emit LevyPaid(chargeId, charge.unitId, payer, amount);
     }
 
     function _charge(uint256 chargeId) private view returns (Charge storage) {

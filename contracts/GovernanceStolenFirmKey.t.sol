@@ -14,6 +14,10 @@ import {Fund, IRelease} from "./interfaces/IRelease.sol";
 /// address. Admitting a payee needs an affirmative owner vote the key cannot
 /// cast (functional view R3, ADR-001). Every contract is the real one.
 ///
+/// The key may also collect levies (ADR-020). That power names no amount,
+/// payer or destination, and this setup stands in for LevyLedger, so it is
+/// proven against the real contracts in LoopScenarios.t.sol, Scenario 6.
+///
 /// The attacker inherits the building as the firm left it: one vendor the
 /// owners admitted, and one work proposal for it that passed and waits out the
 /// timelock. The most the key can do with that is pay the admitted vendor its

@@ -12,12 +12,12 @@ import {Treasury} from "./Treasury.sol";
 import {MockNZD} from "./MockNZD.sol";
 import {Fund, IRelease} from "./interfaces/IRelease.sol";
 
-/// @notice Issue #68. Scenario tests: the loop end to end, in the 40-unit
+/// @notice Issues #68 and #173. Scenario tests: the loop end to end, in the 40-unit
 /// reference building, on all six real contracts wired as they are deployed
 /// (doc/design/spec.md §4, §7). Where the refusal tests each prove one guard,
 /// these run the system as a building would use it: levies in, a vote, the
 /// timelock, the firm's attestation, a payment out. FR5–FR8, FR16–FR22, FR25,
-/// FR35; NFR5. Time moves with `vm.warp`, so a loop that takes six weeks on a
+/// FR35; NFR5; ADR-020. Time moves with `vm.warp`, so a loop that takes six weeks on a
 /// real network runs here in one test.
 contract LoopScenariosTest is Test {
     MockNZD internal token;
@@ -80,7 +80,7 @@ contract LoopScenariosTest is Test {
             address(payees),
             address(token)
         );
-        ledger = new LevyLedger(address(treasury), unitIds, amounts, dueDates);
+        ledger = new LevyLedger(address(treasury), members, firm, unitIds, amounts, dueDates);
         governance = new Governance(
             firm,
             payees,
@@ -103,33 +103,32 @@ contract LoopScenariosTest is Test {
         for (uint256 unitId = first; unitId <= last; ++unitId) members.bindUnit(unitId, owner);
     }
 
-    /// Anyone issues every charge once it is due (FR5, FR6).
-    function _issueAll() internal {
+    /// The firm collects every charge once it is due (FR5, ADR-020).
+    function _collectAll() internal {
         vm.warp(due);
         uint256[] memory ids = new uint256[](UNITS);
         for (uint256 i = 0; i < UNITS; ++i) ids[i] = i;
-        vm.prank(stranger);
-        ledger.issueCharges(ids);
+        vm.prank(firm);
+        ledger.collect(ids);
     }
 
-    /// `owner` pays the charges of units `first` to `last` (FR7).
-    function _pay(address owner, uint256 first, uint256 last) internal {
+    /// `owner` sets up direct debit for units `first` to `last`: funds the
+    /// wallet and approves the ledger for those units' levies (ADR-020).
+    function _setUpDirectDebit(address owner, uint256 first, uint256 last) internal {
         uint256 total = (last - first + 1) * LEVY;
         token.mint(owner, total);
-        vm.startPrank(owner);
+        vm.prank(owner);
         token.approve(address(ledger), total);
-        for (uint256 unitId = first; unitId <= last; ++unitId) ledger.payLevy(unitId - 1);
-        vm.stopPrank();
     }
 
-    /// The whole building pays this cycle's levies.
+    /// The whole building has set up direct debit, and the firm collects.
     function _collectLevies() internal {
-        _issueAll();
-        _pay(alice, 1, 8);
-        _pay(bob, 9, 9);
-        _pay(carol, 10, 10);
-        _pay(dave, 11, 20);
-        _pay(others, 21, 40);
+        _setUpDirectDebit(alice, 1, 8);
+        _setUpDirectDebit(bob, 9, 9);
+        _setUpDirectDebit(carol, 10, 10);
+        _setUpDirectDebit(dave, 11, 20);
+        _setUpDirectDebit(others, 21, 40);
+        _collectAll();
     }
 
     function _vote(address owner, uint256 proposalId, bool inFavour) internal {
@@ -178,17 +177,19 @@ contract LoopScenariosTest is Test {
 
     // --- Scenario 1: a full levy cycle (FR5–FR8) -----------------------------
 
-    /// Charges fall due; a stranger issues them; 39 of 40 units pay; each
-    /// receipt is split 80/20 into the operating and long-term maintenance
-    /// funds; the one unit that never paid is in arrears once the due date
-    /// has passed, and no other unit is.
+    /// Charges fall due; the firm collects all 40 in one call; 39 units had
+    /// set up direct debit and are paid; each receipt is split 80/20 into the
+    /// operating and long-term maintenance funds; the one unit whose owner
+    /// never approved the ledger is in arrears once the due date has passed,
+    /// and no other unit is.
     function test_FullLevyCycle() public {
-        _issueAll();
-        _pay(alice, 1, 8);
-        _pay(bob, 9, 9);
-        _pay(dave, 11, 20);
-        _pay(others, 21, 40);
-        // Carol never pays for unit 10.
+        _setUpDirectDebit(alice, 1, 8);
+        _setUpDirectDebit(bob, 9, 9);
+        _setUpDirectDebit(dave, 11, 20);
+        _setUpDirectDebit(others, 21, 40);
+        // Carol holds the levy for unit 10 but never approves the ledger.
+        token.mint(carol, LEVY);
+        _collectAll();
 
         uint256 collected = 39 * LEVY;
         assertEq(token.balanceOf(address(treasury)), collected);
@@ -339,5 +340,32 @@ contract LoopScenariosTest is Test {
 
         assertEq(token.balanceOf(roofer), ROOF_LIMIT);
         assertEq(governance.tallyOf(roofId).forVotes, 1);
+    }
+
+    // --- Scenario 6: the firm's key, stolen, collects (QAS-8, NFR3; ADR-020)
+
+    /// `collect` is the one power ADR-020 adds to the firm's key, and it names
+    /// no amount, payer or destination. An attacker holding the key collects
+    /// every levy, then tries again: every unit is paid exactly once, every
+    /// receipt sits in the treasury, and nothing reaches the new address.
+    function testFuzz_StolenFirmKeyCollectsOnlyIntoTheTreasury(address newAddress) public {
+        vm.assume(newAddress != address(0) && newAddress != firm && newAddress != stranger);
+        vm.assume(newAddress != alice && newAddress != bob && newAddress != carol);
+        vm.assume(newAddress != dave && newAddress != others && newAddress != roofer);
+        vm.assume(newAddress != address(this) && newAddress != address(token));
+        vm.assume(newAddress != address(ledger) && newAddress != address(treasury));
+        vm.assume(newAddress != address(members) && newAddress != address(payees));
+        vm.assume(newAddress != address(governance) && newAddress != address(timelock));
+
+        _collectLevies();
+        uint256[] memory again = new uint256[](1);
+        vm.expectRevert(abi.encodeWithSelector(LevyLedger.ChargeAlreadyPaid.selector, 0));
+        vm.prank(firm);
+        ledger.collect(again);
+
+        assertEq(token.balanceOf(newAddress), 0);
+        assertEq(token.balanceOf(address(treasury)), UNITS * LEVY);
+        assertEq(token.balanceOf(address(ledger)), 0);
+        assertEq(token.balanceOf(firm), 0);
     }
 }

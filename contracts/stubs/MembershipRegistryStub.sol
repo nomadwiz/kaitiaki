@@ -10,7 +10,7 @@ import {IMembershipQuery} from "../interfaces/IMembershipQuery.sol";
 /// this stub trades that guard for the ability to set up test fixtures
 /// directly. Do not deploy this outside a test or a skeleton deployment.
 contract MembershipRegistryStub is IMembershipQuery {
-    mapping(uint256 unitId => address wallet) public ownerOfUnit;
+    mapping(uint256 unitId => address wallet) public ownerOf;
     mapping(address wallet => uint256[] unitIds) private _unitsOfWallet;
 
     /// @notice Rebinding a unit here moves it rather than adding one, so this
@@ -18,13 +18,13 @@ contract MembershipRegistryStub is IMembershipQuery {
     uint256 public boundUnitCount;
 
     function bindUnit(uint256 unitId, address wallet) external {
-        if (ownerOfUnit[unitId] == address(0)) ++boundUnitCount;
-        ownerOfUnit[unitId] = wallet;
+        if (ownerOf[unitId] == address(0)) ++boundUnitCount;
+        ownerOf[unitId] = wallet;
         _unitsOfWallet[wallet].push(unitId);
     }
 
     function isOwner(uint256 unitId, address wallet) external view returns (bool) {
-        return ownerOfUnit[unitId] == wallet;
+        return ownerOf[unitId] == wallet;
     }
 
     function unitsOf(address wallet) external view returns (uint256[] memory) {
