@@ -204,7 +204,7 @@ function Root() {
     wallet = { kind: "node" };
     viewer = nodeViewer(log?.derived);
   }
-  const view = log && buildView(log.derived, log.now, viewer, log.ownWallet);
+  const view = log && buildView(log.derived, log.now, viewer, log.ownWallet, env?.config.firm);
 
   async function connect() {
     try {

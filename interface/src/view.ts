@@ -217,12 +217,14 @@ export type View = {
  * @param now the latest block's timestamp
  * @param viewer the wallet viewing, if any; its bound units are its own
  * @param ownWallet the viewer's approval and balance, from the token's events
+ * @param firm the firm's address, from the deployment file
  */
 export function buildView(
   derived: Derived,
   now: bigint,
   viewer: string | undefined,
   ownWallet?: View["ownWallet"],
+  firm?: string,
 ): View {
   type Created = {
     proposalId: bigint;
@@ -273,9 +275,17 @@ export function buildView(
     derived.payeeDetails.get(payee)?.name ?? short(payee);
   // One sentence per event, EventRow's (the design system's README), and
   // interface.md §4's for ChargeScheduled. The viewer's own levy events name
-  // the unit, charge and amount; another owner's name none of them.
+  // the unit, charge and amount; another owner's name none of them. The
+  // firm's name the charge and never a unit or an amount, even of a unit its
+  // address holds (interface.md §4.2, the FirmActivity mock-up).
+  const firmViews = firm !== undefined && isViewer(firm);
   const sentence = (name: string, a: Record<string, any>): string => {
     const own = ownUnitIds.has(a.unitId);
+    if (firmViews) {
+      if (name === "ChargeScheduled") return `Charge #${a.chargeId} was scheduled.`;
+      if (name === "ChargeIssued") return `The firm asked for payment of Charge #${a.chargeId}.`;
+      if (name === "LevyPaid") return `Charge #${a.chargeId} was paid.`;
+    }
     switch (name) {
       case "ProposalCreated":
         return a.kind === WORK

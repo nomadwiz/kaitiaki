@@ -141,7 +141,7 @@ const SCREENS: Record<Workspace, Record<string, (c: Context) => ReactNode>> = {
         vendors={c.view.vendors}
       />
     ),
-    "#/activity": (c) => <Activity events={c.view.activity} />,
+    "#/activity": (c) => <Activity workspace="owner" events={c.view.activity} />,
   },
   firm: {
     "#/": firm,
@@ -149,7 +149,7 @@ const SCREENS: Record<Workspace, Record<string, (c: Context) => ReactNode>> = {
     "#/propose": firm,
     "#/collect": firm,
     "#/vendors": firm,
-    "#/activity": (c) => <Activity events={c.view.activity} />,
+    "#/activity": (c) => <Activity workspace="firm" events={c.view.activity} />,
   },
 };
 // The firm's address is offered no vote, even if it holds units (ADR-021).
