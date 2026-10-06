@@ -67,18 +67,22 @@ npx hardhat run scripts/check-deployment.ts --network sepolia   # reads the wiri
 
 The check prints the deployer address, its balance and the balance required, and exits 1 if it is short. The account must be a throwaway test-network account, and must send nothing else while the deployment runs. What the test-network deployment is for is [ADR-017](https://github.com/nomadwiz/kaitiki-doc/blob/master/doc/design/decisions/adr/017-test-network-for-readability.md).
 
-## Read interface
+## Interface
 
-What the interface must show and withhold is FR41 and NFR10 in [`doc/design/spec.md` §8](https://github.com/nomadwiz/kaitiki-doc/blob/master/doc/design/spec.md#8-requirements). To run it against a local node seeded with a small building ([`scripts/building.ts`](scripts/building.ts)):
+The owners' and the management firm's view of the building, read from the contracts' event log and signed by the viewer's own wallet. What each screen shows and does is [`doc/design/interface.md`](https://github.com/nomadwiz/kaitiki-doc/blob/master/doc/design/interface.md), §4 for the screens and their actions; what it must withhold is FR41 and NFR10 in [`doc/design/spec.md` §8](https://github.com/nomadwiz/kaitiki-doc/blob/master/doc/design/spec.md#8-requirements). To run it against a local node seeded with a small building ([`scripts/building.ts`](scripts/building.ts)):
 
 ```
 npx hardhat node              # terminal 1
 npm run demo                  # terminal 2: deploys, seeds, writes interface/public/deployment.json
-npm run interface             # then open the URL it prints
-npm run demo:loop             # later: queue, attest and pay proposal 2, then reload
+npm run interface             # terminal 3: then open the URL it prints
 ```
 
-Without a browser wallet, "Viewing as" lists the bound wallets and a vote is signed by the selected viewer's wallet, which the local node keeps unlocked. `?as=<wallet>` in the URL picks the viewer.
+- **As an owner.** Without a browser wallet, "Viewing as" lists the wallets bound to units. `?as=<wallet>` in the URL adds and selects any other address.
+- **As the firm.** Use `?as=<firm>`, with `firm` taken from `interface/public/deployment.json`.
+- **Signing.** Every action is signed by the viewer's wallet: a browser wallet shows its signing dialog, and the unlocked local account signs with no dialog ([`interface.md` §3](https://github.com/nomadwiz/kaitiki-doc/blob/master/doc/design/interface.md)).
+- **Time.** The local node's clock moves only when a script moves it: `npm run demo` while seeding, then `npm run demo:loop`, which carries proposal 2 through the rest of the loop, and `UNTIL` stops it part-way so each stage can be seen: `UNTIL=passed` (the voting window has closed), `UNTIL=ready` (queued, delay passed), `UNTIL=attested` (the firm has attested), and with no `UNTIL` it runs to executed. Each run does only the steps still to do. Reload the interface after each.
+
+The screenshots under `evidence/week6/` are captured with [`scripts/screenshot.mjs`](scripts/screenshot.mjs); `evidence/README.md` has the sequence.
 
 ## Where things belong
 
@@ -86,8 +90,8 @@ Without a browser wallet, "Viewing as" lists the bound wallets and a vote is sig
 | --- | --- |
 | `contracts/` | Solidity sources, each with its Solidity tests (`*.t.sol`) beside it; `interfaces/` for the interfaces contracts call each other through, `stubs/` for stand-ins used before a real contract exists |
 | `test/` | TypeScript tests, only for claims that are off-chain by definition |
-| `interface/` | The read interface |
-| `scripts/` | Scripts run with `hardhat run` or `node`: deployment, the demo seeding, the event-log replay, and configuration checks |
+| `interface/` | The interface: the Vite and React app, its design-system styles, and the screens |
+| `scripts/` | Scripts run with `hardhat run` or `node`: deployment, the demo seeding and its stages, the event-log replay, the screenshot capture, and configuration checks |
 | `evidence/` | Test output, gas tables and screenshots the report cites: one folder per week (`week1/`, `week2/`, …), each file named `<issue>-<slug>.<ext>`; its `README.md` says what each file shows |
 | `.github/workflows/` | CI, run on every pull request, and the automated review |
 | `artifacts/`, `cache/`, `coverage/`, `types/`, `interface/dist/`, `interface/public/deployment.json` | Build output; generated, never committed |

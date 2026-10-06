@@ -5,8 +5,16 @@
 // proposal 2 as Executed and the operating fund paid out. Time moves with
 // `evm_increaseTime`, which only a local node allows (ADR-017).
 //
+// It reads the chain's state and does only the steps still to do, up to the
+// stage named in UNTIL, so each stage can be screenshotted before the next:
+//   passed    the voting window has closed; anyone can queue
+//   ready     queued, and the delay has passed; the firm can attest
+//   attested  the firm has attested; anyone can execute
+//   (unset)   executed, and the vendor paid
+//
 // Usage, after `npm run demo` (and after any screenshots of the open vote):
-//   npm run demo:loop        # then reload the interface
+//   UNTIL=passed npm run demo:loop    # then UNTIL=ready, UNTIL=attested
+//   npm run demo:loop                 # all the way, then reload the interface
 import { readFile } from "node:fs/promises";
 import { formatUnits, id } from "ethers";
 import { network } from "hardhat";
@@ -27,15 +35,56 @@ const [firm, , , , , , stranger] = await ethers.getSigners();
 const governance = await ethers.getContractAt("Governance", addresses.governance);
 const treasury = await ethers.getContractAt("Treasury", addresses.treasury);
 
-await advance(ethers, await governance.VOTING_PERIOD());
-await (await governance.connect(stranger).queue(PROPOSAL)).wait();
-await advance(ethers, await governance.TIMELOCK_DELAY());
-await (
-  await governance
-    .connect(firm)
-    .attest(PROPOSAL, id("photos and invoice: roof repair"))
-).wait();
-await (await governance.connect(stranger).execute(PROPOSAL)).wait();
+const stages = ["passed", "ready", "attested", "executed"];
+const until = stages.indexOf(process.env.UNTIL ?? "executed");
+if (until < 0) throw new Error(`UNTIL must be one of ${stages.join(", ")}`);
+const timelock = await ethers.getContractAt(
+  "TimelockController",
+  await governance.timelock(),
+);
+const [, , operationId] = await governance.operation(PROPOSAL);
+const state = async () => Number(await governance.state(PROPOSAL));
+const OPEN = 0;
+const PASSED = 2;
+const QUEUED = 4;
+const EXECUTED = 5;
+
+if ((await state()) === OPEN) await advance(ethers, await governance.VOTING_PERIOD());
+if (until >= 1) {
+  if ((await state()) === PASSED) await (await governance.connect(stranger).queue(PROPOSAL)).wait();
+  // Only a queued operation waits: once it is done it is no longer "ready".
+  if ((await state()) === QUEUED && !(await timelock.isOperationReady(operationId))) {
+    await advance(ethers, await governance.TIMELOCK_DELAY());
+  }
+}
+if (until >= 2 && !(await governance.attested(PROPOSAL))) {
+  await (
+    await governance
+      .connect(firm)
+      .attest(PROPOSAL, id("photos and invoice: roof repair"))
+  ).wait();
+}
+if (until >= 3 && (await state()) !== EXECUTED) {
+  await (await governance.connect(stranger).execute(PROPOSAL)).wait();
+}
+if (until < 3) {
+  // Where the chain actually is, which may be behind or past the stage asked for.
+  const now = await state();
+  const [where, rank] =
+    now === EXECUTED ? ["executed", 3]
+    : await governance.attested(PROPOSAL) ? ["attested", 2]
+    : now === QUEUED && (await timelock.isOperationReady(operationId)) ? ["ready", 1]
+    : now === QUEUED ? ["queued", 0.5]
+    : now === PASSED ? ["passed", 0]
+    : [["open", "extended", "", "failed"][now], -1];
+  const asked = stages[until];
+  console.log(
+    rank === until ? `Proposal ${PROPOSAL} stopped at ${asked}.`
+    : rank > until ? `Proposal ${PROPOSAL} is already past ${asked}: ${where}.`
+    : `Proposal ${PROPOSAL} is ${where}, so it could not reach ${asked}.`,
+  );
+  process.exit(0);
+}
 
 const paid = await treasury.released(PROPOSAL);
 if (paid === 0n) throw new Error(`proposal ${PROPOSAL} paid nothing`);
