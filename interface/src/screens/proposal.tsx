@@ -45,7 +45,6 @@ import {
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from "../components/ui/card.js";
 import { Input } from "../components/ui/input.js";
 import { date, nzd, short, unitsLabel } from "../format.js";
@@ -53,6 +52,7 @@ import { cn } from "../lib/utils.js";
 import { Waiting } from "../states.js";
 import type { View } from "../view.js";
 import { checkEvidence, type FirmActs } from "./firm.js";
+import { Heading } from "./home.js";
 
 type ProposalView = View["proposals"][number];
 
@@ -81,16 +81,6 @@ export const votesRules = (p: ProposalView) => [
 
 const title = (p: ProposalView) =>
   p.kind === "Work" ? p.description : `Admit ${p.description}`;
-
-function Heading({ id, children }: { id: string; children: string }) {
-  return (
-    <CardTitle>
-      <h2 id={id} className="text-xl">
-        {children}
-      </h2>
-    </CardTitle>
-  );
-}
 
 export function Signed() {
   return (

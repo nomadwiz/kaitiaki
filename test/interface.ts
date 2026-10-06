@@ -221,7 +221,7 @@ describe("Read interface (#72, #149)", () => {
     // An overdue charge on Your units: its Alert, with the date the firm
     // collected it.
     const overdue =
-      /Charge #1 was not covered when the firm collected it on \d{1,2} [A-Z][a-z]{2,3} \d{4}/;
+      /Charge #1 was not covered when the firm collected it on \d{1,2} [A-Z][a-z]{2} \d{4}/;
 
     // Alice's unit 2 is overdue: her own page gives the amount and due date.
     let { view, html } = await render(alice.address, "#/units");
@@ -291,7 +291,7 @@ describe("Read interface (#72, #149)", () => {
       expect(card(2)).to.contain('data-tone="late">in arrears</span>');
       expect(rows(1)).to.deep.equal([`#4 ${date(unit(view, 1n).charges[0].dueDate)} NZD 250.00 Scheduled Pay early`]);
       expect(rows(2)).to.deep.equal([`#1 ${date(unit(view, 2n).charges[0].dueDate)} NZD 250.00 in arrears Pay now`]);
-      expect(text(card(2))).to.match(/Charge #1 was not covered when the firm collected it on \d{1,2} [A-Z][a-z]{2,3} \d{4} Pay it now to clear the arrear\./);
+      expect(text(card(2))).to.match(/Charge #1 was not covered when the firm collected it on \d{1,2} [A-Z][a-z]{2} \d{4} Pay it now to clear the arrear\./);
       expect(text(card(1))).to.not.contain("not covered");
       // Pay sits beside "Signed in your wallet." and the rules it needs.
       for (const n of [1, 2]) {
