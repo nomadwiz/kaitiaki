@@ -204,6 +204,17 @@ export type View = {
       waiting?: "date";
     }[];
   };
+  // Queued Work proposals the firm has not yet confirmed (Firm), `due` once
+  // the wait has ended.
+  toConfirm: {
+    id: bigint;
+    title: string;
+    vendor: string;
+    limit: bigint;
+    fund: bigint;
+    eta: bigint;
+    due: boolean;
+  }[];
   // Approved vendors, in the order owners admitted them.
   vendors: {
     payee: string;
@@ -421,6 +432,23 @@ export function buildView(
     })),
     activity,
     actions,
+    toConfirm: proposals
+      .filter(
+        (p) =>
+          p.kind === "Work" && p.state === "Queued" && !derived.attested.has(p.id),
+      )
+      .map((p) => {
+        const eta = derived.queued.get(p.id)!;
+        return {
+          id: p.id,
+          title: p.description,
+          vendor: p.vendor?.name ?? short(p.payee),
+          limit: p.limit,
+          fund: p.fund,
+          eta,
+          due: now >= eta,
+        };
+      }),
     otherUnits: units
       .filter((unitId) => !isViewer(derived.owners.get(unitId)!))
       .map((unitId) => ({ unitId, status: statusOf(unitId) })),

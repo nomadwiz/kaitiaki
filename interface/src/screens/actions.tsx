@@ -7,6 +7,12 @@ import { PageHead } from "../shell.js";
 import type { View } from "../view.js";
 
 export type Act = "issue" | "queue" | "execute";
+// The write the wallet is signing. The firm's three share the lock, and a
+// proposal being created has no number yet, so its `id` is 0.
+export type Acting = {
+  action: Act | "work" | "vendor" | "confirm";
+  id: bigint;
+};
 export type OnAct = (action: Act, id: bigint) => void;
 
 function ActButton({
@@ -20,7 +26,7 @@ function ActButton({
   id: bigint;
   label: string;
   onAct?: OnAct;
-  acting?: { action: Act; id: bigint };
+  acting?: Acting;
 }) {
   if (!onAct) return null;
   const busy = acting !== undefined;
@@ -55,7 +61,7 @@ export function Actions({
   // Without it, no row has a button.
   onAct?: OnAct;
   // The action the wallet is signing.
-  acting?: { action: Act; id: bigint };
+  acting?: Acting;
 }) {
   const button = { onAct, acting };
   return (

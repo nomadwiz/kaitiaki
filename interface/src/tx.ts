@@ -19,6 +19,11 @@ export const ABI = new Interface([
   "function issueCharges(uint256[] chargeIds)",
   "function queue(uint256 proposalId) returns (uint256 eta)",
   "function execute(uint256 proposalId)",
+  // The firm's: propose work, propose a vendor (the overload, ADR-018), and
+  // confirm the work done
+  "function propose(string description, uint256 limit, uint8 fund, address vendor, bytes32 quoteHash) returns (uint256 proposalId)",
+  "function propose(address vendor, string name, string companyId) returns (uint256 proposalId)",
+  "function attest(uint256 proposalId, bytes32 evidenceHash)",
   // Treasury, and the OpenZeppelin AccessControl it inherits
   "error AccessControlBadConfirmation()",
   "error AccessControlUnauthorizedAccount(address account, bytes32 neededRole)",
@@ -165,6 +170,32 @@ export const carryOut = (proposalId: bigint) => ({
     body: `Proposal #${proposalId} has been carried out.`,
   },
   refused: "This proposal cannot be carried out yet",
+});
+
+// The same for the firm's workspace, one signature each.
+export const proposeWork = (description: string) => ({
+  signing: `proposing the work “${description}”`,
+  done: {
+    title: "Work proposed",
+    body: `“${description}” is proposed for owners to vote on.`,
+  },
+  refused: "The work was not proposed",
+});
+export const proposeVendor = (name: string) => ({
+  signing: `proposing ${name} as a vendor`,
+  done: {
+    title: "Vendor proposed",
+    body: `${name} is proposed as a vendor for owners to vote on.`,
+  },
+  refused: "The vendor was not proposed",
+});
+export const confirmWork = (proposalId: bigint) => ({
+  signing: `that the work on Proposal #${proposalId} is done`,
+  done: {
+    title: "Work confirmed",
+    body: `The work on Proposal #${proposalId} is confirmed as done.`,
+  },
+  refused: "The work was not confirmed",
 });
 
 /**

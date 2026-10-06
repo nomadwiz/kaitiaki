@@ -47,6 +47,7 @@ export function WalletSlot({
   canConnect,
   onConnect,
   onViewer,
+  firm,
 }: {
   viewer?: string;
   // Undefined until the log has been read.
@@ -56,7 +57,13 @@ export function WalletSlot({
   canConnect?: boolean;
   onConnect?: () => void;
   onViewer?: (address: string) => void;
+  // The firm's address, from the deployment file: its wallet is named so.
+  firm?: string;
 }) {
+  const label = (address: string, units: bigint[]) =>
+    address.toLowerCase() === firm?.toLowerCase()
+      ? "Management firm"
+      : unitsLabel(units);
   if (!viewer) {
     return (
       <span className="wallet-slot">
@@ -86,13 +93,13 @@ export function WalletSlot({
               >
                 {choices.map((c) => (
                   <option key={c.address} value={c.address}>
-                    {unitsLabel(c.units)}
+                    {label(c.address, c.units)}
                   </option>
                 ))}
               </select>
             </>
           ) : (
-            units && <b>{unitsLabel(units)}</b>
+            units && <b>{label(viewer, units)}</b>
           )}
           <br />
           <Address value={viewer} />

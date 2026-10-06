@@ -6,9 +6,9 @@
 // what a viewer would see.
 import type { ReactNode } from "react";
 
-import { Actions, type Act } from "./screens/actions.js";
+import { Actions, type Acting, type OnAct } from "./screens/actions.js";
 import { Activity } from "./screens/activity.js";
-import { Firm } from "./screens/firm.js";
+import { Firm, type FirmActs } from "./screens/firm.js";
 import { Home } from "./screens/home.js";
 import { Proposal } from "./screens/proposal.js";
 import { Register } from "./screens/register.js";
@@ -59,8 +59,11 @@ type Props = {
   onVote?: (proposalId: bigint, inFavour: boolean) => void;
   onPay?: (unitId: bigint, chargeId: bigint, amount: bigint) => void;
   // The Anyone's actions the wallet is signing, and the one pressed.
-  acting?: { action: Act; id: bigint };
-  onAct?: (action: Act, id: bigint) => void;
+  acting?: Acting;
+  onAct?: OnAct;
+  // The firm's address, from the deployment file, and what its wallet can do.
+  firm?: string;
+  onFirm?: FirmActs;
 };
 
 // What each screen is given, once the log has been read.
@@ -75,6 +78,8 @@ type Context = {
   onPay?: Props["onPay"];
   acting?: Props["acting"];
   onAct?: Props["onAct"];
+  // Set only for the firm's wallet, on the deployment's chain.
+  onFirm?: FirmActs;
 };
 
 const SCREENS: Record<string, (c: Context) => ReactNode> = {
@@ -116,7 +121,14 @@ const SCREENS: Record<string, (c: Context) => ReactNode> = {
       acting={c.acting}
     />
   ),
-  "#/firm": () => <Firm />,
+  "#/firm": (c) => (
+    <Firm
+      vendors={c.view.vendors}
+      toConfirm={c.view.toConfirm}
+      act={c.onFirm}
+      acting={c.acting}
+    />
+  ),
 };
 
 export function App({
@@ -136,6 +148,8 @@ export function App({
   onPay,
   acting,
   onAct,
+  firm,
+  onFirm,
 }: Props) {
   const id = /^#\/proposal\/(\d+)$/.exec(hash)?.[1];
   const route = id ? "proposal" : Object.hasOwn(SCREENS, hash) ? hash : "#/";
@@ -165,6 +179,7 @@ export function App({
             canConnect={canConnect}
             onConnect={onConnect}
             onViewer={onViewer}
+            firm={firm}
           />
         }
       />
@@ -190,6 +205,10 @@ export function App({
               onPay,
               acting,
               onAct,
+              onFirm:
+                !wrongChain && viewer?.toLowerCase() === firm?.toLowerCase()
+                  ? onFirm
+                  : undefined,
             })
           : !failed && <Loading />}
       </main>

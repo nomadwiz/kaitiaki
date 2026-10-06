@@ -21,12 +21,30 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { App, type Wallet } from "../interface/src/app.js";
+import { checkEvidence, checkVendor, checkWork } from "../interface/src/screens/firm.js";
 import { date, nzd, short } from "../interface/src/format.js";
-import { ABI, approvedRefusal, carryOut, issue, payment, refusal, send } from "../interface/src/tx.js";
+import { ABI, approvedRefusal, carryOut, confirmWork, issue, payment, proposeVendor, proposeWork, refusal, send } from "../interface/src/tx.js";
 import { buildView } from "../interface/src/view.js";
 import { advance, deployBuilding } from "../scripts/building.js";
 import { replay } from "../scripts/replay.js";
 
+// What a viewer is shown when `call` is sent: send's own notice or toast.
+async function outcome(
+  action: Parameters<typeof send>[0],
+  call: () => Promise<{ wait(): Promise<unknown> }>,
+) {
+  const shown: { notice?: unknown; toast?: unknown } = {};
+  await send(action, call, {
+    prompt: false,
+    setSigning() {},
+    setToast: (t) => void (shown.toast = t),
+    setNotice: (n) => void (shown.notice = n),
+    async reload() {},
+  });
+  return shown;
+}
+
+const ZERO = "0x" + "11".repeat(20);
 const STATES = ["Open", "Extended", "Passed", "Failed", "Queued", "Executed"];
 
 // Each route, the heading its screen opens with, and the link marked current.
@@ -342,6 +360,9 @@ describe("Read interface (#72, #149)", () => {
       const { html } = await render(signers.alice.address, "#/actions");
       expect(section(html, "Issue due charges")).to.contain(ISSUE);
       await (await ledger.issueCharges([4n])).wait();
+      const after = await render(signers.alice.address, "#/actions");
+      expect(after.view.actions.charges).to.deep.equal([]);
+      expect(section(after.html, "Issue due charges")).to.contain("No charge is waiting to be issued.");
     });
 
     it("says an open proposal can be queued if it passes, with the day voting closes", async () => {
@@ -429,6 +450,148 @@ describe("Read interface (#72, #149)", () => {
       const busy = h({ onAct: () => {}, acting: { action: "issue", id: 4n } });
       expect(busy).to.contain("Waiting for your wallet…");
       expect(busy).to.not.contain(ISSUE);
+    });
+  });
+
+  describe("Firm workspace (#157)", () => {
+    const DAY = 24n * 60n * 60n;
+    const CONTROLS = /<(?:input|textarea|select)\b|<button class="btn" type="submit"/g;
+    const text = (html: string) => html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+
+    // The Firm screen as `viewer` sees it, with the firm's address from the
+    // deployment file. `onFirm` is given as App gives it to the firm's wallet.
+    async function firmPage(s: Awaited<ReturnType<typeof setUp>>, viewer?: string, wallet?: Wallet) {
+      const { view } = await s.render(viewer, "#/firm");
+      const html = renderToStaticMarkup(
+        createElement(App, {
+          hash: "#/firm", view, wallet, firm: s.signers.firm.address,
+          onFirm: { onWork() {}, onVendor() {}, onConfirm() {} },
+        }),
+      );
+      return { view, html };
+    }
+    // Proposal 2 passed and queued: its wait ends at the returned time.
+    async function queueRoofRepair(s: Awaited<ReturnType<typeof setUp>>) {
+      const { governance } = s.contracts;
+      await governance.connect(s.signers.bob).castVote(2, true);
+      await advance(s.ethers, await governance.VOTING_PERIOD());
+      await governance.connect(s.signers.stranger).queue(2);
+      return (await firmPage(s, s.signers.firm.address)).view.toConfirm[0].eta;
+    }
+
+    it("FR16, FR17: enables the forms for the firm's wallet only, and states the firm's limits to everyone", async () => {
+      const s = await setUp();
+      const { firm, alice, stranger } = s.signers;
+      const limits = "You can propose and confirm. You cannot move money.";
+      const own = await firmPage(s, firm.address);
+      expect(own.html).to.not.contain("disabled");
+      expect(own.html).to.contain("Management firm");
+      expect(text(own.html)).to.contain(limits);
+      for (const viewer of [alice.address, stranger.address, undefined]) {
+        const { html } = await firmPage(s, viewer);
+        // Every control is disabled, and the same limits stand.
+        expect(html.match(CONTROLS)!.length).to.equal(10);
+        expect(html.match(/disabled=""/g)!.length).to.equal(10);
+        expect(text(html)).to.contain(limits);
+        expect(html).to.not.contain("Management firm");
+      }
+      // The firm's wallet on another chain is offered nothing either.
+      const wrong = { kind: "browser", account: firm.address, chainId: 1n, deploymentChainId: 31337n } as const;
+      expect((await firmPage(s, firm.address, wrong)).html).to.contain('disabled=""');
+    });
+
+    it("lists only admitted vendors, by name, in the vendor select", async () => {
+      const s = await setUp();
+      const { governance } = s.contracts;
+      // Proposed but not admitted: it must not be offered.
+      await governance.connect(s.signers.firm).getFunction("propose(address,string,string)")(s.signers.alice.address, "Lift Co", "NZBN 1");
+      const { html } = await firmPage(s, s.signers.firm.address);
+      const select = html.split('id="f-ven"')[1].split("</select>")[0];
+      expect([...select.matchAll(/<option value="(0x\w+)">([^<]*)<\/option>/g)].map(([, v, n]) => [v, n])).to.deep.equal([[s.signers.vendor.address, "Harbour Lifts Ltd"]]);
+    });
+
+    it("FR17: proposes work and a vendor through tx.ts's ABI, and both appear in the replayed View", async () => {
+      const s = await setUp();
+      const { firm, vendor, carol } = s.signers;
+      const asFirm = new Contract(s.addresses.governance, ABI, firm);
+      // What the form hands over once its checks pass.
+      const { work } = checkWork({ description: "Paint the stairwell", cap: "1,800.50", fund: "1", vendor: vendor.address, quote: id("quote: paint") });
+      expect(work).to.deep.equal({ description: "Paint the stairwell", limit: parseUnits("1800.50", 18), fund: 1, vendor: vendor.address, quoteHash: id("quote: paint") });
+      const worked = await outcome(proposeWork(work!.description), () =>
+        asFirm.getFunction("propose(string,uint256,uint8,address,bytes32)")(work!.description, work!.limit, work!.fund, work!.vendor, work!.quoteHash));
+      expect(worked.toast).to.deep.equal({ title: "Work proposed", body: "“Paint the stairwell” is proposed for owners to vote on." });
+      const { vendor: admit } = checkVendor({ name: "Stair Paint Ltd", companyId: "NZBN 9", wallet: carol.address });
+      const admitted = await outcome(proposeVendor(admit!.name), () =>
+        asFirm.getFunction("propose(address,string,string)")(admit!.vendor, admit!.name, admit!.companyId));
+      expect(admitted.toast).to.deep.equal({ title: "Vendor proposed", body: "Stair Paint Ltd is proposed as a vendor for owners to vote on." });
+      const { view } = await s.render(firm.address, "#/firm");
+      const [paint, stair] = view.proposals.slice(-2);
+      expect([paint.kind, paint.description, paint.limit, paint.fund, paint.payee]).to.deep.equal(["Work", "Paint the stairwell", work!.limit, 1n, vendor.address]);
+      expect([stair.kind, stair.description, stair.payee]).to.deep.equal(["Admit", "Stair Paint Ltd", carol.address]);
+    });
+
+    it("NotFirm and VendorNameIsEmpty show their RefusalNotice messages", async () => {
+      const s = await setUp();
+      const { firm, stranger, carol, vendor } = s.signers;
+      const asStranger = new Contract(s.addresses.governance, ABI, stranger);
+      const refused = await outcome(proposeWork("Roof"), () =>
+        asStranger.getFunction("propose(string,uint256,uint8,address,bytes32)")("Roof", 1n, 0, vendor.address, id("q")));
+      expect(refused.notice).to.deep.equal({ variant: "destructive", title: "The work was not proposed", description: "Only the management firm’s wallet can propose or confirm work.", code: "NotFirm" });
+      const asFirm = new Contract(s.addresses.governance, ABI, firm);
+      const empty = await outcome(proposeVendor(""), () => asFirm.getFunction("propose(address,string,string)")(carol.address, "", "NZBN 9"));
+      expect(empty.notice).to.deep.equal({ variant: "destructive", title: "The vendor was not proposed", description: "Add the vendor's name before proposing.", code: "VendorNameIsEmpty" });
+      const noId = await outcome(proposeVendor("X"), () => asFirm.getFunction("propose(address,string,string)")(carol.address, "X", ""));
+      expect((noId.notice as { code: string }).code).to.equal("CompanyIdIsEmpty");
+    });
+
+    it("FR25: Confirm is aria-disabled with its date until the wait ends, then enabled, and attest succeeds", async () => {
+      const s = await setUp();
+      const { firm } = s.signers;
+      const eta = await queueRoofRepair(s);
+      const confirm = (html: string) => html.split("Confirm work is done</button>")[0].split("<button").pop()!;
+      let { html } = await firmPage(s, firm.address);
+      expect(text(html)).to.contain(`#2 Roof repair Queued Up to ${nzd(400n * 10n ** 18n)} from Operating to Harbour Lifts Ltd.`);
+      expect(confirm(html)).to.contain('aria-disabled="true"');
+      expect(text(html)).to.contain(`Available from ${date(eta)}, when the 7-day wait ends.`);
+      await advance(s.ethers, await s.contracts.governance.TIMELOCK_DELAY());
+      ({ html } = await firmPage(s, firm.address));
+      expect(confirm(html)).to.not.contain("aria-disabled");
+      expect(text(html)).to.not.contain("Available from");
+      const evidence = checkEvidence(id("evidence: roof"));
+      expect(evidence).to.equal(undefined);
+      const asFirm = new Contract(s.addresses.governance, ABI, firm);
+      const done = await outcome(confirmWork(2n), () => asFirm.attest(2n, id("evidence: roof")));
+      expect(done.toast).to.deep.equal({ title: "Work confirmed", body: "The work on Proposal #2 is confirmed as done." });
+      const after = await firmPage(s, firm.address);
+      expect(after.view.toConfirm).to.deep.equal([]);
+      expect(text(after.html)).to.contain("No work is waiting to be confirmed.");
+    });
+
+    it("lists only queued Work proposals the firm has not confirmed, and no Admit proposal", async () => {
+      const s = await setUp();
+      // Open: not listed. Proposal 1 (Admit, executed) never is.
+      expect((await s.render(s.signers.firm.address)).view.toConfirm).to.deep.equal([]);
+      await queueRoofRepair(s);
+      expect((await s.render(s.signers.firm.address)).view.toConfirm.map((c) => c.id)).to.deep.equal([2n]);
+    });
+
+    it("catches a malformed hash, address or cap before anything is sent, and leaves emptiness to the contract", () => {
+      const ok = { description: "", cap: "10", fund: "0", vendor: ZERO, quote: id("q") };
+      expect(checkWork(ok).work).to.not.equal(undefined);
+      for (const bad of [
+        { quote: "0x1234" }, { quote: "" }, { quote: id("q").slice(0, 65) + "zz".slice(0, 1) },
+        { vendor: "0x123" }, { vendor: "" },
+        { cap: "" }, { cap: "0" }, { cap: "0.00" }, { cap: "-5" }, { cap: "1e3" }, { cap: "1.0000000000000000001" }, { cap: "ten" },
+      ]) {
+        const { hints, work } = checkWork({ ...ok, ...bad });
+        expect(work, JSON.stringify(bad)).to.equal(undefined);
+        expect(Object.keys(hints), JSON.stringify(bad)).to.have.length(1);
+      }
+      expect(checkVendor({ name: "", companyId: "", wallet: "0xabc" }).hints.wallet).to.be.a("string");
+      // Empty name and identifier pass: the contract refuses them in words.
+      expect(checkVendor({ name: "", companyId: "", wallet: ZERO }).vendor).to.deep.equal({ vendor: ZERO, name: "", companyId: "" });
+      expect(checkEvidence("")).to.equal("Add the evidence hash before confirming.");
+      expect(checkEvidence("0xabc")).to.be.a("string");
     });
   });
 
@@ -1190,6 +1353,8 @@ describe("Read interface (#72, #149)", () => {
       "issueCharges",
       "queue",
       "execute",
+      "propose",
+      "attest",
     ]);
     for (const f of functions) {
       expect(["view", "pure"], f.format()).to.not.include(f.stateMutability);
@@ -1562,22 +1727,6 @@ describe("Transactions (#150)", () => {
   });
 
   describe("real refusals on the seeded building (#156)", () => {
-    // What a viewer is shown when `call` is refused: send's own notice.
-    async function noticeOf(
-      action: Parameters<typeof send>[0],
-      call: () => Promise<{ wait(): Promise<unknown> }>,
-    ) {
-      let notice: unknown;
-      await send(action, call, {
-        prompt: false,
-        setSigning() {},
-        setToast() {},
-        setNotice: (n) => void (notice = n),
-        async reload() {},
-      });
-      return notice;
-    }
-
     it("NotReady: carrying out, or the firm confirming, before the wait ends names the date", async () => {
       const { ethers } = await network.getOrCreate();
       const { addresses, signers, contracts } = await deployBuilding(ethers);
@@ -1603,7 +1752,7 @@ describe("Transactions (#150)", () => {
         const error = await call().catch((e: unknown) => e);
         expect(refusal(error)).to.deep.equal({ name: "NotReady", message });
       }
-      expect(await noticeOf(carryOut(2n), () => asStranger.execute(2n))).to.deep.equal({
+      expect((await outcome(carryOut(2n), () => asStranger.execute(2n))).notice).to.deep.equal({
         variant: "destructive",
         title: "This proposal cannot be carried out yet",
         description: message,
@@ -1617,7 +1766,7 @@ describe("Transactions (#150)", () => {
       const ledger = new Contract(addresses.levyLedger, ABI, signers.stranger);
       const derived = await replay(ethers.provider, addresses, fromBlock);
       const dueDate = derived.charges.get(4n)!.dueDate;
-      expect(await noticeOf(issue(4n), () => ledger.issueCharges([4n]))).to.deep.equal({
+      expect((await outcome(issue(4n), () => ledger.issueCharges([4n]))).notice).to.deep.equal({
         variant: "destructive",
         title: "The charge was not issued",
         description: `This charge cannot be issued before ${date(dueDate)}.`,
