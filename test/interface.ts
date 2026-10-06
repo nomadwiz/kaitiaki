@@ -918,7 +918,7 @@ describe("Read interface (#72, #149)", () => {
     });
 
     it("NFR10: a levy event for another owner's unit names no unit, amount or charge, and with no viewer every levy event is anonymous", async () => {
-      const { signers, render } = await finished();
+      const { signers, contracts, render } = await finished();
       const anonymous = {
         ChargeScheduled: "A levy charge was scheduled for another owner's unit.",
         ChargeIssued: "A levy charge was issued for another owner's unit.",
@@ -955,6 +955,27 @@ describe("Read interface (#72, #149)", () => {
           .flat()
           .filter((chargeId) => own.has(unitOf[chargeId])).length;
         expect(named, String(viewer?.address)).to.equal(expected);
+
+        // The whole page, not only the sentences: nothing of another
+        // owner's charge reaches the time column, an attribute or any other
+        // markup. Amount is not asserted: every seeded charge is NZD 250.00,
+        // which the viewer's own charges and the Deposited rows legitimately
+        // show. A due date is asserted only where no own charge and no row's
+        // block time shares it.
+        const legitimate = new Set<string>(eventRows(html).map((r) => r.time));
+        const dueOf = new Map<number, string>();
+        for (let chargeId = 0; chargeId < unitOf.length; chargeId++) {
+          dueOf.set(chargeId, date((await contracts.ledger.charges(chargeId)).dueDate));
+        }
+        unitOf.forEach((unit, chargeId) => {
+          if (own.has(unit)) legitimate.add(dueOf.get(chargeId)!);
+        });
+        unitOf.forEach((unit, chargeId) => {
+          if (own.has(unit)) return;
+          expect(html, `Charge #${chargeId}`).to.not.contain(`Charge #${chargeId}`);
+          const due = dueOf.get(chargeId)!;
+          if (!legitimate.has(due)) expect(html, due).to.not.contain(due);
+        });
       }
     });
 
