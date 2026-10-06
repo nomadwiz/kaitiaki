@@ -8,7 +8,11 @@
 #
 # Usage: sh scripts/shadcn-add.sh table tabs
 set -e
-npx --yes shadcn@latest add --yes "$@"
+# `yes n` keeps every component already here, which Kaitiaki has edited:
+# shadcn asks before overwriting one (button.tsx, say) even with --yes. It
+# also adds an unrelated npm package named `cn`, removed again below.
+yes n | npx --yes shadcn@latest add --yes "$@"
+if grep -q '"cn":' package.json; then npm uninstall --silent cn; fi
 for f in interface/src/components/ui/*.tsx interface/src/hooks/*.ts; do
   sed -i.bak -E \
     -e 's#from "(@/lib/utils|cn)"#from "../../lib/utils.js"#' \
