@@ -6,11 +6,10 @@
 import { useEffect, type ReactNode } from "react";
 import { toast } from "sonner";
 
-import { type Acting, type OnAct } from "./screens/actions.js";
 import { Activity } from "./screens/activity.js";
 import { Firm, type FirmActs } from "./screens/firm.js";
 import { Home } from "./screens/home.js";
-import { Proposal } from "./screens/proposal.js";
+import { Proposal, type Acting, type OnAct } from "./screens/proposal.js";
 import { Proposals } from "./screens/proposals.js";
 import { Register } from "./screens/register.js";
 import { YourUnits } from "./screens/units.js";
@@ -96,13 +95,7 @@ export function workspaceOf(
 }
 
 const proposals = (workspace: Workspace) => (c: Context) => (
-  <Proposals
-    workspace={workspace}
-    proposals={c.view.proposals}
-    actions={c.view.actions}
-    onAct={c.canAct ? c.onAct : undefined}
-    acting={c.acting}
-  />
+  <Proposals workspace={workspace} proposals={c.view.proposals} />
 );
 // The firm's screens are one until #182, #184 and #185 split them.
 const firm = (c: Context) => (
@@ -152,16 +145,19 @@ const SCREENS: Record<Workspace, Record<string, (c: Context) => ReactNode>> = {
   },
 };
 // The firm's address is offered no vote, even if it holds units (ADR-021).
+// On the wrong chain no action is offered; Confirm work is the firm's.
 for (const [workspace, routes] of Object.entries(SCREENS)) {
   routes.proposal = (c) => {
-    const p = c.view.proposals.find((p) => String(p.id) === c.id);
+    const p = c.view.proposals.find((q) => String(q.id) === c.id);
     return (
       <Proposal
         id={c.id}
         proposal={p && workspace === "firm" ? { ...p, canVote: false } : p}
-        canAct={c.canAct}
         voting={c.voting}
-        onVote={c.onVote}
+        onVote={c.canAct ? c.onVote : undefined}
+        onAct={c.canAct ? c.onAct : undefined}
+        acting={c.acting}
+        onConfirm={c.onFirm?.onConfirm}
       />
     );
   };

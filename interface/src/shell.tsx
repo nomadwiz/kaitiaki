@@ -45,30 +45,6 @@ export const NAV: Record<Workspace, [string, string, LucideIcon][]> = {
   ],
 };
 
-// A value shortened to its ends, with a button that copies all of it.
-export function Address({
-  value,
-  label = "Copy address",
-}: {
-  value: string;
-  label?: string;
-}) {
-  return (
-    <span className="addr">
-      {short(value)}
-      <button
-        className="btn"
-        type="button"
-        aria-label={label}
-        // A refused clipboard leaves the address on screen; nothing is lost.
-        onClick={() => navigator.clipboard?.writeText(value).catch(() => {})}
-      >
-        Copy
-      </button>
-    </span>
-  );
-}
-
 function Viewer({ address }: { address: string }) {
   return (
     <span className="flex items-center gap-2">

@@ -23,7 +23,7 @@ import {
 export function Waiting() {
   return (
     <>
-      <span className="spinner" aria-hidden="true"></span>
+      <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
       Waiting for your wallet…
     </>
   );
