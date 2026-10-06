@@ -184,6 +184,26 @@ export type View = {
   // event for another owner's unit is the anonymous sentence and nothing
   // more (NFR10).
   activity: { time: bigint; kind: string; text: string }[];
+  // What anyone may do once its date has arrived (Anyone's actions). A charge
+  // is listed without its unit.
+  actions: {
+    // Every unissued charge: `due` once its due date has arrived.
+    charges: { chargeId: bigint; dueDate: bigint; due: boolean }[];
+    // Proposals that passed and wait for Queue.
+    toQueue: { id: bigint; title: string }[];
+    // Proposals still being voted on, which Queue waits for.
+    voting: { id: bigint; closes: bigint }[];
+    // Queued proposals that are, or will be, anyone's to carry out. A Work
+    // proposal past its wait but unconfirmed is the firm's to move (attest),
+    // so it is not listed. `waiting` is set while the wait has not ended.
+    queued: {
+      id: bigint;
+      title: string;
+      eta: bigint;
+      work: boolean;
+      waiting?: "date";
+    }[];
+  };
   // Approved vendors, in the order owners admitted them.
   vendors: {
     payee: string;
@@ -283,9 +303,13 @@ export function buildView(
         return isViewer(a.wallet)
           ? `Unit ${a.unitId} linked to your wallet.`
           : `Unit ${a.unitId} linked to an owner's wallet.`;
-      default:
-        // RoleGranted and RoleRevoked: replay decodes no other event.
+      case "RoleGranted":
+      case "RoleRevoked":
         return "Contract permission set at deployment.";
+      default:
+        // An event with no sentence fails the tests rather than reading as a
+        // permission.
+        throw new Error(`no sentence for event ${name}`);
     }
   };
   const activity = derived.transitions
@@ -340,6 +364,42 @@ export function buildView(
     };
   });
 
+  const title = (p: View["proposals"][number]) =>
+    p.kind === "Work" ? p.description : `Admit ${p.description}`;
+  const actions: View["actions"] = {
+    charges: [...derived.charges]
+      .filter(([, c]) => !c.issued)
+      .map(([chargeId, c]) => ({
+        chargeId,
+        dueDate: c.dueDate,
+        due: now >= c.dueDate,
+      })),
+    toQueue: proposals
+      .filter((p) => p.state === "Passed")
+      .map((p) => ({ id: p.id, title: title(p) })),
+    voting: proposals.flatMap((p) =>
+      p.closes === undefined ? [] : [{ id: p.id, closes: p.closes }],
+    ),
+    queued: proposals
+      .filter(
+        (p) =>
+          p.state === "Queued" &&
+          (now < derived.queued.get(p.id)! ||
+            p.kind !== "Work" ||
+            derived.attested.has(p.id)),
+      )
+      .map((p) => {
+        const eta = derived.queued.get(p.id)!;
+        return {
+          id: p.id,
+          title: title(p),
+          eta,
+          work: p.kind === "Work",
+          waiting: now < eta ? ("date" as const) : undefined,
+        };
+      }),
+  };
+
   return {
     viewer,
     funds: derived.funds,
@@ -360,6 +420,7 @@ export function buildView(
         })),
     })),
     activity,
+    actions,
     otherUnits: units
       .filter((unitId) => !isViewer(derived.owners.get(unitId)!))
       .map((unitId) => ({ unitId, status: statusOf(unitId) })),

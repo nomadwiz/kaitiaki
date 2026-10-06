@@ -19,8 +19,18 @@ import { createRoot } from "react-dom/client";
 import { replay } from "../../scripts/replay.js";
 import { App, type Wallet } from "./app.js";
 import { unitsLabel } from "./format.js";
+import type { Act } from "./screens/actions.js";
 import type { Done, Notice } from "./states.js";
-import { ABI, approvedRefusal, payment, refusal, send } from "./tx.js";
+import {
+  ABI,
+  approvedRefusal,
+  carryOut,
+  issue,
+  payment,
+  queue,
+  refusal,
+  send,
+} from "./tx.js";
 import { buildView } from "./view.js";
 
 // Written by scripts/demo.ts. `token` is the MockNZD a levy is paid in;
@@ -95,6 +105,7 @@ function Root() {
   const [toast, setToast] = useState<Done>();
   const [voting, setVoting] = useState<bigint>();
   const [paying, setPaying] = useState<bigint>();
+  const [acting, setActing] = useState<{ action: Act; id: bigint }>();
 
   const fail = (title: string, error: unknown) => {
     setFailed(true);
@@ -236,6 +247,20 @@ function Root() {
     setPaying(undefined);
   }
 
+  // One signature each, and any wallet may send them.
+  async function act(action: Act, id: bigint) {
+    const { governance, levyLedger } = env!.config.addresses;
+    setActing({ action, id });
+    await sendTx(
+      { issue, queue, execute: carryOut }[action](id),
+      (at) =>
+        action === "issue"
+          ? at(levyLedger).issueCharges([id])
+          : at(governance)[action](id),
+    );
+    setActing(undefined);
+  }
+
   return (
     <App
       hash={hash}
@@ -247,11 +272,13 @@ function Root() {
       onDismissToast={() => setToast(undefined)}
       voting={voting}
       paying={paying}
+      acting={acting}
       failed={failed}
       onConnect={() => void connect()}
       onViewer={setChosen}
       onVote={(id, inFavour) => void vote(id, inFavour)}
       onPay={(unit, id, amount) => void pay(unit, id, amount)}
+      onAct={(action, id) => void act(action, id)}
     />
   );
 }
