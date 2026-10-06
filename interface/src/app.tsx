@@ -12,6 +12,7 @@ import { Firm, type FirmActs } from "./screens/firm.js";
 import { FirmHome } from "./screens/firm-home.js";
 import { Home } from "./screens/home.js";
 import { Proposal, type Acting, type OnAct } from "./screens/proposal.js";
+import { ProposeWork } from "./screens/propose.js";
 import { Proposals } from "./screens/proposals.js";
 import { YourUnits } from "./screens/units.js";
 import { NAV, Shell, type Workspace } from "./shell.js";
@@ -98,10 +99,9 @@ export function workspaceOf(
 const proposals = (workspace: Workspace) => (c: Context) => (
   <Proposals workspace={workspace} proposals={c.view.proposals} />
 );
-// The firm's other screens are one until #183, #184 and #185 split them.
+// The firm's other screens are one until #184 and #185 split them.
 const firm = (c: Context) => (
   <Firm
-    vendors={c.view.vendors}
     toCollect={c.view.toCollect}
     act={c.onFirm}
     acting={c.acting}
@@ -152,7 +152,14 @@ const SCREENS: Record<Workspace, Record<string, (c: Context) => ReactNode>> = {
       />
     ),
     "#/proposals": proposals("firm"),
-    "#/propose": firm,
+    "#/propose": (c) => (
+      <ProposeWork
+        key={c.fresh?.work}
+        vendors={c.view.vendors}
+        act={c.onFirm}
+        acting={c.acting}
+      />
+    ),
     "#/collect": firm,
     "#/vendors": firm,
     "#/activity": (c) => <Activity workspace="firm" events={c.view.activity} />,
