@@ -159,15 +159,18 @@ const SCREENS: Record<Workspace, Record<string, (c: Context) => ReactNode>> = {
 };
 // The firm's address is offered no vote, even if it holds units (ADR-021).
 for (const [workspace, routes] of Object.entries(SCREENS)) {
-  routes.proposal = (c) => (
-    <Proposal
-      id={c.id}
-      proposal={c.view.proposals.find((p) => String(p.id) === c.id)}
-      canAct={c.canAct}
-      voting={c.voting}
-      onVote={workspace === "owner" ? c.onVote : undefined}
-    />
-  );
+  routes.proposal = (c) => {
+    const p = c.view.proposals.find((p) => String(p.id) === c.id);
+    return (
+      <Proposal
+        id={c.id}
+        proposal={p && workspace === "firm" ? { ...p, canVote: false } : p}
+        canAct={c.canAct}
+        voting={c.voting}
+        onVote={c.onVote}
+      />
+    );
+  };
 }
 
 export const ELSEWHERE =

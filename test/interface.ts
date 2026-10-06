@@ -1418,6 +1418,20 @@ describe("Read interface (#72, #149)", () => {
     expect((await render(signers.alice.address, "#/building")).html).to.contain(PRIVACY_LINE);
   });
 
+  it("ADR-021: a firm's address that holds a unit is offered no vote", async () => {
+    const { signers, render } = await setUp();
+    // Carol's unit has not voted on proposal 2, so as an owner she is offered
+    // the vote; named as the firm in the deployment file, she is not.
+    const { view, html } = await render(signers.carol.address, "#/proposal/2");
+    expect(view.proposals.find((p) => p.id === 2n)!.canVote).to.equal(true);
+    expect(html).to.contain('<form class="vote" data-proposal="2">');
+    const asFirm = renderToStaticMarkup(
+      createElement(App, { hash: "#/proposal/2", view, firm: signers.carol.address, onVote() {} }),
+    );
+    expect(asFirm).to.contain("Management firm");
+    expect(asFirm).to.not.contain("<form");
+  });
+
   it("ADR-021: an owner's markup holds none of the firm's navigation or actions, the firm's none of an owner's, and an address with no unit sees no building data", async () => {
     const { signers, render } = await setUp();
     const firmOnly = ["Collect levies", "Vendors", "Propose work", "Propose a vendor", "Confirm work", "Management firm", 'href="#/collect"', 'href="#/vendors"', 'href="#/propose"'];
