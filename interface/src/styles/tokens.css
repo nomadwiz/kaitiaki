@@ -1,9 +1,7 @@
 /* Kaitiaki design tokens, written from doc/asset/design-system/tokens.json
    (the design system's page generates this file; it is not one of the
-   transcribed files). Light values on :root; dark values follow
-   prefers-color-scheme unless <html data-theme="light">, and always apply
-   under <html data-theme="dark">. Aliases stay aliases, so they follow the
-   theme. Load before bundle.css. */
+   transcribed files). Kaitiaki has one theme, light, so every value is on
+   :root. Load before bundle.css. */
 
 :root {
   --background: #f5f4ef;
@@ -50,64 +48,6 @@
   --content-max: 1200px;
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --background: #10151b;
-    --foreground: #eef1f4;
-    --card: #18202a;
-    --muted: #222c37;
-    --muted-foreground: #b3bcc6;
-    --primary: #8cb8e4;
-    --primary-foreground: #0b1622;
-    --secondary: #26313d;
-    --accent: #1d3247;
-    --accent-foreground: #d6e6f6;
-    --success: #86d6a2;
-    --success-soft: #14301f;
-    --success-foreground: #0b1a11;
-    --warning: #f2b766;
-    --warning-soft: #3a2a0f;
-    --destructive: #ff9d92;
-    --destructive-soft: #3e1714;
-    --destructive-foreground: #200806;
-    --border: #334050;
-    --input: #7f8a97;
-    --ring: #8cb8e4;
-    --fund-operating: #8cb8e4;
-    --fund-ltm: #cfadef;
-    --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
-    --shadow-lg: 0 12px 32px rgba(0,0,0,0.6);
-  }
-}
-
-:root[data-theme="dark"] {
-  --background: #10151b;
-  --foreground: #eef1f4;
-  --card: #18202a;
-  --muted: #222c37;
-  --muted-foreground: #b3bcc6;
-  --primary: #8cb8e4;
-  --primary-foreground: #0b1622;
-  --secondary: #26313d;
-  --accent: #1d3247;
-  --accent-foreground: #d6e6f6;
-  --success: #86d6a2;
-  --success-soft: #14301f;
-  --success-foreground: #0b1a11;
-  --warning: #f2b766;
-  --warning-soft: #3a2a0f;
-  --destructive: #ff9d92;
-  --destructive-soft: #3e1714;
-  --destructive-foreground: #200806;
-  --border: #334050;
-  --input: #7f8a97;
-  --ring: #8cb8e4;
-  --fund-operating: #8cb8e4;
-  --fund-ltm: #cfadef;
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
-  --shadow-lg: 0 12px 32px rgba(0,0,0,0.6);
 }
 
 /* Projected: everything grows by an eighth. */

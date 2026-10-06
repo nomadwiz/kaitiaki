@@ -1,5 +1,5 @@
 /* Tailwind and shadcn/ui on Kaitiaki's tokens (doc/asset/design-system/).
-   tokens.css holds every value, light and dark; this file names them for
+   tokens.css holds every value, in the one light theme; this file names them for
    Tailwind under shadcn/ui's variable names, and applies the design system's
    overrides that are not a component's own classes.
 
@@ -13,8 +13,8 @@
 @import "./tokens.css";
 @import "./bundle.css" layer(legacy);
 
-/* Kaitiaki's tokens already change with the theme, so shadcn/ui's own
-   `dark:` adjustments, made for its default palette, never apply. */
+/* Kaitiaki has no dark theme, so shadcn/ui's own `dark:` classes never
+   apply. */
 @custom-variant dark (&:where(.never-dark *));
 
 :root {
@@ -86,6 +86,9 @@
 @layer base {
   * {
     @apply border-border;
+  }
+  html {
+    color-scheme: light;
   }
   body {
     @apply bg-background text-foreground font-sans;
