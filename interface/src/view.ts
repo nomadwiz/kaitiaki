@@ -292,8 +292,14 @@ export function buildView(
           ? `The firm proposed #${a.proposalId}: ${a.description}, up to ${nzd(a.limit)}, from ${fundName(a.fund)}, to ${vendorName(a.payee)}.`
           : `The firm proposed #${a.proposalId}: admit ${vendorName(a.payee)} as a vendor.`;
       case "VoteCast": {
+        const side = a.inFavour ? "for" : "against";
+        // Another owner's vote names no unit and no count (NFR10, the design
+        // system's hard rule 1); the firm sees every vote so.
+        if (!isViewer(a.voter)) {
+          return `An owner voted ${side} Proposal #${a.proposalId}.`;
+        }
         const votes = Object.values(a.unitIds as object) as bigint[];
-        return `${unitsLabel(votes)} voted ${a.inFavour ? "for" : "against"} Proposal #${a.proposalId} (${votes.length} unit${votes.length === 1 ? "" : "s"}).`;
+        return `${unitsLabel(votes)} voted ${side} Proposal #${a.proposalId} (${votes.length} unit${votes.length === 1 ? "" : "s"}).`;
       }
       case "ProposalQueued":
         return `Proposal #${a.proposalId} queued. Payment possible from ${date(a.eta)}.`;

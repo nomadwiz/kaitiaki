@@ -1305,9 +1305,9 @@ describe("Read interface (#72, #149)", () => {
       expect(rows[0].time).to.match(/^\d{1,2} [A-Z][a-z]{2} \d{4}$/);
       expect(html).to.not.contain(short(signers.vendor.address));
       expect(sentences(rows, "VoteCast")).to.deep.equal([
-        "Unit 3 voted for Proposal #2 (1 unit).",
+        "An owner voted for Proposal #2.",
         "Units 1 and 2 voted for Proposal #2 (2 units).",
-        "Unit 3 voted for Proposal #1 (1 unit).",
+        "An owner voted for Proposal #1.",
         "Units 1 and 2 voted for Proposal #1 (2 units).",
       ]);
       expect(sentences(rows, "ProposalCreated")).to.deep.equal([
@@ -1399,6 +1399,14 @@ describe("Read interface (#72, #149)", () => {
       ]) {
         const { view, html: first } = await render(viewer?.address, "#/activity");
         const own = new Set(view.ownUnits.map((u) => u.unitId));
+        // A vote names only the viewer's own units, and for anyone else no
+        // unit and no count.
+        for (const r of view.activity.filter((e) => e.kind === "VoteCast")) {
+          for (const [, n] of r.text.matchAll(/Unit (\d+)/g)) {
+            expect(own.has(BigInt(n)), r.text).to.equal(true);
+          }
+          if (r.text.startsWith("An owner")) expect(r.text).to.not.match(/\(\d/);
+        }
         // A wallet with no unit, and no wallet, see no Activity (ADR-021);
         // the sentences are still checked where they are built.
         const page = own.size > 0;
