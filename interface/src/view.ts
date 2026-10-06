@@ -193,14 +193,15 @@ export type View = {
     toQueue: { id: bigint; title: string }[];
     // Proposals still being voted on, which Queue waits for.
     voting: { id: bigint; closes: bigint }[];
-    // Queued proposals. `waiting` is what Carry out waits for: the wait to
-    // end ("date"), or, with that over, the firm's confirmation ("firm").
+    // Queued proposals that are, or will be, anyone's to carry out. A Work
+    // proposal past its wait but unconfirmed is the firm's to move (attest),
+    // so it is not listed. `waiting` is set while the wait has not ended.
     queued: {
       id: bigint;
       title: string;
       eta: bigint;
       work: boolean;
-      waiting?: "date" | "firm";
+      waiting?: "date";
     }[];
   };
   // Approved vendors, in the order owners admitted them.
@@ -380,17 +381,21 @@ export function buildView(
       p.closes === undefined ? [] : [{ id: p.id, closes: p.closes }],
     ),
     queued: proposals
-      .filter((p) => p.state === "Queued")
+      .filter(
+        (p) =>
+          p.state === "Queued" &&
+          (now < derived.queued.get(p.id)! ||
+            p.kind !== "Work" ||
+            derived.attested.has(p.id)),
+      )
       .map((p) => {
         const eta = derived.queued.get(p.id)!;
-        const work = p.kind === "Work";
         return {
           id: p.id,
           title: title(p),
           eta,
-          work,
-          waiting:
-            now < eta ? "date" : work && !derived.attested.has(p.id) ? "firm" : undefined,
+          work: p.kind === "Work",
+          waiting: now < eta ? ("date" as const) : undefined,
         };
       }),
   };

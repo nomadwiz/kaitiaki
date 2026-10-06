@@ -407,8 +407,10 @@ describe("Read interface (#72, #149)", () => {
       expect(card).to.not.contain(CARRY);
       await advance(ethers, await governance.TIMELOCK_DELAY());
       card = await carry();
-      expect(card).to.contain("Available once the firm confirms the work is done.");
+      // The firm's to move now, so it is not anyone's action.
+      expect(card).to.not.contain("Roof repair");
       expect(card).to.not.contain(CARRY);
+      expect(card).to.contain("No proposal is waiting to be carried out.");
       await governance.connect(signers.firm).attest(2, id("evidence: roof"));
       card = await carry();
       expect(card).to.contain(CARRY);

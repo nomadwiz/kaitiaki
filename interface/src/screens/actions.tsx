@@ -183,11 +183,6 @@ export function Actions({
                     {p.work && ", after the firm confirms the work is done"}.
                   </p>
                 )}
-                {p.waiting === "firm" && (
-                  <p className="muted-text">
-                    Available once the firm confirms the work is done.
-                  </p>
-                )}
               </div>
             ))}
           </div>
