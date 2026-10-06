@@ -83,6 +83,8 @@ export function ProposalMeta({
           <div>
             <dt>Vendor</dt>
             <dd>
+              {/* A name is shown only when owners voted on it (ADR-018). */}
+              {p.vendor && `${p.vendor.name} `}
               <Address value={p.payee} />
             </dd>
           </div>

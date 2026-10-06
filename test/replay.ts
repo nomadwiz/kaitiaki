@@ -265,6 +265,9 @@ describe("QAS-4 replay", () => {
       );
     }
     expect(derived.payees).to.deep.equal(new Map([[vendor.address, 1n]]));
+    expect(derived.payeeDetails).to.deep.equal(
+      new Map([[vendor.address, { name: "Test Vendor Ltd", companyId: "TEST-0001" }]]),
+    );
 
     for (const [unitId, wallet] of derived.owners) {
       expect(wallet).to.equal(await registry.ownerOf(unitId));
