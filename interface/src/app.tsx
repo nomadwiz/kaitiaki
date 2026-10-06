@@ -102,7 +102,7 @@ const SCREENS: Record<string, (c: Context) => ReactNode> = {
       {c.walletState}
     </YourUnits>
   ),
-  "#/register": (c) => <Register units={c.view.otherUnits} />,
+  "#/register": (c) => <Register units={c.view.otherUnits} vendors={c.view.vendors} />,
   "#/activity": () => <Activity />,
   "#/actions": () => <Actions />,
   "#/firm": () => <Firm />,

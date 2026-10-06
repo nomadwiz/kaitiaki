@@ -90,6 +90,9 @@ export async function replay(
   const voters = new Map<bigint, Set<string>>();
   // Payee to the proposal that admitted it.
   const payees = new Map<string, bigint>();
+  // Payee to the name and company identifier its admitting proposal carried
+  // (ADR-018), kept apart so `payees` keeps its shape.
+  const payeeDetails = new Map<string, { name: string; companyId: string }>();
   // Proposal to the time its operation may run from, and to who attested its
   // work with what evidence.
   const queued = new Map<bigint, bigint>();
@@ -167,6 +170,7 @@ export async function replay(
         );
       }
       payees.set(a.payee, a.proposalId);
+      payeeDetails.set(a.payee, { name: a.name, companyId: a.companyId });
       executedAt.set(a.proposalId, time);
     }
     if (event.name === "ProposalQueued") {
@@ -328,6 +332,7 @@ export async function replay(
     proposals,
     owners,
     payees,
+    payeeDetails,
     queued,
     attested,
     attestedAt,

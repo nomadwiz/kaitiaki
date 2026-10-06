@@ -141,6 +141,8 @@ export type View = {
     id: bigint;
     kind: "Admit" | "Work";
     payee: string;
+    // What the admitting proposal carried for `payee`, if one did.
+    vendor?: { name: string; companyId: string };
     description: string;
     quoteHash: string;
     limit: bigint;
@@ -177,6 +179,14 @@ export type View = {
   }[];
   // Status only, by construction.
   otherUnits: { unitId: bigint; status: Status }[];
+  // Approved vendors, in the order owners admitted them.
+  vendors: {
+    payee: string;
+    name: string;
+    companyId: string;
+    proposalId: bigint;
+    approvedAt: bigint;
+  }[];
 };
 
 /**
@@ -243,6 +253,7 @@ export function buildView(
       id: p.proposalId,
       kind: p.kind === WORK ? "Work" : "Admit",
       payee: p.payee,
+      vendor: derived.payeeDetails.get(p.payee),
       description: p.description,
       quoteHash: p.quoteHash,
       limit: p.limit,
@@ -289,5 +300,13 @@ export function buildView(
     otherUnits: units
       .filter((unitId) => !isViewer(derived.owners.get(unitId)!))
       .map((unitId) => ({ unitId, status: statusOf(unitId) })),
+    vendors: [...derived.payees]
+      .map(([payee, proposalId]) => ({
+        payee,
+        ...derived.payeeDetails.get(payee)!,
+        proposalId,
+        approvedAt: derived.executedAt.get(proposalId)!,
+      }))
+      .sort((a, b) => Number(a.approvedAt - b.approvedAt)),
   };
 }

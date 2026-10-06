@@ -118,6 +118,27 @@ describe("Read interface (#72, #149)", () => {
     ]);
   });
 
+  it("FR13: Register lists the approved vendor by name, shortened address and company identifier, and a Work card names it", async () => {
+    const { signers, render } = await setUp();
+    const vendor = signers.vendor.address;
+    const short = `${vendor.slice(0, 6)}…${vendor.slice(-4)}`;
+    const { view, html } = await render(signers.alice.address, "#/register");
+    expect(view.vendors.map((v) => [v.payee, v.name, v.companyId])).to.deep.equal([
+      [vendor, "Harbour Lifts Ltd", "DEMO-0001"],
+    ]);
+    const row = html.match(/<tr><td><b>Harbour Lifts Ltd<\/b><\/td>([\s\S]*?)<\/tr>/)![1];
+    expect(row).to.contain(short);
+    expect(row).to.contain("DEMO-0001");
+    // Vendor rows are not unit rows, so NFR10's check never reads them.
+    expect(otherUnitRows(html).join()).to.not.contain("Harbour");
+
+    // Proposal 2 pays the vendor: its card says who, by name, then wallet.
+    const home = (await render(signers.alice.address, "#/")).html;
+    expect(home).to.match(
+      new RegExp(`<dt>Vendor</dt><dd>Harbour Lifts Ltd <span class="addr">${short}`),
+    );
+  });
+
   it("shows the viewer's own arrears, and stops surfacing a resolved arrear (R4)", async () => {
     const { signers, contracts, render } = await setUp();
     const { alice, bob, carol } = signers;
@@ -180,8 +201,8 @@ describe("Read interface (#72, #149)", () => {
         [1n, true, true],
       ]);
       expect(unit(view, 1n).status).to.equal("current");
-      expect(html).to.match(/Charge #4 · due \d{1,2} [A-Z][a-z]{2} \d{4} · scheduled/);
-      expect(html).to.match(/Charge #1 · was due \d{1,2} [A-Z][a-z]{2} \d{4} · issued/);
+      expect(html).to.match(/Charge #4 · due \d{1,2} [A-Z][a-z]{2,3} \d{4} · scheduled/);
+      expect(html).to.match(/Charge #1 · was due \d{1,2} [A-Z][a-z]{2,3} \d{4} · issued/);
       expect(html).to.contain('<button class="btn" type="button">Pay NZD 250.00</button>');
       // Carol's unit 4 is in arrears, and alice sees nothing but its status.
       expect(view.ownUnits.map((u) => u.unitId)).to.deep.equal([1n, 2n]);
