@@ -23,6 +23,7 @@ export function OwnUnits({
   paying?: bigint;
   children?: ReactNode;
 }) {
+  const busy = paying !== undefined;
   return (
     <div className="card">
       <div
@@ -64,34 +65,29 @@ export function OwnUnits({
                         {c.issued ? "issued" : "scheduled"}
                       </p>
                     </div>
-                    {onPay &&
-                      (paying === c.chargeId ? (
-                        <button
-                          className="btn"
-                          type="button"
-                          aria-disabled="true"
-                        >
-                          <span className="spinner" aria-hidden="true"></span>
-                          Waiting for your wallet…
-                        </button>
-                      ) : (
-                        // One payment at a time: each approval sets the
-                        // allowance, so a second would starve the first.
-                        <button
-                          className="btn"
-                          type="button"
-                          aria-disabled={
-                            paying === undefined ? undefined : true
-                          }
-                          onClick={
-                            paying === undefined
-                              ? () => onPay(u.unitId, c.chargeId, c.amount)
-                              : undefined
-                          }
-                        >
-                          Pay {nzd(c.amount)}
-                        </button>
-                      ))}
+                    {onPay && (
+                      // One payment at a time: each approval sets the
+                      // allowance, so a second would starve the first.
+                      <button
+                        className="btn"
+                        type="button"
+                        aria-disabled={busy || undefined}
+                        onClick={
+                          busy
+                            ? undefined
+                            : () => onPay(u.unitId, c.chargeId, c.amount)
+                        }
+                      >
+                        {paying === c.chargeId ? (
+                          <>
+                            <span className="spinner" aria-hidden="true"></span>
+                            Waiting for your wallet…
+                          </>
+                        ) : (
+                          `Pay ${nzd(c.amount)}`
+                        )}
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>

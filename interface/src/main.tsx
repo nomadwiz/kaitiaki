@@ -225,7 +225,7 @@ function Root() {
     await sendTx(
       {
         ...payment(unitId, chargeId, amount),
-        refuse: (error) => (approved ? approvedRefusal(error) : refusal(error)),
+        refuse: (error) => (approved ? approvedRefusal : refusal)(error),
       },
       async (at) => {
         await (await at(env!.config.token).approve(levyLedger, amount)).wait();

@@ -1088,6 +1088,11 @@ describe("Transactions (#150)", () => {
       message:
         "This charge has already been paid. The approval was already sent, so the levy ledger stays approved for that amount.",
     });
+    // Its own message says the approval fell short, so nothing is appended.
+    const short = {
+      data: ABI.encodeErrorResult("ERC20InsufficientAllowance", [who, 0, 1]),
+    };
+    expect(approvedRefusal(short)).to.deep.equal(refusal(short));
     // Every other action keeps the generic sentence.
     expect(refusal(reject).message).to.contain("Nothing was sent.");
   });

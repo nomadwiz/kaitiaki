@@ -177,14 +177,16 @@ export function refusal(error: unknown): { name?: string; message: string } {
  * sent" would be untrue, because the levy ledger stays approved.
  */
 export function approvedRefusal(error: unknown) {
-  const { name, message } = refusal(error);
+  const r = refusal(error);
+  // Its own message says the approval fell short, so "stands" would contradict.
+  if (r.name === "ERC20InsufficientAllowance") return r;
   const stands =
     "The approval was already sent, so the levy ledger stays approved for that amount.";
   return {
-    ...(name && { name }),
+    ...r,
     message: isError(error, "ACTION_REJECTED")
       ? `You cancelled the payment in your wallet. ${stands} Press Pay to try again.`
-      : `${message} ${stands}`,
+      : `${r.message} ${stands}`,
   };
 }
 
