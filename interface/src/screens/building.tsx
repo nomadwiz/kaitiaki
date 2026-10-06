@@ -25,7 +25,7 @@ import {
 import { nzd, unitsLabel } from "../format.js";
 import { cn } from "../lib/utils.js";
 import type { View } from "../view.js";
-import { Heading } from "./home.js";
+import { Heading, rows } from "./home.js";
 
 export const GUARANTEES = [
   "Money leaves only for a proposal owners approved.",
@@ -43,9 +43,6 @@ export const VENDOR_RULES = [
   "Money can go to no one else.",
   "No vendor can be removed.",
 ] as const;
-
-const rows =
-  "flex flex-col [&>li]:border-t [&>li]:py-3.5 [&>li:first-child]:border-t-0 [&>li:first-child]:pt-0 [&>li:last-child]:pb-0";
 
 export function Building({
   funds,
