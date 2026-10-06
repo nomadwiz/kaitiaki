@@ -1,14 +1,18 @@
-// Screen 8's states and the Alert they use, shown wherever they arise.
-// Markup copied from doc/asset/design-system/components/Screen8States and
-// Alert.
+// Screen 8's states and the Alert they use, shown wherever they arise, and
+// the signing Dialog and success Toast of every transaction (#150). Markup
+// copied from doc/asset/design-system/components/Screen8States, Alert,
+// RefusalNotice, Dialog and Toast.
+import { useEffect, useRef } from "react";
 
 export type Notice = {
   variant: "default" | "success" | "destructive";
   title: string;
   description: string;
+  // A contract error's name: the Alert is then a RefusalNotice.
+  code?: string;
 };
 
-export function Alert({ variant, title, description }: Notice) {
+export function Alert({ variant, title, description, code }: Notice) {
   return (
     <div
       className="alert"
@@ -17,6 +21,62 @@ export function Alert({ variant, title, description }: Notice) {
     >
       <p className="alert-title">{title}</p>
       <p className="alert-description">{description}</p>
+      {code && <p className="alert-code">Contract refusal: {code}</p>}
+    </div>
+  );
+}
+
+// Open only while the wallet signs. It never asks for a key or password.
+export function SigningDialog({ signing }: { signing: string }) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => dialog.current?.showModal(), []);
+  return (
+    <dialog
+      ref={dialog}
+      className="dialog"
+      aria-labelledby="signing-title"
+      // Escape would hide it while the wallet still signs; the wallet ends it.
+      onCancel={(e) => e.preventDefault()}
+    >
+      <p className="dialog-title" id="signing-title">
+        Sign in your wallet
+      </p>
+      <p className="muted-text" style={{ marginTop: 8 }}>
+        Your wallet is asking you to confirm {signing}.
+      </p>
+      <div className="dialog-footer">
+        <button className="btn" type="button" aria-disabled="true">
+          <span className="spinner" aria-hidden="true"></span>
+          Waiting for your wallet…
+        </button>
+      </div>
+    </dialog>
+  );
+}
+
+export type Done = { title: string; body: string };
+
+export function Toast({
+  title,
+  body,
+  onDismiss,
+}: Done & { onDismiss?: () => void }) {
+  return (
+    <div className="toast" role="status">
+      <div>
+        <p className="alert-title">{title}</p>
+        <p className="body-sm">{body}</p>
+      </div>
+      <button
+        className="btn"
+        data-variant="ghost"
+        data-size="icon"
+        type="button"
+        aria-label="Dismiss"
+        onClick={onDismiss}
+      >
+        ✕
+      </button>
     </div>
   );
 }
