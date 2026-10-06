@@ -19,6 +19,11 @@ export const ABI = new Interface([
   "function issueCharges(uint256[] chargeIds)",
   "function queue(uint256 proposalId) returns (uint256 eta)",
   "function execute(uint256 proposalId)",
+  // The firm's: propose work, propose a vendor (the overload, ADR-018), and
+  // confirm the work done
+  "function propose(string description, uint256 limit, uint8 fund, address vendor, bytes32 quoteHash) returns (uint256 proposalId)",
+  "function propose(address vendor, string name, string companyId) returns (uint256 proposalId)",
+  "function attest(uint256 proposalId, bytes32 evidenceHash)",
   // Treasury, and the OpenZeppelin AccessControl it inherits
   "error AccessControlBadConfirmation()",
   "error AccessControlUnauthorizedAccount(address account, bytes32 neededRole)",
@@ -167,6 +172,32 @@ export const carryOut = (proposalId: bigint) => ({
   refused: "This proposal cannot be carried out yet",
 });
 
+// The same for the firm's workspace, one signature each.
+export const proposeWork = (description: string) => ({
+  signing: `proposing the work “${description}”`,
+  done: {
+    title: "Work proposed",
+    body: `“${description}” is proposed for owners to vote on.`,
+  },
+  refused: "The work was not proposed",
+});
+export const proposeVendor = (name: string) => ({
+  signing: `proposing ${name} as a vendor`,
+  done: {
+    title: "Vendor proposed",
+    body: `${name} is proposed as a vendor for owners to vote on.`,
+  },
+  refused: "The vendor was not proposed",
+});
+export const confirmWork = (proposalId: bigint) => ({
+  signing: `that the work on Proposal #${proposalId} is done`,
+  done: {
+    title: "Work confirmed",
+    body: `The work on Proposal #${proposalId} is confirmed as done.`,
+  },
+  refused: "The work was not confirmed",
+});
+
 /**
  * Why a transaction did not happen, in plain words. `name` is the contract
  * error's, absent when no contract refused. ethers puts a revert's data on
@@ -220,7 +251,8 @@ export function approvedRefusal(error: unknown) {
 /**
  * Every transaction goes through here: the Dialog while a wallet asks the
  * viewer to sign, a Toast once the block has it, a RefusalNotice if not, then
- * the log again. The Dialog never stays open, whatever happens.
+ * the log again. The Dialog never stays open, whatever happens. Resolves
+ * true if the transaction was mined, so a form can be cleared only then.
  *
  * @param sign asks for the signature and resolves once the wallet has signed
  * @param ui.prompt false when the local node signs, which asks nobody
@@ -244,6 +276,7 @@ export async function send(
 ) {
   ui.setNotice(undefined);
   ui.setToast(undefined);
+  let sent = false;
   if (ui.prompt) ui.setSigning(action.signing);
   try {
     const tx = await sign();
@@ -251,6 +284,7 @@ export async function send(
     ui.setSigning(undefined);
     await tx.wait();
     ui.setToast(action.done);
+    sent = true;
   } catch (error) {
     const { name, message } = (action.refuse ?? refusal)(error);
     ui.setNotice({
@@ -262,4 +296,5 @@ export async function send(
   }
   ui.setSigning(undefined);
   await ui.reload();
+  return sent;
 }

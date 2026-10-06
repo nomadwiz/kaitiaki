@@ -19,14 +19,17 @@ import { createRoot } from "react-dom/client";
 import { replay } from "../../scripts/replay.js";
 import { App, type Wallet } from "./app.js";
 import { unitsLabel } from "./format.js";
-import type { Act } from "./screens/actions.js";
+import type { Act, Acting } from "./screens/actions.js";
 import type { Done, Notice } from "./states.js";
 import {
   ABI,
   approvedRefusal,
   carryOut,
+  confirmWork,
   issue,
   payment,
+  proposeVendor,
+  proposeWork,
   queue,
   refusal,
   send,
@@ -37,6 +40,7 @@ import { buildView } from "./view.js";
 // `timelock` and `firm` are there too, for the screens that need them.
 type Config = {
   token: string;
+  firm: string;
   chainId: number;
   rpcUrl: string;
   fromBlock: number;
@@ -105,7 +109,10 @@ function Root() {
   const [toast, setToast] = useState<Done>();
   const [voting, setVoting] = useState<bigint>();
   const [paying, setPaying] = useState<bigint>();
-  const [acting, setActing] = useState<{ action: Act; id: bigint }>();
+  const [acting, setActing] = useState<Acting>();
+  // Bumped when a proposal form's transaction succeeds, which empties it. A
+  // refused one keeps its values, so the firm can correct them.
+  const [fresh, setFresh] = useState({ work: 0, vendor: 0 });
 
   const fail = (title: string, error: unknown) => {
     setFailed(true);
@@ -261,6 +268,24 @@ function Root() {
     setActing(undefined);
   }
 
+  // The firm's writes, one signature each, on the lock `act` uses. `propose`
+  // is overloaded, so each is called by its signature.
+  async function firmSend(
+    acting: Acting,
+    action: Parameters<typeof send>[0],
+    call: (governance: Contract) => Promise<ContractTransactionResponse>,
+  ) {
+    setActing(acting);
+    const sent = await sendTx(action, (at) =>
+      call(at(env!.config.addresses.governance)),
+    );
+    const { action: form } = acting;
+    if (sent && (form === "work" || form === "vendor")) {
+      setFresh((f) => ({ ...f, [form]: f[form] + 1 }));
+    }
+    setActing(undefined);
+  }
+
   return (
     <App
       hash={hash}
@@ -279,6 +304,32 @@ function Root() {
       onVote={(id, inFavour) => void vote(id, inFavour)}
       onPay={(unit, id, amount) => void pay(unit, id, amount)}
       onAct={(action, id) => void act(action, id)}
+      firm={env?.config.firm}
+      fresh={fresh}
+      onFirm={{
+        onWork: (w) =>
+          void firmSend({ action: "work", id: 0n }, proposeWork(w.description), (g) =>
+            g.getFunction("propose(string,uint256,uint8,address,bytes32)")(
+              w.description,
+              w.limit,
+              w.fund,
+              w.vendor,
+              w.quoteHash,
+            ),
+          ),
+        onVendor: (v) =>
+          void firmSend({ action: "vendor", id: 0n }, proposeVendor(v.name), (g) =>
+            g.getFunction("propose(address,string,string)")(
+              v.vendor,
+              v.name,
+              v.companyId,
+            ),
+          ),
+        onConfirm: (id, evidenceHash) =>
+          void firmSend({ action: "confirm", id }, confirmWork(id), (g) =>
+            g.attest(id, evidenceHash),
+          ),
+      }}
     />
   );
 }
