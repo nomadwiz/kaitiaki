@@ -1,8 +1,7 @@
 // Proposals (`#/proposals`, #177), composed from doc/asset/mockups/Proposals,
 // in both workspaces: every proposal under Voting, Waiting to pay or Closed,
 // each card linking to its screen. The owner's copy names the viewer's units
-// that have not voted; the firm's links to Propose work and to Vendors. Queue
-// and Carry out stay below until #178 moves them onto the Proposal screen.
+// that have not voted; the firm's links to Propose work and to Vendors.
 import { Plus, Store, TriangleAlert } from "lucide-react";
 
 import { Fund, QuorumMeter, StatusBadge } from "../components/kaitiaki.js";
@@ -20,7 +19,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs.
 import { date, nzd, short, unitsLabel } from "../format.js";
 import type { Workspace } from "../shell.js";
 import type { View } from "../view.js";
-import { Actions, type Acting, type OnAct } from "./actions.js";
 
 type Proposal = View["proposals"][number];
 
@@ -128,15 +126,9 @@ function ProposalCard({
 export function Proposals({
   workspace,
   proposals,
-  actions,
-  onAct,
-  acting,
 }: {
   workspace: Workspace;
   proposals: Proposal[];
-  actions: View["actions"];
-  onAct?: OnAct;
-  acting?: Acting;
 }) {
   const groups = GROUPS.map(([value, label, states, empty]) => ({
     value,
@@ -201,7 +193,6 @@ export function Proposals({
           </TabsContent>
         ))}
       </Tabs>
-      <Actions actions={actions} onAct={onAct} acting={acting} />
     </>
   );
 }

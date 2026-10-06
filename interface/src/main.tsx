@@ -23,7 +23,7 @@ import { replay } from "../../scripts/replay.js";
 import { App, type Wallet } from "./app.js";
 import { Toaster } from "./components/ui/sonner.js";
 import { unitsLabel } from "./format.js";
-import type { Act, Acting } from "./screens/actions.js";
+import type { Act, Acting } from "./screens/proposal.js";
 import type { Done, Notice } from "./states.js";
 import {
   ABI,

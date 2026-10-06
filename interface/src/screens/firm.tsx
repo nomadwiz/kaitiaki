@@ -13,7 +13,7 @@ import { date, nzd } from "../format.js";
 import { PageHead } from "../shell.js";
 import { Waiting } from "../states.js";
 import type { View } from "../view.js";
-import type { Acting } from "./actions.js";
+import type { Acting } from "./proposal.js";
 
 export type Work = {
   description: string;

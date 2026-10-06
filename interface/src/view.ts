@@ -58,49 +58,36 @@ function stepsOf(
           ? "skipped"
           : "todo";
   const steps: Step[] = [
-    { name: "Proposed", step: "done", date: p.createdAt, note: "By the firm" },
+    { name: "Proposed", step: "done", date: p.createdAt },
     {
       name: "Open",
       step: status(1),
       date: windowEnd,
       dateLabel: status(1) === "current" ? "Closes" : "Closed",
-      note: "14-day vote",
     },
-    waived
-      ? {
-          name: "Extended",
-          step: status(2),
-          date: extensionEnd,
-          dateLabel: status(2) === "current" ? "Closes" : "Closed",
-          note:
-            state === "Extended"
-              ? "Quorum waived. One owner's vote can decide."
-              : "7-day extension, quorum waived",
-        }
-      : {
-          name: "Extended",
-          step: "skipped",
-          note:
-            at > 2
-              ? "Not needed: quorum was met"
-              : "Only if too few owners vote",
-        },
+  ];
+  // Extended appears only when it happened.
+  if (waived) {
+    steps.push({
+      name: "Extended",
+      step: status(2),
+      date: extensionEnd,
+      dateLabel: status(2) === "current" ? "Closes" : "Closed",
+    });
+  }
+  steps.push(
     {
       name: failed ? "Failed" : "Passed",
       step: status(3),
       date: at >= 3 ? (waived ? extensionEnd : windowEnd) : undefined,
-      note: failed
-        ? "Not more units for than against"
-        : "More units for than against",
     },
     {
       name: "Queued",
       step: status(4),
       date: eta,
-      dateLabel: "Wait ends",
-      note: "Fixed 7-day wait",
+      dateLabel: "7-day wait to",
     },
-  ];
+  );
   if (work) {
     const attestedAt = derived.attestedAt.get(id);
     steps.push({
@@ -109,14 +96,12 @@ function stepsOf(
       // From the wait's end, until the firm has confirmed.
       date: attestedAt ?? eta,
       dateLabel: attestedAt ? "Confirmed" : "From",
-      note: "With an evidence hash",
     });
   }
   steps.push({
     name: "Executed",
     step: status(6),
     date: derived.executedAt.get(id),
-    note: work ? "Vendor paid" : "Vendor admitted",
   });
   return steps;
 }
@@ -124,13 +109,12 @@ function stepsOf(
 export type Status = "current" | "in arrears";
 
 // One step of a proposal's lifecycle (LifecycleTimeline). `dateLabel` leads
-// the date: "Closes", "Wait ends" and the like.
+// the date: "Closes", "7-day wait to" and the like.
 export type Step = {
   name: string;
   step: "done" | "current" | "todo" | "skipped";
   date?: bigint;
   dateLabel?: string;
-  note: string;
 };
 
 export type View = {
@@ -165,6 +149,13 @@ export type View = {
     quorum: QuorumParts;
     // Voting was extended, so quorum is waived.
     waived: boolean;
+    // The units in the building when it was proposed, which quorum counts.
+    units: bigint;
+    // When the 7-day wait ends, once it is Queued.
+    eta?: bigint;
+    // What may be done to it now, its date having arrived: anyone's Queue or
+    // Carry out (FR22, NFR7), or the firm's Confirm work.
+    act?: "queue" | "confirm" | "execute";
     steps: Step[];
   }[];
   ownUnits: {
@@ -186,23 +177,6 @@ export type View = {
   // event for another owner's unit is the anonymous sentence and nothing
   // more (NFR10).
   activity: { time: bigint; kind: string; text: string }[];
-  // What anyone may do once its date has arrived (Anyone's actions).
-  actions: {
-    // Proposals that passed and wait for Queue.
-    toQueue: { id: bigint; title: string }[];
-    // Proposals still being voted on, which Queue waits for.
-    voting: { id: bigint; closes: bigint }[];
-    // Queued proposals that are, or will be, anyone's to carry out. A Work
-    // proposal past its wait but unconfirmed is the firm's to move (attest),
-    // so it is not listed. `waiting` is set while the wait has not ended.
-    queued: {
-      id: bigint;
-      title: string;
-      eta: bigint;
-      work: boolean;
-      waiting?: "date";
-    }[];
-  };
   // Every unpaid charge, for the firm to collect (Firm, ADR-020), listed
   // without its unit or amount, as Anyone's actions listed them: `due` once
   // its due date has arrived, `attempted` once a collection has issued it
@@ -252,6 +226,7 @@ export function buildView(
     description: string;
     quoteHash: string;
     companyId: string;
+    principalUnits: bigint;
   };
   const created: Created[] = [];
   const votedUnits = new Map<bigint, Set<bigint>>();
@@ -361,6 +336,10 @@ export function buildView(
     const waived =
       state === "Extended" ||
       (state !== "Open" && extended(derived, p.proposalId));
+    const eta = derived.queued.get(p.proposalId);
+    const waitOver = eta !== undefined && now >= eta;
+    const work = p.kind === WORK;
+    const attested = derived.attested.has(p.proposalId);
     return {
       id: p.proposalId,
       kind: p.kind === WORK ? "Work" : "Admit",
@@ -380,45 +359,19 @@ export function buildView(
       createdAt: proposal.createdAt,
       quorum,
       waived,
-      steps: stepsOf(
-        derived,
-        p.proposalId,
-        state,
-        now,
-        p.kind === WORK,
-        waived,
-      ),
+      units: p.principalUnits,
+      eta,
+      act:
+        state === "Passed"
+          ? "queue"
+          : state !== "Queued" || !waitOver
+            ? undefined
+            : work && !attested
+              ? "confirm"
+              : "execute",
+      steps: stepsOf(derived, p.proposalId, state, now, work, waived),
     };
   });
-
-  const title = (p: View["proposals"][number]) =>
-    p.kind === "Work" ? p.description : `Admit ${p.description}`;
-  const actions: View["actions"] = {
-    toQueue: proposals
-      .filter((p) => p.state === "Passed")
-      .map((p) => ({ id: p.id, title: title(p) })),
-    voting: proposals.flatMap((p) =>
-      p.closes === undefined ? [] : [{ id: p.id, closes: p.closes }],
-    ),
-    queued: proposals
-      .filter(
-        (p) =>
-          p.state === "Queued" &&
-          (now < derived.queued.get(p.id)! ||
-            p.kind !== "Work" ||
-            derived.attested.has(p.id)),
-      )
-      .map((p) => {
-        const eta = derived.queued.get(p.id)!;
-        return {
-          id: p.id,
-          title: title(p),
-          eta,
-          work: p.kind === "Work",
-          waiting: now < eta ? ("date" as const) : undefined,
-        };
-      }),
-  };
 
   return {
     viewer,
@@ -440,7 +393,6 @@ export function buildView(
         })),
     })),
     activity,
-    actions,
     toCollect: [...derived.charges]
       .filter(([, c]) => !c.paid)
       .map(([chargeId, c]) => ({

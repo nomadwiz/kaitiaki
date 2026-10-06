@@ -2,8 +2,9 @@
 // markup exactly, beside the privacy line. The NFR10 test reads these rows:
 // `<li data-other-unit>`, and the status in an element whose last attribute
 // is `data-arrears`, with nothing else in the row beyond the unit's name.
+import { Address } from "../components/kaitiaki.js";
 import { date } from "../format.js";
-import { Address, PageHead } from "../shell.js";
+import { PageHead } from "../shell.js";
 import type { View } from "../view.js";
 
 const GUARANTEES = [
