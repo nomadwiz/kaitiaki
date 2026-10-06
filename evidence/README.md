@@ -344,6 +344,8 @@ The tests bite, checked on 03-10-2026, one change at a time. Rendering a date be
 
 Any Chrome or Chromium binary takes the same flags. The heights are 1100 for alice, 1075 for bob and 1140 for carol. The local node's accounts 2, 3 and 4 are alice, bob and carol.
 
+#158's set under `week6/` supersedes these three images for the current interface, which was rebuilt after #72; they stay because report §3 still cites them.
+
 ### Issue #73 — Deploy to a public test network
 
 **A public test network, not the permissioned national chain the design assumes.** The deployment is for readability ([ADR-017](https://github.com/nomadwiz/kaitiki-doc/blob/master/doc/design/decisions/adr/017-test-network-for-readability.md), deciding #100): it uses the real parameters (spec §5), so the loop is not run here in real time; it is demonstrated on the local network, where time can be advanced.
@@ -366,3 +368,30 @@ That the contracts can be read by anyone is a property of the public test networ
 | File | What it shows | Reproduce with |
 | --- | --- | --- |
 | `150-send-path-tests.txt` | The TypeScript suites pass, 56 passing: ten tests are new for #150 and the FR41 test is rewritten. **FR41**: every function in the interface's ABI (`interface/src/tx.ts`) changes state, none is `view` or `pure`, no other source file names a function, and no source file holds a private key, mnemonic, `new Wallet` or 64-hex string. The ABI carries every custom error the compiled `Treasury`, `Governance`, `MembershipRegistry`, `LevyLedger`, `PayeeRegistry`, `TimelockController` and `MockNZD` declare, checked against their artifacts, so a new error with no counterpart fails the suite. **NFR9, as the viewer reads it**: each of the 23 errors the design names is encoded with `Interface.encodeErrorResult` and decodes to its RefusalNotice message — `NotReady` and `ChargeNotDue` with their date in New Zealand time, `AmountExceedsLimit` with its fourth argument, the cap, not the amount asked for. An error with no message reads "The contract refused this action (FailedCall).", and a wallet rejection has its own sentence. Revert data that cannot be decoded — `0x` from an empty revert, or a selector with its arguments cut short — gives ethers' own message and never throws, so the signing Dialog always closes. A real vote from a wallet with no unit, sent through the interface's ABI, decodes to `NotBoundOwner`'s message. The signing Dialog, success Toast and RefusalNotice render in the design system's markup. **The one path, `send`**, driven by a fake transaction: the Dialog opens while the wallet signs and closes once it has signed, before the block arrives; then the Toast shows, and only then is the log read again. A refusal closes the Dialog and shows the RefusalNotice with the error's name. When the local node signs, which asks nobody, no Dialog opens | `npm run test:mocha` |
+
+### Issue #158 — screenshots of every screen in the new design
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `158-home-as-alice.png` | **FR8, FR19, FR9.** Home as alice (units 1 and 2), the vote on proposal 2 open. The funds hold NZD 400 operating and NZD 100 maintenance (FR8). Proposal 2 shows 3 units for, alice's two and bob's one (FR19). Her own unit 2 is in arrears with its amount and due date (FR9); nothing needs her vote, because both her units have voted | `npm run demo`, then capture `?as=<alice>` |
+| `158-proposal-2-as-carol.png` | **FR41, FR19.** Proposal 2 as carol (unit 4), whose unit has not voted: the seven-step timeline stopped at Open, the tally in units, both quorum tests met, and the vote form, whose two buttons send `castVote` from her own wallet | as above, `?as=<carol>#/proposal/2` |
+| `158-units-as-alice.png` | **FR7, FR9.** Your units as alice: each charge with its own Pay button, including charge 4 for unit 1, scheduled for 5 November 2026 and not yet issued. Anyone may pay a unit's charge and the payment credits the unit, not the payer (FR7) | as above, `?as=<alice>#/units` |
+| `158-register-as-bob.png` | **NFR10, FR13, FR15.** Register as bob (unit 3): units 1, 2 and 4 show only `current` or `in arrears`, with no amount or date (NFR10). The approved vendors are listed by name, wallet and company identifier, with the proposal that admitted each (FR13, FR15) | as above, `?as=<bob>#/register` |
+| `158-activity-as-bob.png` | **NFR10, FR41.** Activity as bob: every event the contracts recorded, newest first, in plain words. Bob's own charge shows its amount and date; every other owner's charge, payment and unit link reads "another owner's unit", with no amount, date or number | as above, `?as=<bob>#/activity` |
+| `158-firm-as-firm.png` | **FR41.** Firm as the management firm's wallet, which has the forms to propose work and a vendor. It has nothing to confirm yet, and the page says it cannot move money | as above, `?as=<firm>#/firm`, `firm` read from `interface/public/deployment.json` |
+| `158-actions-as-carol-passed.png` | **FR6, NFR7, FR22.** Anyone's actions at stage `passed`, as carol (unit 4; any wallet sees the same page). The voting window has closed and proposal 2 is Passed, so Queue is enabled. Charge 4 can be issued too, because the node's clock is past 5 November | `UNTIL=passed npm run demo:loop`, then capture `?as=<carol>#/actions` |
+| `158-firm-as-firm-ready.png` | **FR21, FR25.** Firm at stage `ready`: proposal 2 is queued and the seven-day timelock delay has passed, so Confirm work is done is enabled and asks for an evidence hash | `UNTIL=ready npm run demo:loop`, then `?as=<firm>#/firm` |
+| `158-actions-as-carol-attested.png` | **FR25, FR22.** Anyone's actions at stage `attested`, as carol: the firm has attested, nothing waits to be queued, and Carry out is enabled for proposal 2 | `UNTIL=attested npm run demo:loop`, then `?as=<carol>#/actions` |
+| `158-proposal-2-as-alice-executed.png` | **FR22, FR25.** Proposal 2 as alice after the loop completes: every step of the timeline is done with its date, Extended is marked not needed because quorum was met, and the vendor is paid | `npm run demo:loop`, then `?as=<alice>#/proposal/2` |
+
+**Stage sequence.** Start a fresh node, because the clock only moves forward: `npx hardhat node`, `npm run demo`, `npm run interface`, and capture the first six files. Then run one stage at a time and capture after each: `UNTIL=passed npm run demo:loop`, `UNTIL=ready npm run demo:loop`, `UNTIL=attested npm run demo:loop`, and last `npm run demo:loop` with no `UNTIL`. Each run does only the steps still to do, so a plain `npm run demo:loop` after `npm run demo` still runs the whole loop. The viewer addresses are the local node's accounts: 0 is the firm, 2 alice, 3 bob and 4 carol.
+
+**Capture.** Each file is 1440 CSS px wide at a 2× device scale (2880 px), light theme, cut to the page's content, so the heights differ. Headless Chrome takes the operating system's colour scheme, and on a dark-mode machine `--screenshot` produces the dark theme, so `scripts/screenshot.mjs` asks Chrome for light over the DevTools protocol and sets the height from the page. It is the equivalent of #72's command with `--window-size=1440,<height>`, `--force-device-scale-factor=2` and `--virtual-time-budget=5000`, plus the light-theme setting:
+
+```
+node scripts/screenshot.mjs evidence/week6/158-units-as-alice.png 'http://localhost:5173/?as=<alice>#/units'
+```
+
+It runs Chrome as `"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --hide-scrollbars`; set `CHROME` to use another Chrome or Chromium binary.
+
+**Printing.** A full 1440 px frame placed at full A4 text width (about 451 pt) prints its 16 px body text at about 5 pt, below the 14 pt rule above. The report therefore places crops of the relevant region, not whole frames. The 2× scale keeps a crop sharp.
