@@ -68,12 +68,20 @@ if (until >= 3 && (await state()) !== EXECUTED) {
   await (await governance.connect(stranger).execute(PROPOSAL)).wait();
 }
 if (until < 3) {
-  // The stage the chain is actually at, which may be past the one asked for.
-  const at = (await state()) === EXECUTED ? 3 : (await governance.attested(PROPOSAL)) ? 2 : (await state()) === QUEUED ? 1 : 0;
+  // Where the chain actually is, which may be behind or past the stage asked for.
+  const now = await state();
+  const [where, rank] =
+    now === EXECUTED ? ["executed", 3]
+    : await governance.attested(PROPOSAL) ? ["attested", 2]
+    : now === QUEUED && (await timelock.isOperationReady(operationId)) ? ["ready", 1]
+    : now === QUEUED ? ["queued", 0.5]
+    : now === PASSED ? ["passed", 0]
+    : [["open", "extended", "", "failed"][now], -1];
+  const asked = stages[until];
   console.log(
-    at > until
-      ? `Proposal ${PROPOSAL} is already past ${stages[until]}: ${stages[at]}.`
-      : `Proposal ${PROPOSAL} stopped at ${stages[until]}.`,
+    rank === until ? `Proposal ${PROPOSAL} stopped at ${asked}.`
+    : rank > until ? `Proposal ${PROPOSAL} is already past ${asked}: ${where}.`
+    : `Proposal ${PROPOSAL} is ${where}, so it could not reach ${asked}.`,
   );
   process.exit(0);
 }

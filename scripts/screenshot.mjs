@@ -29,7 +29,7 @@ const within = (promise, what, ms = 15000) =>
 try {
   let tabs;
   for (let i = 0; !tabs && i < 50; i++) {
-    tabs = await fetch(`http://127.0.0.1:${port}/json`).then((r) => r.json(), () => undefined);
+    tabs = await fetch(`http://127.0.0.1:${port}/json`).then((r) => r.json()).catch(() => undefined);
     if (!tabs) await sleep(200);
   }
   if (!tabs) throw new Error("Chrome did not start");

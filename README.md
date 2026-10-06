@@ -69,7 +69,7 @@ The check prints the deployer address, its balance and the balance required, and
 
 ## Interface
 
-The owners' and the management firm's view of the building, read from the contracts' event log and signed by the viewer's own wallet. What each screen shows and does is [`doc/design/interface.md`](https://github.com/nomadwiz/kaitiki-doc/blob/master/doc/design/interface.md), §3 for the screens and §4 for the actions; what it must withhold is FR41 and NFR10 in [`doc/design/spec.md` §8](https://github.com/nomadwiz/kaitiki-doc/blob/master/doc/design/spec.md#8-requirements). To run it against a local node seeded with a small building ([`scripts/building.ts`](scripts/building.ts)):
+The owners' and the management firm's view of the building, read from the contracts' event log and signed by the viewer's own wallet. What each screen shows and does is [`doc/design/interface.md`](https://github.com/nomadwiz/kaitiki-doc/blob/master/doc/design/interface.md), §4 for the screens and their actions; what it must withhold is FR41 and NFR10 in [`doc/design/spec.md` §8](https://github.com/nomadwiz/kaitiki-doc/blob/master/doc/design/spec.md#8-requirements). To run it against a local node seeded with a small building ([`scripts/building.ts`](scripts/building.ts)):
 
 ```
 npx hardhat node              # terminal 1
