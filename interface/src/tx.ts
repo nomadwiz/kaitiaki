@@ -273,11 +273,20 @@ export const confirmWork = (proposalId: bigint) => ({
   },
   refused: "The work was not confirmed",
 });
+// A collection's toast counts its own receipt's LevyPaid logs: the log
+// cannot, because a retry still not covered emits nothing (interface.md §4).
+// ponytail: a charge its owner paid since the list was read is skipped, and
+// counted here as not covered; check the reloaded log if that race matters.
 export const collectLevies = (count: number) => ({
   signing: `collecting ${count} due levy charge${count === 1 ? "" : "s"} from owners' wallets`,
-  done: {
-    title: "Levies collected",
-    body: `${count} due charge${count === 1 ? "" : "s"} collected. Any an owner's wallet did not cover ${count === 1 ? "is" : "are"} recorded as owed.`,
+  done: ({ logs }: Receipt) => {
+    const collected = logs.filter(
+      (log) => WALLET.parseLog(log)?.name === "LevyPaid",
+    ).length;
+    return {
+      title: "Levies collected",
+      body: `${collected} collected, ${count - collected} not covered.`,
+    };
   },
   refused: "The levies were not collected",
 });
@@ -339,6 +348,9 @@ export function approvedRefusal(error: unknown) {
     : { ...r, message: `${r.message} ${stands}` };
 }
 
+// The logs of a mined transaction, as ethers' receipt has them.
+type Receipt = { logs: readonly { topics: readonly string[]; data: string }[] };
+
 /**
  * Every transaction goes through here: the Dialog while a wallet asks the
  * viewer to sign, a toast once the block has it or if the viewer cancelled in
@@ -352,7 +364,8 @@ export function approvedRefusal(error: unknown) {
 export async function send(
   action: {
     signing: string;
-    done: Done;
+    // Or the toast for what the mined transaction's receipt shows.
+    done: Done | ((receipt: Receipt) => Done);
     refused: string;
     // Words the refusal in place of `refusal`, when the action knows more.
     refuse?: typeof refusal;
@@ -373,8 +386,8 @@ export async function send(
     const tx = await sign();
     // Signed: what is left is the chain's, not the wallet's.
     ui.setSigning(undefined);
-    await tx.wait();
-    ui.toast(action.done);
+    const receipt = (await tx.wait()) as Receipt;
+    ui.toast(typeof action.done === "function" ? action.done(receipt) : action.done);
     sent = true;
   } catch (error) {
     const { name, message, cancelled } = (action.refuse ?? refusal)(error);

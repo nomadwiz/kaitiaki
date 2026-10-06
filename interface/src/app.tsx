@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import { Activity } from "./screens/activity.js";
 import { Building } from "./screens/building.js";
+import { CollectLevies } from "./screens/collect.js";
 import { Firm, type FirmActs } from "./screens/firm.js";
 import { FirmHome } from "./screens/firm-home.js";
 import { Home } from "./screens/home.js";
@@ -99,15 +100,6 @@ export function workspaceOf(
 const proposals = (workspace: Workspace) => (c: Context) => (
   <Proposals workspace={workspace} proposals={c.view.proposals} />
 );
-// The firm's other screens are one until #184 and #185 split them.
-const firm = (c: Context) => (
-  <Firm
-    toCollect={c.view.toCollect}
-    act={c.onFirm}
-    acting={c.acting}
-    fresh={c.fresh}
-  />
-);
 
 // Each workspace's routes. `#/proposal/<n>` is in both, keyed as "proposal"
 // so no hash names it directly.
@@ -160,8 +152,11 @@ const SCREENS: Record<Workspace, Record<string, (c: Context) => ReactNode>> = {
         acting={c.acting}
       />
     ),
-    "#/collect": firm,
-    "#/vendors": firm,
+    "#/collect": (c) => (
+      <CollectLevies toCollect={c.view.toCollect} act={c.onFirm} acting={c.acting} />
+    ),
+    // The old Firm screen until #185 rebuilds Vendors.
+    "#/vendors": (c) => <Firm act={c.onFirm} acting={c.acting} fresh={c.fresh} />,
     "#/activity": (c) => <Activity workspace="firm" events={c.view.activity} />,
   },
 };

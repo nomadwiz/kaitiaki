@@ -183,13 +183,13 @@ export type View = {
   // more (NFR10).
   activity: { time: bigint; kind: string; text: string }[];
   // Every unpaid charge, for the firm to collect (ADR-020), listed without
-  // its unit or amount: `due` once its due date has arrived, `attempted`
-  // once a collection has issued it and taken nothing.
+  // its unit or amount: `due` once its due date has arrived, `issued` when a
+  // collection first asked for it and took nothing.
   toCollect: {
     chargeId: bigint;
     dueDate: bigint;
     due: boolean;
-    attempted: boolean;
+    issued?: bigint;
   }[];
   // Queued Work proposals the firm has not yet confirmed (Firm Home), `due`
   // once the wait has ended.
@@ -425,7 +425,7 @@ export function buildView(
         chargeId,
         dueDate: c.dueDate,
         due: now >= c.dueDate,
-        attempted: c.issued,
+        issued: collectedAt.get(chargeId),
       })),
     toConfirm: proposals
       .filter(
