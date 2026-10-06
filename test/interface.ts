@@ -216,8 +216,11 @@ describe("Read interface (#72, #149)", () => {
       const home = await render(signers.alice.address, "#/");
       expect(units.html.match(/Pay NZD 250\.00/g)).to.have.length(2);
       expect(home.html).to.not.contain("Pay NZD");
-      expect(home.html).to.contain("Charge #4 · due");
-      expect(home.html).to.contain('<p class="charge-amount">NZD 250.00</p>');
+      // Home lists overdue charges only: unit 2's, not unit 1's scheduled #4.
+      expect(home.html).to.not.contain("Charge #4");
+      expect(home.html).to.contain("Charge #1 · was due");
+      expect(home.html).to.contain('<p class="muted-text">No overdue charges.</p>');
+      expect(units.html).to.contain("Charge #4 · due");
     });
 
     it("says two signatures are needed in the signing Dialog", () => {

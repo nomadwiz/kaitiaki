@@ -85,8 +85,9 @@ export async function deployBuilding(ethers: Ethers) {
   await registry.connect(adapter).bindUnit(3, bob.address);
   await registry.connect(adapter).bindUnit(4, carol.address);
 
-  // Charges 0 to 3, one per unit, and charge 4, scheduled for later. Alice pays unit 1's before it is issued
-  // (ADR-016); anyone issues all four once due; bob pays unit 3's late.
+  // Charges 0 to 3, one per unit, and charge 4, scheduled for later. Alice
+  // pays unit 1's before it is issued (ADR-016); anyone issues charges 0 to 3
+  // once due; bob pays unit 3's late.
   for (const owner of [alice, bob]) {
     await token.mint(owner.address, LEVY * 2n);
     await token.connect(owner).approve(ledger.target, LEVY * 2n);

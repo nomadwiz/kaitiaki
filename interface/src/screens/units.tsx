@@ -9,11 +9,14 @@ import type { View } from "../view.js";
 
 export function OwnUnits({
   units,
+  overdueOnly,
   onPay,
   paying,
   children,
 }: {
   units: View["ownUnits"];
+  // Home lists only overdue charges; Your units lists every unpaid one.
+  overdueOnly?: boolean;
   // Without it, no charge has a Pay button.
   onPay?: (chargeId: bigint) => void;
   // The charge whose payment the wallet is signing.
@@ -26,55 +29,66 @@ export function OwnUnits({
         className="card-content stack"
         style={{ paddingTop: "var(--space-6)" }}
       >
-        {units.map((u, i) => (
-          <Fragment key={String(u.unitId)}>
-            {i > 0 && <hr className="separator" />}
-            <div className="own-unit">
-              <div className="row">
-                <h3 className="card-title">Unit {String(u.unitId)}</h3>
-                <span
-                  className="status"
-                  data-tone={u.status === "current" ? "ok" : "late"}
-                >
-                  {u.status}
-                </span>
-              </div>
-              {u.charges.length === 0 && (
-                <p className="muted-text">No unpaid charges.</p>
-              )}
-              {u.charges.map((c) => (
-                <div key={String(c.chargeId)} className="charge">
-                  <div>
-                    <p className="charge-amount">{nzd(c.amount)}</p>
-                    <p
-                      className="field-hint"
-                      style={{ color: "var(--foreground)" }}
-                    >
-                      Charge #{String(c.chargeId)} ·{" "}
-                      {c.overdue ? "was due" : "due"} {date(c.dueDate)} ·{" "}
-                      {c.issued ? "issued" : "scheduled"}
-                    </p>
-                  </div>
-                  {onPay &&
-                    (paying === c.chargeId ? (
-                      <button className="btn" type="button" aria-disabled="true">
-                        <span className="spinner" aria-hidden="true"></span>
-                        Waiting for your wallet…
-                      </button>
-                    ) : (
-                      <button
-                        className="btn"
-                        type="button"
-                        onClick={() => onPay(c.chargeId)}
-                      >
-                        Pay {nzd(c.amount)}
-                      </button>
-                    ))}
+        {units.map((u, i) => {
+          const charges = overdueOnly
+            ? u.charges.filter((c) => c.overdue)
+            : u.charges;
+          return (
+            <Fragment key={String(u.unitId)}>
+              {i > 0 && <hr className="separator" />}
+              <div className="own-unit">
+                <div className="row">
+                  <h3 className="card-title">Unit {String(u.unitId)}</h3>
+                  <span
+                    className="status"
+                    data-tone={u.status === "current" ? "ok" : "late"}
+                  >
+                    {u.status}
+                  </span>
                 </div>
-              ))}
-            </div>
-          </Fragment>
-        ))}
+                {charges.length === 0 && (
+                  <p className="muted-text">
+                    No {overdueOnly ? "overdue" : "unpaid"} charges.
+                  </p>
+                )}
+                {charges.map((c) => (
+                  <div key={String(c.chargeId)} className="charge">
+                    <div>
+                      <p className="charge-amount">{nzd(c.amount)}</p>
+                      <p
+                        className="field-hint"
+                        style={{ color: "var(--foreground)" }}
+                      >
+                        Charge #{String(c.chargeId)} ·{" "}
+                        {c.overdue ? "was due" : "due"} {date(c.dueDate)} ·{" "}
+                        {c.issued ? "issued" : "scheduled"}
+                      </p>
+                    </div>
+                    {onPay &&
+                      (paying === c.chargeId ? (
+                        <button
+                          className="btn"
+                          type="button"
+                          aria-disabled="true"
+                        >
+                          <span className="spinner" aria-hidden="true"></span>
+                          Waiting for your wallet…
+                        </button>
+                      ) : (
+                        <button
+                          className="btn"
+                          type="button"
+                          onClick={() => onPay(c.chargeId)}
+                        >
+                          Pay {nzd(c.amount)}
+                        </button>
+                      ))}
+                  </div>
+                ))}
+              </div>
+            </Fragment>
+          );
+        })}
         {children}
       </div>
     </div>

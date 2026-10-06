@@ -229,7 +229,7 @@ export function Home({
               <h2 id="h-units">Your levies</h2>
               <a href="#/units">Your units</a>
             </div>
-            <OwnUnits units={ownUnits} />
+            <OwnUnits units={ownUnits} overdueOnly />
           </section>
         )}
       </div>
