@@ -265,12 +265,29 @@ contract LevyLedgerTest is Test {
         ledger.collect(ids);
     }
 
-    function test_CollectingAPaidChargeReverts() public {
+    /// ADR-020: an owner who paid early does not block the firm's batch.
+    function test_CollectingSkipsAPaidChargeAndCollectsTheRest() public {
         vm.prank(owner);
         ledger.payLevy(0);
+        vm.prank(holdout);
+        token.approve(address(ledger), 500e18);
         vm.warp(DUE);
-        vm.expectRevert(abi.encodeWithSelector(LevyLedger.ChargeAlreadyPaid.selector, 0));
-        _collect(0);
+        uint256[] memory ids = new uint256[](2);
+        (ids[0], ids[1]) = (0, 1);
+        vm.recordLogs();
+        vm.prank(firm);
+        ledger.collect(ids);
+
+        (, , , bool issued, ) = ledger.charges(0);
+        assertFalse(issued, "the paid charge is left alone");
+        assertTrue(_paid(1));
+        assertEq(token.balanceOf(owner), 9_000e18, "paid once, by hand");
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i = 0; i < logs.length; ++i) {
+            if (logs[i].emitter == address(ledger) && logs[i].topics[0] == ChargeIssued.selector) {
+                assertEq(uint256(logs[i].topics[1]), 1, "only charge 1 is issued");
+            }
+        }
     }
 
     function test_CollectingAnUnknownChargeReverts() public {

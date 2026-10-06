@@ -50,29 +50,6 @@ Running Solidity tests
     ✔ test_AnyAddressMayMint()
     ✔ testFuzz_MintRefusedOffTestChains(uint256) (runs: 256)
 
-  contracts/Governance.t.sol:GovernanceProposeTest
-    ✔ test_UnknownIdIsZeroed()
-    ✔ test_ProposeWorkRefusesUnregisteredVendor()
-    ✔ test_ProposeWorkEmitsProposalCreated()
-    ✔ test_ProposeAdmitRefusesZeroVendor()
-    ✔ test_ProposeAdmitRefusesEmptyName()
-    ✔ test_ProposeAdmitRefusesEmptyCompanyId()
-    ✔ test_ProposeAdmitEmitsProposalCreated()
-    ✔ test_ProposeAdmitDoesNotRegisterVendor()
-    ✔ test_IdsIncreaseFromOne()
-    ✔ test_FirmProposesWork()
-    ✔ test_FirmProposesAdmit()
-    ✔ test_ConstructorRefusesZeroTreasury()
-    ✔ test_ConstructorRefusesZeroTimelock()
-    ✔ test_ConstructorRefusesZeroRegistry()
-    ✔ test_ConstructorRefusesZeroMembershipRegistry()
-    ✔ test_ConstructorRefusesZeroFirm()
-    ✔ test_ConstructorRecordsFirmAndRegistry()
-    ✔ test_ApprovedSpendReturnsWorkTerms()
-    ✔ test_ApprovedSpendRejectsAdmitAndUnknownIds()
-    ✔ testFuzz_ProposeWorkRefusesNonFirm(address) (runs: 256)
-    ✔ testFuzz_ProposeAdmitRefusesNonFirm(address) (runs: 256)
-
   contracts/LevyLedger.t.sol:LevyLedgerTest
     ✔ test_ThirdPartyPaymentCreditsTheUnitAndSplitsAcrossFunds()
     ✔ test_RejectsZeroTreasury()
@@ -89,9 +66,9 @@ Running Solidity tests
     ✔ test_ConstructionEmitsOneChargeScheduledPerCharge()
     ✔ test_CollectingWithoutApprovalIssuesAndTakesNothing()
     ✔ test_CollectingWithTooLittleBalanceIssuesAndTakesNothing()
+    ✔ test_CollectingSkipsAPaidChargeAndCollectsTheRest()
     ✔ test_CollectingPullsFromTheBoundOwnerAndCreditsTheUnit()
     ✔ test_CollectingAnUnknownChargeReverts()
-    ✔ test_CollectingAPaidChargeReverts()
     ✔ test_ArrearsBeginsOnlyAfterTheDueDate()
     ✔ test_ARetryAfterApprovalPaysWithoutIssuingAgain()
     ✔ test_AChargeNobodyCollectedIsNeverInArrears()
@@ -120,32 +97,6 @@ Running Solidity tests
     ✔ test_ExtensionRunsItsCourseOnceQuorumReachedInIt()
     ✔ testFuzz_OpenThroughoutWindow(uint256) (runs: 256)
     ✔ testFuzz_OneUnitPassesAfterExtension(uint256) (runs: 256)
-
-  contracts/GovernanceTimelock.t.sol:GovernanceTimelockTest
-    ✔ test_WorkSchedulesOneReleaseOfTheWholeLimit()
-    ✔ test_TimelockRolesAreGovernanceAloneWithNoExternalAdmin()
-    ✔ test_TimelockIsSoleReleaserAndPayeeExecutor()
-    ✔ test_QueueRefusesUnknownProposal()
-    ✔ test_QueueRefusesSecondSchedule()
-    ✔ test_QueueRefusesOpenProposal()
-    ✔ test_QueueRefusesFailedProposal()
-    ✔ test_OperationOfUnknownProposalReverts()
-    ✔ test_ExecuteRefusesUnqueuedProposal()
-    ✔ test_ExecuteRefusesUnattestedWork()
-    ✔ test_ExecuteRefusesSecondRun()
-    ✔ test_AnyoneQueuesAPassedProposal()
-    ✔ test_AnyoneExecutesAnAdmissionOnceReady()
-    ✔ test_AdmitSchedulesTheAdmission()
-    ✔ testFuzz_OperationNeverTargetsTimelock(bool) (runs: 256)
-    ✔ testFuzz_OnlyGovernanceSchedules(address) (runs: 256)
-    ✔ testFuzz_OnlyGovernanceExecutesOnTimelock(address) (runs: 256)
-    ✔ testFuzz_ExecuteBeforeDelayReverts(uint256) (runs: 256)
-
-  contracts/GovernanceRefusals.t.sol:GovernanceRefusalsTest
-    ✔ test_ProposeWorkAcceptsVendorOnceAdmissionExecutes()
-    ✔ test_BoundOwnerVotesWithEveryUnitItHolds()
-    ✔ testFuzz_ProposeWorkWithUnapprovedVendorReverts(address,uint256,uint8,uint8) (runs: 256)
-    ✔ testFuzz_CastVoteFromUnboundWalletReverts(address,bool,uint256) (runs: 256)
 
   contracts/Treasury.t.sol:TreasuryTest
     ✔ test_TreasuryStubEmitsReleaseCall()
@@ -182,8 +133,11 @@ Running Solidity tests
     ✔ testFuzz_NoAddressCanGrantReleaser(address) (runs: 256)
     ✔ testFuzz_CumulativeReleaseNeverExceedsLimit(uint256,uint256,uint256) (runs: 256)
 
-  contracts/GovernanceStolenFirmKey.t.sol:GovernanceStolenFirmKeyTest
-    ✔ testFuzz_StolenFirmKeyReachesNoNewAddress(address) (runs: 256)
+  contracts/GovernanceRefusals.t.sol:GovernanceRefusalsTest
+    ✔ test_ProposeWorkAcceptsVendorOnceAdmissionExecutes()
+    ✔ test_BoundOwnerVotesWithEveryUnitItHolds()
+    ✔ testFuzz_ProposeWorkWithUnapprovedVendorReverts(address,uint256,uint8,uint8) (runs: 256)
+    ✔ testFuzz_CastVoteFromUnboundWalletReverts(address,bool,uint256) (runs: 256)
 
   contracts/GovernanceAttest.t.sol:GovernanceAttestTest
     ✔ test_PaymentNeedsNoWaitAfterAttestation()
@@ -196,6 +150,9 @@ Running Solidity tests
     ✔ testFuzz_AttestRefusesNonFirm(address) (runs: 256)
     ✔ testFuzz_AttestRefusesBeforeTheDelayElapses(uint256) (runs: 256)
     ✔ testFuzz_AttestOnProposalNeverPassedReverts(uint8,uint256) (runs: 256)
+
+  contracts/GovernanceStolenFirmKey.t.sol:GovernanceStolenFirmKeyTest
+    ✔ testFuzz_StolenFirmKeyReachesNoNewAddress(address) (runs: 256)
 
   contracts/MembershipRegistry.t.sol:MembershipRegistryTest
     ✔ test_UnboundWalletIsNotOwner()
@@ -210,6 +167,49 @@ Running Solidity tests
     ✔ testFuzz_WeightIsUnitCount(uint8) (runs: 256)
     ✔ testFuzz_BoundUnitCountCountsEachUnitOnce(uint8) (runs: 256)
     ✔ testFuzz_BindRefusesNonAdapter(address) (runs: 256)
+
+  contracts/GovernanceTimelock.t.sol:GovernanceTimelockTest
+    ✔ test_WorkSchedulesOneReleaseOfTheWholeLimit()
+    ✔ test_TimelockRolesAreGovernanceAloneWithNoExternalAdmin()
+    ✔ test_TimelockIsSoleReleaserAndPayeeExecutor()
+    ✔ test_QueueRefusesUnknownProposal()
+    ✔ test_QueueRefusesSecondSchedule()
+    ✔ test_QueueRefusesOpenProposal()
+    ✔ test_QueueRefusesFailedProposal()
+    ✔ test_OperationOfUnknownProposalReverts()
+    ✔ test_ExecuteRefusesUnqueuedProposal()
+    ✔ test_ExecuteRefusesUnattestedWork()
+    ✔ test_ExecuteRefusesSecondRun()
+    ✔ test_AnyoneQueuesAPassedProposal()
+    ✔ test_AnyoneExecutesAnAdmissionOnceReady()
+    ✔ test_AdmitSchedulesTheAdmission()
+    ✔ testFuzz_OperationNeverTargetsTimelock(bool) (runs: 256)
+    ✔ testFuzz_OnlyGovernanceSchedules(address) (runs: 256)
+    ✔ testFuzz_OnlyGovernanceExecutesOnTimelock(address) (runs: 256)
+    ✔ testFuzz_ExecuteBeforeDelayReverts(uint256) (runs: 256)
+
+  contracts/Governance.t.sol:GovernanceProposeTest
+    ✔ test_UnknownIdIsZeroed()
+    ✔ test_ProposeWorkRefusesUnregisteredVendor()
+    ✔ test_ProposeWorkEmitsProposalCreated()
+    ✔ test_ProposeAdmitRefusesZeroVendor()
+    ✔ test_ProposeAdmitRefusesEmptyName()
+    ✔ test_ProposeAdmitRefusesEmptyCompanyId()
+    ✔ test_ProposeAdmitEmitsProposalCreated()
+    ✔ test_ProposeAdmitDoesNotRegisterVendor()
+    ✔ test_IdsIncreaseFromOne()
+    ✔ test_FirmProposesWork()
+    ✔ test_FirmProposesAdmit()
+    ✔ test_ConstructorRefusesZeroTreasury()
+    ✔ test_ConstructorRefusesZeroTimelock()
+    ✔ test_ConstructorRefusesZeroRegistry()
+    ✔ test_ConstructorRefusesZeroMembershipRegistry()
+    ✔ test_ConstructorRefusesZeroFirm()
+    ✔ test_ConstructorRecordsFirmAndRegistry()
+    ✔ test_ApprovedSpendReturnsWorkTerms()
+    ✔ test_ApprovedSpendRejectsAdmitAndUnknownIds()
+    ✔ testFuzz_ProposeWorkRefusesNonFirm(address) (runs: 256)
+    ✔ testFuzz_ProposeAdmitRefusesNonFirm(address) (runs: 256)
 
   contracts/LoopScenarios.t.sol:LoopScenariosTest
     ✔ test_UnboundWalletCannotVoteAndTheLoopCarriesOn()

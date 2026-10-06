@@ -346,8 +346,9 @@ contract LoopScenariosTest is Test {
 
     /// `collect` is the one power ADR-020 adds to the firm's key, and it names
     /// no amount, payer or destination. An attacker holding the key collects
-    /// every levy, then tries again: every unit is paid exactly once, every
-    /// receipt sits in the treasury, and nothing reaches the new address.
+    /// every levy, then collects them all again: every unit is paid exactly
+    /// once, every receipt sits in the treasury, and nothing reaches the new
+    /// address.
     function testFuzz_StolenFirmKeyCollectsOnlyIntoTheTreasury(address newAddress) public {
         vm.assume(newAddress != address(0) && newAddress != firm && newAddress != stranger);
         vm.assume(newAddress != alice && newAddress != bob && newAddress != carol);
@@ -358,10 +359,10 @@ contract LoopScenariosTest is Test {
         vm.assume(newAddress != address(governance) && newAddress != address(timelock));
 
         _collectLevies();
-        uint256[] memory again = new uint256[](1);
-        vm.expectRevert(abi.encodeWithSelector(LevyLedger.ChargeAlreadyPaid.selector, 0));
-        vm.prank(firm);
-        ledger.collect(again);
+        // Every owner tops up; collecting again takes nothing more.
+        _setUpDirectDebit(alice, 1, 8);
+        _setUpDirectDebit(others, 21, 40);
+        _collectAll();
 
         assertEq(token.balanceOf(newAddress), 0);
         assertEq(token.balanceOf(address(treasury)), UNITS * LEVY);

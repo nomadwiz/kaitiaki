@@ -119,7 +119,9 @@ contract LevyLedger {
     /// wallet if that wallet has approved this contract for it and holds it.
     /// If not, nothing is taken and nothing reverts: the charge stays issued
     /// and unpaid, so it falls into arrears once past due, and the firm may
-    /// collect it again. Refused for a charge not yet due (B1) or already paid.
+    /// collect it again. Refused for a charge not yet due (B1). A charge
+    /// already paid is skipped: an owner may pay early (ADR-016), and that
+    /// must not revert every other owner's collection in the batch.
     function collect(uint256[] calldata chargeIds) external {
         if (msg.sender != firm) revert NotFirm(msg.sender);
         for (uint256 i = 0; i < chargeIds.length; ++i) {
@@ -128,7 +130,7 @@ contract LevyLedger {
             if (block.timestamp < charge.dueDate) {
                 revert ChargeNotDue(chargeId, charge.dueDate);
             }
-            if (charge.paid) revert ChargeAlreadyPaid(chargeId);
+            if (charge.paid) continue;
 
             if (!charge.issued) {
                 charge.issued = true;
