@@ -106,7 +106,6 @@ function Root() {
   }>();
   const [failed, setFailed] = useState(false);
   const [account, setAccount] = useState<string>();
-  const chosen = as;
   const [notice, setNotice] = useState<Notice>();
   const [signing, setSigning] = useState<string>();
   const [toast, setToast] = useState<Done>();
@@ -160,7 +159,7 @@ function Root() {
     // The local node signs for `?as=<address>`, or else for the first wallet
     // a UnitBound event names, so the page opens on an owner's workspace.
     wallet = { kind: "node" };
-    viewer = chosen ?? log?.derived.owners.values().next().value;
+    viewer = as ?? log?.derived.owners.values().next().value;
   }
   const view = log && buildView(log.derived, log.now, viewer);
 
