@@ -1,0 +1,82 @@
+# npm run test:mocha
+
+
+> kaitiaki@0.1.0 test:mocha
+> hardhat test mocha
+
+No contracts to compile
+
+Running Mocha tests
+
+
+  check-config-secrets
+    ✔ passes a clean tree (91ms)
+    ✔ fails on a tracked file holding a private-key-shaped value (69ms)
+    ✔ fails on a tracked .env (65ms)
+    ✔ fails when a line of .env.example has a value (69ms)
+    ✔ passes a committed Ignition journal, whose transaction hashes are key-shaped (73ms)
+    ✔ fails closed outside a git repository (42ms)
+
+  Read interface (#72, #149)
+    ✔ NFR10: for a unit other than the viewer's own, renders exactly one of {current, in arrears} and no digit (651ms)
+    ✔ shows the viewer's own arrears, and stops surfacing a resolved arrear (R4) (56ms)
+    ✔ shows fund balances and proposals in the state Governance gives them (55ms)
+    ✔ offers a vote only to a unit that has not voted, and only while voting is open (49ms)
+    ✔ puts every route inside the shell with one current link, and keeps the privacy line on Register (74ms)
+    ✔ FR41: holds no key, and its ABI has no view or pure function
+    ✔ shows the signing Dialog, the success Toast and a RefusalNotice in the design system's markup
+    ✔ names a wallet on another chain and offers it nothing; asks an unconnected wallet to connect; tells a wallet with no unit (68ms)
+    ✔ shows the loading state until the log is read, and only the notice if reading fails
+    ✔ points the Menu button at the Sheet only while the Sheet exists
+    ✔ formats money exactly, truncated to the cent, and dates in New Zealand time
+
+  Transactions (#150)
+    ✔ knows every custom error of the six contracts and MockNZD
+    ✔ decodes each named error to its RefusalNotice message
+    ✔ names an error it has no message for, and never guesses a reason
+    ✔ never throws on revert data it cannot decode
+    ✔ has its own sentence for a wallet rejection
+    ✔ decodes a real refusal: a wallet with no unit votes
+    send
+      ✔ shows the Dialog only while the wallet signs, then the Toast, then reads the log again
+      ✔ closes the Dialog and shows a RefusalNotice when the contract refuses
+      ✔ opens no Dialog when the local node signs, because no wallet asks anything
+
+  QAS-4 replay
+    ✔ derives fund balances, role holders, tallies, quorum, proposal states, eligibility, payees, queueing, attestation and arrears from events alone (63ms)
+    ✔ refuses a VoteCast naming a unit no UnitBound gave the voter
+    ✔ refuses a unit counted twice on one proposal
+    ✔ refuses a VoteCast whose weight is not its number of units
+    ✔ refuses a VoteCast on a proposal no ProposalCreated made
+    ✔ refuses a payee admitted twice
+    ✔ refuses a release to a payee no PayeeAdmitted admitted
+    ✔ refuses a release on an admission proposal
+    ✔ refuses a charge paid for a unit other than the one it was scheduled for
+    ✔ refuses a charge issued for a different amount than it was scheduled for
+    ✔ refuses a charge issued for a different due date than it was scheduled for
+    ✔ refuses a charge issued that was never scheduled
+    ✔ refuses a charge paid that was never scheduled
+    ✔ refuses a charge scheduled twice
+    ✔ refuses a charge issued twice
+    ✔ refuses a charge paid twice
+    ✔ refuses a ProposalQueued on a proposal no ProposalCreated made
+    ✔ refuses a proposal queued twice
+    ✔ refuses a WorkAttested on an admission proposal
+    ✔ refuses a WorkAttested on a proposal never queued
+    ✔ refuses a proposal attested twice
+    ✔ refuses a PayeeAdmitted on a proposal never queued
+    ✔ refuses a PayeeAdmitted before its proposal's eta
+    ✔ refuses a PaymentReleased on a proposal never queued
+    ✔ refuses a PaymentReleased before its proposal's eta
+    ✔ refuses a log from a replayed address with no known event
+    ✔ derives quorum's unit half, rounded up, from principal units
+    ✔ keeps a proposal Extended after a vote in the extension
+
+  toolchain
+    ✔ connects to the in-process simulated network
+    ✔ gives tests funded signers
+
+
+  56 passing (2s)
+
+
