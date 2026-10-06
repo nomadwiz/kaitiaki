@@ -21,7 +21,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../components/ui/card.js";
-import { date, nzd, short } from "../format.js";
+import { date, nzd, short, title } from "../format.js";
 import type { View } from "../view.js";
 
 type Proposal = View["proposals"][number];
@@ -37,8 +37,6 @@ export const LEVY_RULES = [
   "A paid arrear stops showing anywhere.",
 ] as const;
 
-const title = (p: Proposal) =>
-  p.kind === "Work" ? p.description : `Admit ${p.description}`;
 // A name is shown only when owners voted on it (ADR-018).
 const vendor = (p: Proposal) => p.vendor?.name ?? short(p.payee);
 
@@ -53,7 +51,7 @@ export function Heading({ id, children }: { id: string; children: string }) {
 }
 
 export const rows = "flex flex-col [&>li]:border-t [&>li]:py-3.5 [&>li:first-child]:border-t-0 [&>li:first-child]:pt-0 [&>li:last-child]:pb-0";
-const meta = "flex flex-wrap gap-x-4 gap-y-1 text-base text-muted-foreground";
+export const meta = "flex flex-wrap gap-x-4 gap-y-1 text-base text-muted-foreground";
 
 function VoteRow({ proposal: p }: { proposal: Proposal }) {
   return (

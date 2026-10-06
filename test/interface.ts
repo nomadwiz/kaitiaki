@@ -67,14 +67,14 @@ const ROUTES = {
     ["#/collect", "Home", "Home"],
   ],
   firm: [
-    ["#/", "Firm workspace", "Home"],
+    ["#/", "Home", "Home"],
     ["#/proposals", "Proposals", "Proposals"],
     ["#/proposal/2", "Roof repair", "Proposals"],
     ["#/propose", "Firm workspace", "Proposals"],
     ["#/collect", "Firm workspace", "Collect levies"],
     ["#/vendors", "Firm workspace", "Vendors"],
     ["#/activity", "Activity", "Activity"],
-    ["#/units", "Firm workspace", "Home"],
+    ["#/units", "Home", "Home"],
   ],
 };
 const NAV_LABELS = {
@@ -192,6 +192,17 @@ describe("Read interface (#72, #149)", () => {
     // The viewer's own units are named only as a link to Your units.
     expect(text(html)).to.contain("Units 1 and 2 are on Your units");
     expect(text((await render(bob.address, "#/building")).html)).to.contain("Unit 3 is on Your units");
+
+    // The firm's Home counts the due charges and dates the oldest, and names
+    // no unit and no amount; its view of a charge carries neither.
+    const firm = await render(signers.firm.address, "#/");
+    const due = firm.view.toCollect.filter((c) => c.due).map((c) => c.dueDate);
+    const levies = text(firm.html.split('id="h-collect"')[1].split('<div data-slot="card"')[0].replace(/^[^>]*>/, ""));
+    expect(levies).to.equal(`Levies to collect 2 charges are due. The oldest fell due on ${date(due.reduce((a, b) => (a < b ? a : b)))}. Collect levies`);
+    expect(text(firm.html)).to.not.match(/Unit \d/);
+    for (const charge of firm.view.toCollect) {
+      expect(Object.keys(charge)).to.deep.equal(["chargeId", "dueDate", "due", "attempted"]);
+    }
   });
 
   it("FR13: Building lists the approved vendor by name, shortened address and company identifier, and a Work card names it", async () => {
@@ -373,13 +384,14 @@ describe("Read interface (#72, #149)", () => {
   describe("Firm workspace (#157)", () => {
     const DAY = 24n * 60n * 60n;
     const CONTROLS = /<(?:input|textarea|select)\b|<button class="btn" type="submit"/g;
-    // The Firm screen as `viewer` sees it, with the firm's address from the
-    // deployment file. `onFirm` is given as App gives it to the firm's wallet.
+    // The old Firm screen (`#/propose`, until #183) as `viewer` sees it, with
+    // the firm's address from the deployment file. `onFirm` is given as App
+    // gives it to the firm's wallet.
     async function firmPage(s: Awaited<ReturnType<typeof setUp>>, viewer?: string, wallet?: Wallet) {
-      const { view } = await s.render(viewer, "#/");
+      const { view } = await s.render(viewer, "#/propose");
       const html = renderToStaticMarkup(
         createElement(App, {
-          hash: "#/", view, wallet, firm: s.signers.firm.address,
+          hash: "#/propose", view, wallet, firm: s.signers.firm.address,
           onFirm: { onWork() {}, onVendor() {}, onConfirm() {}, onCollect() {} },
         }),
       );
@@ -584,35 +596,113 @@ describe("Read interface (#72, #149)", () => {
       expect((noId.notice as { code: string }).code).to.equal("CompanyIdIsEmpty");
     });
 
-    it("FR25: Confirm is aria-disabled with its date until the wait ends, then enabled, and attest succeeds", async () => {
-      const s = await setUp();
-      const { firm } = s.signers;
-      const eta = await queueRoofRepair(s);
-      const confirm = (html: string) => html.split("Confirm work is done</button>")[0].split("<button").pop()!;
-      let { html } = await firmPage(s, firm.address);
-      expect(text(html)).to.contain(`#2 Roof repair Queued Up to ${nzd(400n * 10n ** 18n)} from Operating to Harbour Lifts Ltd.`);
-      expect(confirm(html)).to.contain('aria-disabled="true"');
-      expect(text(html)).to.contain(`Available from ${date(eta)}, when the 7-day wait ends.`);
-      await advance(s.ethers, await s.contracts.governance.TIMELOCK_DELAY());
-      ({ html } = await firmPage(s, firm.address));
-      expect(confirm(html)).to.not.contain("aria-disabled");
-      expect(text(html)).to.not.contain("Available from");
-      const evidence = checkEvidence(id("evidence: roof"));
-      expect(evidence).to.equal(undefined);
-      const asFirm = new Contract(s.addresses.governance, ABI, firm);
-      const done = await outcome(confirmWork(2n), () => asFirm.attest(2n, id("evidence: roof")));
-      expect(done.toast).to.deep.equal({ title: "Work confirmed", body: "The work on Proposal #2 is confirmed as done." });
-      const after = await firmPage(s, firm.address);
-      expect(after.view.toConfirm).to.deep.equal([]);
-      expect(text(after.html)).to.contain("No work is waiting to be confirmed.");
-    });
-
     it("lists only queued Work proposals the firm has not confirmed, and no Admit proposal", async () => {
       const s = await setUp();
       // Open: not listed. Proposal 1 (Admit, executed) never is.
       expect((await s.render(s.signers.firm.address)).view.toConfirm).to.deep.equal([]);
       await queueRoofRepair(s);
       expect((await s.render(s.signers.firm.address)).view.toConfirm.map((c) => c.id)).to.deep.equal([2n]);
+    });
+
+    describe("Firm Home (#182)", () => {
+      // Each card on the firm's Home, as the words a viewer reads and the
+      // proposal each row links to.
+      async function home(s: Awaited<ReturnType<typeof setUp>>) {
+        const { html } = await s.render(s.signers.firm.address, "#/");
+        // No owner action and no owner navigation (ADR-021): no form, no
+        // button but the Rules trigger, no link to an owner's screen.
+        expect(html).to.not.match(/<form|Vote|Pay|Your levies|href="#\/(?:units|building)"/);
+        expect([...html.matchAll(/<button[^>]*>[\s\S]*?<\/button>/g)].map(([b]) => text(b))).to.deep.equal(["Rules"]);
+        const card = (id: string) => html.split(`id="${id}"`)[1].split('<div data-slot="card"')[0].replace(/^[^>]*>/, "");
+        const rowsOf = (id: string) =>
+          [...card(id).matchAll(/<li><a href="#\/proposal\/(\d+)"[^>]*>([\s\S]*?)<\/a><\/li>/g)].map(([, n, row]) => `#${n} ${text(row)}`);
+        return {
+          html,
+          confirm: rowsOf("h-confirm"),
+          ready: rowsOf("h-ready"),
+          voting: [...card("h-voting").matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)].slice(1).map(([, row]) => text(row)),
+          card: (id: string) => text(card(id)),
+        };
+      }
+
+      it("is titled Home with no subtitle, links to Collect levies and Propose work, and has Rules on Ready to carry out", async () => {
+        const s = await setUp();
+        const { html } = await home(s);
+        expect(text(html.split("<h1>")[1].split('<div data-slot="card"')[0])).to.equal("Home");
+        expect(html.split('id="h-collect"')[1]).to.match(/^[\s\S]*?<a [^>]*href="#\/collect"[^>]*>[\s\S]*?Collect levies<\/a>/);
+        expect(html.split('id="h-voting"')[1]).to.match(/^[\s\S]*?<a [^>]*href="#\/propose"[^>]*>[\s\S]*?Propose work<\/a>/);
+        expect(html.split('id="h-ready"')[1].split('<div data-slot="card"')[0]).to.contain("Rules</button>");
+      });
+
+      it("lists work to confirm and proposals ready to carry out from ProposalQueued and WorkAttested, each linking to its Proposal, and the firm's proposals in voting with quorum and closing date", async () => {
+        const s = await setUp();
+        const { governance } = s.contracts;
+        const { firm, alice, bob, stranger } = s.signers;
+        const roof = s.render(firm.address).then(({ view }) => view.proposals.find((p) => p.id === 2n)!);
+        let h = await home(s);
+        expect(h.confirm).to.deep.equal([]);
+        expect(h.card("h-confirm")).to.equal("Work to confirm No work is waiting to be confirmed.");
+        expect(h.card("h-ready")).to.equal("Ready to carry out Rules Nothing is ready to carry out.");
+        // Alice's two units voted; one owner of the two quorum needs.
+        expect(h.voting).to.deep.equal([`Roof repair Open 2 of 1 units, 1 of 2 owners, not yet met ${date((await roof).closes!)}`]);
+        expect(h.html).to.contain('<a href="#/proposal/2">Roof repair</a>');
+
+        // Proposal 3 admits a vendor and passes; proposal 2 misses quorum
+        // and is extended.
+        await governance.connect(firm).getFunction("propose(address,string,string)")(stranger.address, "Lift Co", "NZBN 1");
+        await governance.connect(alice).castVote(3, true);
+        await governance.connect(bob).castVote(3, true);
+        await advance(s.ethers, await governance.VOTING_PERIOD());
+        h = await home(s);
+        expect(h.voting).to.deep.equal([`Roof repair Extended Quorum waived. One owner&#x27;s vote can decide. ${date((await s.render(firm.address)).view.proposals[1].closes!)}`]);
+
+        await governance.connect(bob).castVote(2, true);
+        await advance(s.ethers, await governance.EXTENSION());
+        await governance.connect(stranger).queue(2);
+        await governance.connect(stranger).queue(3);
+        const { view } = await s.render(firm.address);
+        const eta = (id: bigint) => date(view.proposals.find((p) => p.id === id)!.eta!);
+        h = await home(s);
+        expect(h.voting).to.deep.equal([]);
+        expect(h.card("h-voting")).to.contain("No proposals are open for voting.");
+        expect(h.confirm).to.deep.equal([`#2 Roof repair Harbour Lifts Ltd Wait ends ${eta(2n)} Queued`]);
+        expect(h.ready).to.deep.equal([]);
+
+        await advance(s.ethers, await governance.TIMELOCK_DELAY());
+        h = await home(s);
+        expect(h.confirm).to.deep.equal([`#2 Roof repair Harbour Lifts Ltd Wait ended ${eta(2n)} Confirm work`]);
+        expect(h.ready).to.deep.equal([`#3 Admit Lift Co Wait ended ${eta(3n)} Carry out`]);
+
+        await governance.connect(firm).attest(2, id("evidence: roof"));
+        const attested = (await s.render(firm.address)).view.proposals[1].steps.find((st) => st.dateLabel === "Confirmed")!.date!;
+        h = await home(s);
+        expect(h.confirm).to.deep.equal([]);
+        expect(h.ready).to.deep.equal([
+          `#2 Roof repair Work confirmed ${date(attested)} Up to NZD 400.00 Carry out`,
+          `#3 Admit Lift Co Wait ended ${eta(3n)} Carry out`,
+        ]);
+
+        await governance.connect(stranger).execute(2);
+        await governance.connect(stranger).execute(3);
+        expect((await home(s)).ready).to.deep.equal([]);
+      });
+
+      it("says one due charge, and none, in its own words", async () => {
+        const s = await setUp();
+        const ledger = new Contract(s.addresses.levyLedger, ABI, s.signers.firm);
+        const { token } = s.contracts;
+        const levies = async () => (await home(s)).card("h-collect");
+        // Carol's direct debit covers unit 4's charge, then alice's unit 2's.
+        await (await token.mint(s.signers.carol.address, 250n * 10n ** 18n)).wait();
+        await (await token.connect(s.signers.carol).approve(s.addresses.levyLedger, 250n * 10n ** 18n)).wait();
+        await (await ledger.collect([3n])).wait();
+        const one = (await s.render(s.signers.firm.address)).view.toCollect.find((c) => c.due)!;
+        expect(await levies()).to.equal(`Levies to collect 1 charge is due. It fell due on ${date(one.dueDate)}. Collect levies`);
+        await (await token.mint(s.signers.alice.address, 250n * 10n ** 18n)).wait();
+        await (await token.connect(s.signers.alice).approve(s.addresses.levyLedger, 500n * 10n ** 18n)).wait();
+        await (await ledger.collect([one.chargeId])).wait();
+        expect(await levies()).to.equal("Levies to collect No charge is due. Collect levies");
+      });
     });
 
     it("catches a malformed hash, address or cap before anything is sent, and leaves emptiness to the contract", () => {
@@ -630,6 +720,7 @@ describe("Read interface (#72, #149)", () => {
       expect(checkVendor({ name: "", companyId: "", wallet: "0xabc" }).hints.wallet).to.be.a("string");
       // Empty name and identifier pass: the contract refuses them in words.
       expect(checkVendor({ name: "", companyId: "", wallet: ZERO }).vendor).to.deep.equal({ vendor: ZERO, name: "", companyId: "" });
+      expect(checkEvidence(id("evidence: roof"))).to.equal(undefined);
       expect(checkEvidence("")).to.equal("Add the evidence hash before confirming.");
       expect(checkEvidence("0xabc")).to.be.a("string");
     });
@@ -1086,7 +1177,10 @@ describe("Read interface (#72, #149)", () => {
       expect(confirm).to.match(/<input (?=[^>]*id="evidence")(?=[^>]*name="evidence")(?=[^>]*placeholder="0x…")/);
       expect(confirm).to.match(/<button [^>]*type="submit"[^>]*>[\s\S]*?Confirm work<\/button>/);
 
-      await governance.connect(signers.firm).attest(2, zeroPadValue("0x05", 32));
+      // Confirm work through tx.ts's ABI, as Proposal sends it.
+      const asFirm = new Contract(addresses.governance, ABI, signers.firm);
+      const done = await outcome(confirmWork(2n), () => asFirm.attest(2n, zeroPadValue("0x05", 32)));
+      expect(done.toast).to.deep.equal({ title: "Work confirmed", body: "The work on Proposal #2 is confirmed as done." });
       for (html of [await owner(), await firm()]) {
         expect(buttons(html)).to.deep.equal(["Carry out payment"]);
         expect(html).to.not.contain('id="h-confirm"');

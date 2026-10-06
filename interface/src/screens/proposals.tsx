@@ -16,7 +16,7 @@ import {
   CardTitle,
 } from "../components/ui/card.js";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs.js";
-import { date, nzd, short, unitsLabel } from "../format.js";
+import { date, nzd, short, title, unitsLabel } from "../format.js";
 import type { Workspace } from "../shell.js";
 import type { View } from "../view.js";
 
@@ -74,7 +74,7 @@ function ProposalCard({
               href={`#/proposal/${p.id}`}
               className="text-foreground no-underline after:absolute after:inset-0 after:rounded-lg"
             >
-              {work ? p.description : `Admit ${p.description}`}
+              {title(p)}
             </a>
           </h2>
         </CardTitle>

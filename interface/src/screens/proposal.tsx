@@ -47,7 +47,7 @@ import {
   CardHeader,
 } from "../components/ui/card.js";
 import { Input } from "../components/ui/input.js";
-import { date, nzd, short, unitsLabel } from "../format.js";
+import { date, nzd, short, title, unitsLabel } from "../format.js";
 import { cn } from "../lib/utils.js";
 import { Waiting } from "../states.js";
 import type { View } from "../view.js";
@@ -79,8 +79,6 @@ export const votesRules = (p: ProposalView) => [
   "Anyone in the building may queue a passed proposal.",
 ];
 
-const title = (p: ProposalView) =>
-  p.kind === "Work" ? p.description : `Admit ${p.description}`;
 
 export function Signed() {
   return (

@@ -489,3 +489,15 @@ Activity beside its mock-ups, [`Activity`](https://github.com/nomadwiz/kaitiki-d
 | `181-activity-firm-1440.png` | **FR40, FR41, ADR-021.** Activity as the firm, page 1: the firm's Sidebar, Activity current, and the same ten newest events | `npm run demo`, `npm run demo:loop`, then `node scripts/screenshot.mjs evidence/week6/181-activity-firm-1440.png 'http://localhost:5173/?as=<firm>#/activity'` |
 | `181-activity-firm-375.png` | The same at 375 px | The same, with `evidence/week6/181-activity-firm-375.png` and a trailing `375` |
 | `181-activity-firm-page2-1440.png` | **NFR10.** Page 2 as the firm: every levy event names its charge and never a unit or an amount ("Charge #2 was paid.", "The firm asked for payment of Charge #3.") | As the owner's page 2, with `?as=<firm>` and `evidence/week6/181-activity-firm-page2-1440.png` |
+
+### Issue #182 — Firm Home
+
+The firm's Home beside its mock-ups, [`FirmHome`](https://github.com/nomadwiz/kaitiki-doc/blob/master/doc/asset/mockups/FirmHome.dc.html) and [`FirmHomeMobile`](https://github.com/nomadwiz/kaitiki-doc/blob/master/doc/asset/mockups/FirmHomeMobile.dc.html), as the firm, at the seeded stage and then as proposal 2 moves on. The clock only moves forward, so capture the rows in order.
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `182-firm-home-1440.png` | **NFR10, ADR-021.** Firm Home at the seeded stage: no subtitle. Levies to collect counts two due charges and dates the oldest, with no unit and no amount, and links to Collect levies. Work to confirm and Ready to carry out are empty, the second with Rules. Your proposals in voting lists proposal 2, Open, with both quorum conditions and its closing date, and links to Propose work | `npm run demo`, then `node scripts/screenshot.mjs evidence/week6/182-firm-home-1440.png 'http://localhost:5173/?as=<firm>#/'` |
+| `182-firm-home-375.png` | The same at 375 px: one column, the table scrolling inside its card, the BottomBar | The same, with `evidence/week6/182-firm-home-375.png` and a trailing `375` |
+| `182-firm-home-ready-1440.png` | **UC6.** Proposal 2 queued and its wait over: Work to confirm lists it with its vendor and "Wait ended", and the row, linking to the proposal, reads Confirm work. Nothing is in voting | `UNTIL=ready npm run demo:loop`, then `node scripts/screenshot.mjs evidence/week6/182-firm-home-ready-1440.png 'http://localhost:5173/?as=<firm>#/'` |
+| `182-firm-home-ready-375.png` | The same at 375 px | The same, with `evidence/week6/182-firm-home-ready-375.png` and a trailing `375` |
+| `182-firm-home-attested-1440.png` | **UC6.** The work confirmed: Ready to carry out lists proposal 2 with "Work confirmed", its cap and Carry out; Work to confirm is empty | `UNTIL=attested npm run demo:loop`, then `node scripts/screenshot.mjs evidence/week6/182-firm-home-attested-1440.png 'http://localhost:5173/?as=<firm>#/'` |
