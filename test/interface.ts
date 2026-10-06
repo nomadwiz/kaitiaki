@@ -21,7 +21,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { App, type Wallet } from "../interface/src/app.js";
 import { date, nzd } from "../interface/src/format.js";
-import { ABI, refusal, send } from "../interface/src/tx.js";
+import { ABI, payment, refusal, send } from "../interface/src/tx.js";
 import { buildView } from "../interface/src/view.js";
 import { advance, deployBuilding } from "../scripts/building.js";
 import { replay } from "../scripts/replay.js";
@@ -79,7 +79,8 @@ describe("Read interface (#72, #149)", () => {
       const view = buildView(derived, now, viewer);
       return {
         view,
-        html: renderToStaticMarkup(createElement(App, { hash, view, wallet })),
+        html: renderToStaticMarkup(createElement(App, { hash, view, wallet, onPay: () => {} }),
+        ),
       };
     };
     return { ethers, ...building, render };
@@ -122,7 +123,7 @@ describe("Read interface (#72, #149)", () => {
     // An overdue charge on Your units: its amount, then its number and due
     // date.
     const overdue =
-      /<p class="charge-amount">NZD 250\.00<\/p><p class="field-hint"[^>]*>Charge #1 · was due \d{1,2} [A-Z][a-z]{2} \d{4}<\/p>/;
+      /<p class="charge-amount">NZD 250\.00<\/p><p class="field-hint"[^>]*>Charge #1 · was due \d{1,2} [A-Z][a-z]{2} \d{4} · issued<\/p>/;
 
     // Alice's unit 2 is overdue: her own page gives the amount and due date.
     let { view, html } = await render(alice.address, "#/units");
@@ -130,14 +131,14 @@ describe("Read interface (#72, #149)", () => {
       [1n, "current"],
       [2n, "in arrears"],
     ]);
-    expect(view.ownUnits[1].overdue.map((c) => c.chargeId)).to.deep.equal([1n]);
+    expect(view.ownUnits[1].charges.map((c) => c.chargeId)).to.deep.equal([1n]);
     expect(html).to.match(overdue);
 
     // Bob paid unit 3's charge late. That arrear is resolved, so it is
     // surfaced nowhere: not on his own page, not on anyone else's.
     ({ view } = await render(bob.address, "#/units"));
     expect(view.ownUnits).to.deep.equal([
-      { unitId: 3n, status: "current", overdue: [] },
+      { unitId: 3n, status: "current", charges: [] },
     ]);
 
     // Alice pays. Her arrear stops being surfaced to her and to others.
@@ -146,7 +147,7 @@ describe("Read interface (#72, #149)", () => {
     expect(view.ownUnits[1]).to.deep.equal({
       unitId: 2n,
       status: "current",
-      overdue: [],
+      charges: [],
     });
     expect(html).to.not.match(overdue);
     expect(html).to.not.contain("was due");
@@ -154,6 +155,81 @@ describe("Read interface (#72, #149)", () => {
     expect(view.otherUnits.find((u) => u.unitId === 2n)?.status).to.equal(
       "current",
     );
+  });
+
+  describe("Your units (#153)", () => {
+    const unit = (view: Awaited<ReturnType<typeof buildView>>, id: bigint) =>
+      view.ownUnits.find((u) => u.unitId === id)!;
+
+    it("lists every unpaid charge of the viewer's units, issued or only scheduled, and no one else's", async () => {
+      const { signers, render } = await setUp();
+      const { view, html } = await render(signers.alice.address, "#/units");
+      // Unit 1 has a charge scheduled for later; unit 2's is issued and
+      // overdue. Unit 1's charge 0 was paid before issue, so it is gone.
+      expect(unit(view, 1n).charges).to.deep.equal([
+        {
+          chargeId: 4n,
+          amount: 250n * 10n ** 18n,
+          dueDate: unit(view, 1n).charges[0].dueDate,
+          issued: false,
+          overdue: false,
+        },
+      ]);
+      expect(unit(view, 2n).charges.map((c) => [c.chargeId, c.issued, c.overdue])).to.deep.equal([
+        [1n, true, true],
+      ]);
+      expect(unit(view, 1n).status).to.equal("current");
+      expect(html).to.match(/Charge #4 · due \d{1,2} [A-Z][a-z]{2} \d{4} · scheduled/);
+      expect(html).to.match(/Charge #1 · was due \d{1,2} [A-Z][a-z]{2} \d{4} · issued/);
+      expect(html).to.contain('<button class="btn" type="button">Pay NZD 250.00</button>');
+      // Carol's unit 4 is in arrears, and alice sees nothing but its status.
+      expect(view.ownUnits.map((u) => u.unitId)).to.deep.equal([1n, 2n]);
+      expect(html).to.not.contain("Charge #3");
+    });
+
+    it("pays a scheduled charge before it is issued, and an overdue one, approve then payLevy", async () => {
+      const { signers, contracts, addresses, render } = await setUp();
+      const { alice } = signers;
+      // Alice's balance went on charge 0; the interface's ABI does the rest.
+      await contracts.token.mint(alice.address, 500n * 10n ** 18n);
+      const token = new Contract(String(contracts.token.target), ABI, alice);
+      const ledger = new Contract(addresses.levyLedger, ABI, alice);
+      for (const [chargeId, amount] of [
+        [4n, 250n * 10n ** 18n],
+        [1n, 250n * 10n ** 18n],
+      ]) {
+        await (await token.approve(addresses.levyLedger, amount)).wait();
+        await (await ledger.payLevy(chargeId)).wait();
+      }
+      const { view, html } = await render(alice.address, "#/units");
+      expect(view.ownUnits.map((u) => [u.status, u.charges])).to.deep.equal([
+        ["current", []],
+        ["current", []],
+      ]);
+      expect(html).to.not.contain("Pay NZD");
+      expect(html).to.not.contain("Charge #");
+    });
+
+    it("offers Pay on Your units and not on Home, which shares the unit card", async () => {
+      const { signers, render } = await setUp();
+      const units = await render(signers.alice.address, "#/units");
+      const home = await render(signers.alice.address, "#/");
+      expect(units.html.match(/Pay NZD 250\.00/g)).to.have.length(2);
+      expect(home.html).to.not.contain("Pay NZD");
+      // Home lists overdue charges only: unit 2's, not unit 1's scheduled #4.
+      expect(home.html).to.not.contain("Charge #4");
+      expect(home.html).to.contain("Charge #1 · was due");
+      expect(home.html).to.contain('<p class="muted-text">No overdue charges.</p>');
+      expect(units.html).to.contain("Charge #4 · due");
+    });
+
+    it("says two signatures are needed in the signing Dialog", () => {
+      const { signing } = payment(14n, 57n, 1240n * 10n ** 18n);
+      const html = renderToStaticMarkup(createElement(App, { hash: "#/", signing }));
+      expect(html).to.contain("Two signatures are needed");
+      expect(html).to.contain("Charge #57");
+      expect(html).to.contain("NZD 1,240.00");
+    });
   });
 
   it("shows fund balances and proposals in the state Governance gives them", async () => {
@@ -657,6 +733,8 @@ describe("Read interface (#72, #149)", () => {
       );
       // One unit is a quarter of four; one wallet is not two.
       expect(html).to.contain("<b>2 of 1</b> units");
+      // The visible count is uncapped, the meter's value is not.
+      expect(html).to.contain('aria-valuemax="1" aria-valuenow="1"');
       expect(html).to.contain("<b>1 of 2</b> owners");
       expect(html).to.match(/data-tone="ok">met<\/span>/);
       expect(html).to.match(/data-tone="wait">not yet met<\/span>/);
@@ -719,7 +797,11 @@ describe("Read interface (#72, #149)", () => {
     const functions = ABI.fragments.filter(
       (f): f is FunctionFragment => f.type === "function",
     );
-    expect(functions.map((f) => f.name)).to.include("castVote");
+    expect(functions.map((f) => f.name)).to.include.members([
+      "castVote",
+      "approve",
+      "payLevy",
+    ]);
     for (const f of functions) {
       expect(["view", "pure"], f.format()).to.not.include(f.stateMutability);
     }

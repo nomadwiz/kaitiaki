@@ -50,11 +50,14 @@ type Props = {
   onDismissToast?: () => void;
   // The proposal whose vote the wallet is signing.
   voting?: bigint;
+  // The charge whose payment the wallet is signing.
+  paying?: bigint;
   // Reading failed: the notice says why, and nothing is loading.
   failed?: boolean;
   onConnect?: () => void;
   onViewer?: (address: string) => void;
   onVote?: (proposalId: bigint, inFavour: boolean) => void;
+  onPay?: (chargeId: bigint) => void;
 };
 
 // What each screen is given, once the log has been read.
@@ -65,6 +68,8 @@ type Context = {
   walletState: ReactNode;
   voting?: bigint;
   onVote?: Props["onVote"];
+  paying?: bigint;
+  onPay?: Props["onPay"];
 };
 
 const SCREENS: Record<string, (c: Context) => ReactNode> = {
@@ -89,7 +94,13 @@ const SCREENS: Record<string, (c: Context) => ReactNode> = {
     />
   ),
   "#/units": (c) => (
-    <YourUnits units={c.view.ownUnits}>{c.walletState}</YourUnits>
+    <YourUnits
+      units={c.view.ownUnits}
+      onPay={c.canAct ? c.onPay : undefined}
+      paying={c.paying}
+    >
+      {c.walletState}
+    </YourUnits>
   ),
   "#/register": (c) => <Register units={c.view.otherUnits} />,
   "#/activity": () => <Activity />,
@@ -106,10 +117,12 @@ export function App({
   toast,
   onDismissToast,
   voting,
+  paying,
   failed,
   onConnect,
   onViewer,
   onVote,
+  onPay,
 }: Props) {
   const id = /^#\/proposal\/(\d+)$/.exec(hash)?.[1];
   const route = id ? "proposal" : Object.hasOwn(SCREENS, hash) ? hash : "#/";
@@ -160,6 +173,8 @@ export function App({
               walletState,
               voting,
               onVote,
+              paying,
+              onPay,
             })
           : !failed && <Loading />}
       </main>
