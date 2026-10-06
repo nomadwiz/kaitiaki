@@ -97,9 +97,13 @@ const navs = (html: string) =>
 const PRIVACY_LINE =
   "The full record is public on the chain. This page chooses to show only whether each unit is current or in arrears.";
 
-// Building's two funds, each as the words a viewer reads.
+// Building's two FundCards, each as the words a viewer reads, from its
+// `data-fund` to the next card.
 const fundCards = (html: string) =>
-  [...html.matchAll(/<div data-fund="(?:op|ltm)"[^>]*>([\s\S]*?)<\/div>/g)].map(([, f]) => text(f));
+  html
+    .split(/data-fund="(?:op|ltm)"/)
+    .slice(1)
+    .map((card) => text(card.split('<div data-slot="card"')[0].replace(/^[^>]*>/, "")));
 
 // The rows for units other than the viewer's own, as rendered text. React
 // writes an empty attribute as `=""`.
