@@ -42,6 +42,8 @@ type Props = {
   notice?: Notice;
   // The proposal whose vote the wallet is signing.
   voting?: bigint;
+  // Reading failed: the notice says why, and nothing is loading.
+  failed?: boolean;
   onConnect?: () => void;
   onViewer?: (address: string) => void;
   onVote?: (proposalId: bigint, inFavour: boolean) => void;
@@ -86,6 +88,7 @@ export function App({
   wallet,
   notice,
   voting,
+  failed,
   onConnect,
   onViewer,
   onVote,
@@ -115,7 +118,8 @@ export function App({
             viewer={viewer}
             units={view?.ownUnits.map((u) => u.unitId)}
             choices={wallet?.kind === "node" ? wallet.choices : undefined}
-            onConnect={canConnect ? onConnect : undefined}
+            canConnect={canConnect}
+            onConnect={onConnect}
             onViewer={onViewer}
           />
         }
@@ -129,18 +133,16 @@ export function App({
           />
         )}
         {notice && <Alert {...notice} />}
-        {view ? (
-          SCREENS[route]({
-            view,
-            id: id ?? "",
-            canAct: !wrongChain,
-            walletState,
-            voting,
-            onVote,
-          })
-        ) : (
-          <Loading />
-        )}
+        {view
+          ? SCREENS[route]({
+              view,
+              id: id ?? "",
+              canAct: !wrongChain,
+              walletState,
+              voting,
+              onVote,
+            })
+          : !failed && <Loading />}
       </main>
     </>
   );

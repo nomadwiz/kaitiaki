@@ -11,7 +11,8 @@ import { network } from "hardhat";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { App } from "../interface/src/app.js";
+import { App, type Wallet } from "../interface/src/app.js";
+import { date, nzd } from "../interface/src/format.js";
 import { buildView } from "../interface/src/view.js";
 import { deployBuilding } from "../scripts/building.js";
 import { replay } from "../scripts/replay.js";
@@ -55,7 +56,11 @@ describe("Read interface (#72, #149)", () => {
     const building = await deployBuilding(ethers);
     // The interface's own read path: the log through `replay`, and block
     // timestamps. No contract is called.
-    const render = async (viewer: string | undefined, hash = "#/") => {
+    const render = async (
+      viewer: string | undefined,
+      hash = "#/",
+      wallet?: Wallet,
+    ) => {
       const derived = await replay(
         ethers.provider,
         building.addresses,
@@ -65,7 +70,7 @@ describe("Read interface (#72, #149)", () => {
       const view = buildView(derived, now, viewer);
       return {
         view,
-        html: renderToStaticMarkup(createElement(App, { hash, view })),
+        html: renderToStaticMarkup(createElement(App, { hash, view, wallet })),
       };
     };
     return { ethers, ...building, render };
@@ -235,5 +240,109 @@ describe("Read interface (#72, #149)", () => {
           : [],
       );
     }
+  });
+
+  it("names a wallet on another chain and offers it nothing; asks an unconnected wallet to connect; tells a wallet with no unit", async () => {
+    const { signers, render } = await setUp();
+    const { carol, stranger } = signers;
+    const browser = (account: string | undefined, chainId: bigint): Wallet => ({
+      kind: "browser",
+      account,
+      chainId,
+      deploymentChainId: 31337n,
+    });
+
+    // On chain 1, against a deployment on 31337: both ids named, and no
+    // action — not carol's vote, which she could cast on the right chain,
+    // and not Connect wallet.
+    for (const account of [undefined, carol.address]) {
+      const { html } = await render(account, "#/", browser(account, 1n));
+      expect(html, account).to.contain(
+        '<div class="alert" data-variant="destructive" role="alert"><p class="alert-title">Your wallet is on chain 1, and Kaitiaki is deployed on chain 31337.</p>',
+      );
+      expect(html, account).to.not.contain("<form");
+      expect(html, account).to.not.contain("Connect wallet");
+    }
+    // The control: on the right chain, carol is offered her vote.
+    expect(
+      (await render(carol.address, "#/", browser(carol.address, 31337n))).html,
+    ).to.match(/<form class="vote" data-proposal="2">/);
+
+    // On the right chain, not yet connected.
+    for (const hash of ["#/", "#/units"]) {
+      const { html } = await render(
+        undefined,
+        hash,
+        browser(undefined, 31337n),
+      );
+      expect(html, hash).to.contain(
+        '<h3 class="card-title">Connect your wallet to vote or pay</h3>',
+      );
+      expect(html, hash).to.contain(
+        '<span class="wallet-slot"><button class="btn" type="button">Connect wallet</button></span>',
+      );
+    }
+
+    // Connected, holding no unit.
+    for (const hash of ["#/", "#/units"]) {
+      const { html } = await render(
+        stranger.address,
+        hash,
+        browser(stranger.address, 31337n),
+      );
+      expect(html, hash).to.contain(
+        '<p class="alert-title">This wallet holds no unit in this building, so it cannot vote.</p>',
+      );
+      expect(html, hash).to.not.contain("<form");
+      expect(html, hash).to.not.contain("Connect your wallet");
+    }
+  });
+
+  it("shows the loading state until the log is read, and only the notice if reading fails", () => {
+    const html = (props: object) =>
+      renderToStaticMarkup(createElement(App, { hash: "#/", ...props }));
+    expect(html({})).to.contain('<p role="status" class="row">');
+    expect(html({})).to.contain("Reading the event log…");
+
+    const failed = html({
+      failed: true,
+      notice: {
+        variant: "destructive",
+        title: "The event log could not be read.",
+        description: "connection refused",
+      },
+    });
+    expect(failed).to.not.contain("Reading the event log…");
+    expect(failed).to.not.contain('class="skeleton"');
+    expect(failed).to.contain(
+      '<main class="shell-main"><div class="alert" data-variant="destructive" role="alert"><p class="alert-title">The event log could not be read.</p><p class="alert-description">connection refused</p></div></main>',
+    );
+  });
+
+  it("points the Menu button at the Sheet only while the Sheet exists", () => {
+    const html = renderToStaticMarkup(createElement(App, { hash: "#/" }));
+    // Closed on first render, so the Sheet is not in the page.
+    expect(html).to.not.contain('id="sheet"');
+    expect(html).to.match(
+      /<button class="btn nav-toggle" data-variant="outline" type="button" aria-label="Open menu" aria-expanded="false">Menu<\/button>/,
+    );
+  });
+
+  it("formats money exactly, truncated to the cent, and dates in New Zealand time", () => {
+    const UNIT = 10n ** 18n;
+    expect(nzd(0n)).to.equal("NZD 0.00");
+    expect(nzd(250n * UNIT)).to.equal("NZD 250.00");
+    expect(nzd(48_000n * UNIT)).to.equal("NZD 48,000.00");
+    // 22 significant digits and a sub-cent remainder: a Number keeps about
+    // 15, and rounding would add a cent that does not exist.
+    expect(nzd(1_234_567_890_123_456_789n * UNIT + 129n * 10n ** 14n)).to.equal(
+      "NZD 1,234,567,890,123,456,789.01",
+    );
+    expect(nzd(999n * 10n ** 13n)).to.equal("NZD 0.00");
+    expect(nzd(String(19_999n * 10n ** 15n))).to.equal("NZD 19.99");
+    // 13 Oct 2026, 11:30 UTC is 14 Oct 2026, 00:30 in New Zealand.
+    expect(date(BigInt(Date.UTC(2026, 9, 13, 11, 30) / 1000))).to.equal(
+      "14 Oct 2026",
+    );
   });
 });

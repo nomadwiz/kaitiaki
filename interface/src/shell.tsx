@@ -22,7 +22,8 @@ export function Address({ value }: { value: string }) {
         className="btn"
         type="button"
         aria-label="Copy address"
-        onClick={() => void navigator.clipboard?.writeText(value)}
+        // A refused clipboard leaves the address on screen; nothing is lost.
+        onClick={() => navigator.clipboard?.writeText(value).catch(() => {})}
       >
         Copy
       </button>
@@ -36,6 +37,7 @@ export function WalletSlot({
   viewer,
   units,
   choices,
+  canConnect,
   onConnect,
   onViewer,
 }: {
@@ -43,14 +45,15 @@ export function WalletSlot({
   // Undefined until the log has been read.
   units?: bigint[];
   choices?: { address: string; units: bigint[] }[];
-  // Given only while connecting is an action the page may offer.
+  // A browser wallet, not connected, on the deployment's chain.
+  canConnect?: boolean;
   onConnect?: () => void;
   onViewer?: (address: string) => void;
 }) {
   if (!viewer) {
     return (
       <span className="wallet-slot">
-        {onConnect && (
+        {canConnect && (
           <button className="btn" type="button" onClick={onConnect}>
             Connect wallet
           </button>
@@ -131,7 +134,7 @@ export function AppShell({
           type="button"
           aria-label="Open menu"
           aria-expanded={open}
-          aria-controls="sheet"
+          aria-controls={open ? "sheet" : undefined}
           onClick={() => setOpen(!open)}
         >
           Menu
@@ -141,7 +144,7 @@ export function AppShell({
         <nav
           className="sheet"
           id="sheet"
-          aria-label="Main"
+          aria-label="Menu"
           onKeyDown={(e) => e.key === "Escape" && close()}
         >
           <button
