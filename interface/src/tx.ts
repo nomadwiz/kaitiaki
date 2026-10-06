@@ -12,6 +12,9 @@ import type { Done, Notice } from "./states.js";
 
 export const ABI = new Interface([
   "function castVote(uint256 proposalId, bool inFavour) returns (uint256 weight)",
+  // Paying a levy: the token approval, then the ledger takes the payment
+  "function approve(address spender, uint256 value) returns (bool)",
+  "function payLevy(uint256 chargeId)",
   // Treasury, and the OpenZeppelin AccessControl it inherits
   "error AccessControlBadConfirmation()",
   "error AccessControlUnauthorizedAccount(address account, bytes32 neededRole)",
@@ -125,6 +128,17 @@ const MESSAGES: Record<string, (args: bigint[]) => string> = {
   ERC20InsufficientAllowance: () =>
     "The levy ledger was not approved to take this payment. Approve it in your wallet, then pay.",
 };
+
+// The Dialog, Toast and RefusalNotice words for paying a charge, which takes
+// two signatures: the approval, then the payment.
+export const payment = (unitId: bigint, chargeId: bigint, amount: bigint) => ({
+  signing: `payment of Charge #${chargeId}, ${nzd(amount)}, for Unit ${unitId}. Two signatures are needed, one to approve the levy ledger and one to pay`,
+  done: {
+    title: "Levy paid",
+    body: `Charge #${chargeId}, ${nzd(amount)}, is paid for Unit ${unitId}.`,
+  },
+  refused: "Your payment was not made",
+});
 
 /**
  * Why a transaction did not happen, in plain words. `name` is the contract

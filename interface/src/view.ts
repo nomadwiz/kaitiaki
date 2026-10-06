@@ -165,7 +165,15 @@ export type View = {
   ownUnits: {
     unitId: bigint;
     status: Status;
-    overdue: { chargeId: bigint; amount: bigint; dueDate: bigint }[];
+    // Every unpaid charge: issued or only scheduled (ADR-016), overdue once
+    // issued and past due.
+    charges: {
+      chargeId: bigint;
+      amount: bigint;
+      dueDate: bigint;
+      issued: boolean;
+      overdue: boolean;
+    }[];
   }[];
   // Status only, by construction.
   otherUnits: { unitId: bigint; status: Status }[];
@@ -267,16 +275,15 @@ export function buildView(
     ownUnits: viewerUnits.map((unitId) => ({
       unitId,
       status: statusOf(unitId),
-      // arrearsAt's predicate, per charge: issued, unpaid and overdue.
-      overdue: [...derived.charges]
-        .filter(
-          ([, c]) =>
-            c.unitId === unitId && c.issued && !c.paid && now > c.dueDate,
-        )
+      charges: [...derived.charges]
+        .filter(([, c]) => c.unitId === unitId && !c.paid)
         .map(([chargeId, c]) => ({
           chargeId,
           amount: c.amount,
           dueDate: c.dueDate,
+          issued: c.issued,
+          // arrearsAt's predicate, per charge.
+          overdue: c.issued && now > c.dueDate,
         })),
     })),
     otherUnits: units

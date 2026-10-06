@@ -62,7 +62,7 @@ function Row({
         aria-label={label}
         aria-valuemin={0}
         aria-valuemax={Number(of)}
-        aria-valuenow={Number(count)}
+        aria-valuenow={Math.min(Number(count), Number(of))}
         data-met={met ? "" : undefined}
       >
         <span style={{ width: `${share}%` }}></span>

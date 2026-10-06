@@ -20,12 +20,13 @@ import { replay } from "../../scripts/replay.js";
 import { App, type Wallet } from "./app.js";
 import { unitsLabel } from "./format.js";
 import type { Done, Notice } from "./states.js";
-import { ABI, refusal, send } from "./tx.js";
+import { ABI, payment, refusal, send } from "./tx.js";
 import { buildView } from "./view.js";
 
-// Written by scripts/demo.ts. `token`, `timelock` and `firm` are there too,
-// for the screens that need them.
+// Written by scripts/demo.ts. `token` is the MockNZD a levy is paid in;
+// `timelock` and `firm` are there too, for the screens that need them.
 type Config = {
+  token: string;
   chainId: number;
   rpcUrl: string;
   fromBlock: number;
@@ -93,6 +94,7 @@ function Root() {
   const [signing, setSigning] = useState<string>();
   const [toast, setToast] = useState<Done>();
   const [voting, setVoting] = useState<bigint>();
+  const [paying, setPaying] = useState<bigint>();
 
   const fail = (title: string, error: unknown) => {
     setFailed(true);
@@ -214,6 +216,22 @@ function Root() {
     setVoting(undefined);
   }
 
+  // Two signatures: the token approves the ledger for the amount, then the
+  // ledger takes it. If the second is refused, the approval stands.
+  async function pay(chargeId: bigint) {
+    const unit = view!.ownUnits.find((u) =>
+      u.charges.some((c) => c.chargeId === chargeId),
+    )!;
+    const { amount } = unit.charges.find((c) => c.chargeId === chargeId)!;
+    const { levyLedger } = env!.config.addresses;
+    setPaying(chargeId);
+    await sendTx(payment(unit.unitId, chargeId, amount), async (at) => {
+      await (await at(env!.config.token).approve(levyLedger, amount)).wait();
+      return at(levyLedger).payLevy(chargeId);
+    });
+    setPaying(undefined);
+  }
+
   return (
     <App
       hash={hash}
@@ -224,10 +242,12 @@ function Root() {
       toast={toast}
       onDismissToast={() => setToast(undefined)}
       voting={voting}
+      paying={paying}
       failed={failed}
       onConnect={() => void connect()}
       onViewer={setChosen}
       onVote={(id, inFavour) => void vote(id, inFavour)}
+      onPay={(id) => void pay(id)}
     />
   );
 }

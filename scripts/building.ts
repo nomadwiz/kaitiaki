@@ -11,6 +11,7 @@
 //   unit 2's is unpaid and overdue — alice's own arrear
 //   unit 3's was paid late — a resolved arrear, which must not surface
 //   unit 4's is unpaid and overdue — another unit in arrears
+//   unit 1's second (charge 4) is scheduled for 30 days on, not yet issued
 //   proposal 1 admitted the vendor and has executed
 //   proposal 2, roof repair for that vendor, is open with alice's vote for
 import { ZeroAddress, getCreateAddress, id, parseUnits } from "ethers";
@@ -67,9 +68,9 @@ export async function deployBuilding(ethers: Ethers) {
     BigInt((await ethers.provider.getBlock("latest"))!.timestamp) + 1_000n;
   const ledger = await ethers.deployContract("LevyLedger", [
     treasury.target,
-    [1n, 2n, 3n, 4n],
-    [LEVY, LEVY, LEVY, LEVY],
-    [due, due, due, due],
+    [1n, 2n, 3n, 4n, 1n],
+    [LEVY, LEVY, LEVY, LEVY, LEVY],
+    [due, due, due, due, due + 30n * 86_400n],
   ]);
   const timelock = await ethers.deployContract("TimelockController", [
     await governance.TIMELOCK_DELAY(),
@@ -84,7 +85,7 @@ export async function deployBuilding(ethers: Ethers) {
   await registry.connect(adapter).bindUnit(3, bob.address);
   await registry.connect(adapter).bindUnit(4, carol.address);
 
-  // Charges 0 to 3, one per unit. Alice pays unit 1's before it is issued
+  // Charges 0 to 3, one per unit, and charge 4, scheduled for later. Alice pays unit 1's before it is issued
   // (ADR-016); anyone issues all four once due; bob pays unit 3's late.
   for (const owner of [alice, bob]) {
     await token.mint(owner.address, LEVY * 2n);

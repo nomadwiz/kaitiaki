@@ -1,10 +1,11 @@
 // Screen 1, Home (`#/`): the two funds, what needs the viewer's vote, their
 // levies and the four guarantees. It offers no action: each proposal links to
 // its own screen, where the vote is.
-import { Fragment, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import { date, nzd } from "../format.js";
 import { Address, PageHead } from "../shell.js";
+import { OwnUnits } from "./units.js";
 import type { View } from "../view.js";
 
 export type Proposal = View["proposals"][number];
@@ -228,46 +229,7 @@ export function Home({
               <h2 id="h-units">Your levies</h2>
               <a href="#/units">Your units</a>
             </div>
-            <div className="card">
-              <div
-                className="card-content stack"
-                style={{ paddingTop: "var(--space-6)" }}
-              >
-                {ownUnits.map((u, i) => (
-                  <Fragment key={String(u.unitId)}>
-                    {i > 0 && <hr className="separator" />}
-                    <div className="own-unit">
-                      <div className="row">
-                        <h3 className="card-title">Unit {String(u.unitId)}</h3>
-                        <span
-                          className="status"
-                          data-tone={u.status === "current" ? "ok" : "late"}
-                        >
-                          {u.status}
-                        </span>
-                      </div>
-                      {u.overdue.length === 0 && (
-                        <p className="muted-text">No overdue charges.</p>
-                      )}
-                      {u.overdue.map((c) => (
-                        <div key={String(c.chargeId)} className="charge">
-                          <div>
-                            <p className="charge-amount">{nzd(c.amount)}</p>
-                            <p
-                              className="field-hint"
-                              style={{ color: "var(--foreground)" }}
-                            >
-                              Charge #{String(c.chargeId)} · was due{" "}
-                              {date(c.dueDate)}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </Fragment>
-                ))}
-              </div>
-            </div>
+            <OwnUnits units={ownUnits} />
           </section>
         )}
       </div>
