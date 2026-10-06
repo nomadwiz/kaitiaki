@@ -2,9 +2,12 @@
 // Content).
 import { formatUnits } from "ethers";
 
+// The month is spelt here, not by the locale: en-NZ's short September is
+// "Sept", and the design system's dates use three letters.
+const MONTHS = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ");
 const DATE = new Intl.DateTimeFormat("en-NZ", {
   day: "numeric",
-  month: "short",
+  month: "numeric",
   year: "numeric",
   timeZone: "Pacific/Auckland",
 });
@@ -19,8 +22,11 @@ export function nzd(amount: bigint | string) {
 }
 
 // A block timestamp, in seconds: `14 Oct 2026`, New Zealand time.
-export const date = (timestamp: bigint) =>
-  DATE.format(new Date(Number(timestamp) * 1000));
+export function date(timestamp: bigint) {
+  const parts = DATE.formatToParts(new Date(Number(timestamp) * 1000));
+  const part = (type: string) => parts.find((p) => p.type === type)!.value;
+  return `${part("day")} ${MONTHS[Number(part("month")) - 1]} ${part("year")}`;
+}
 
 // An address or hash shortened to its ends: `0x7a3F…c91E`.
 export const short = (value: string) =>

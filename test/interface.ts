@@ -24,7 +24,7 @@ import { App, ELSEWHERE, isElsewhere, type Wallet } from "../interface/src/app.j
 import { votesRules } from "../interface/src/screens/proposal.js";
 import { checkEvidence, checkVendor, checkWork } from "../interface/src/screens/firm.js";
 import { date, nzd, short } from "../interface/src/format.js";
-import { ABI, approvedRefusal, carryOut, collectLevies, confirmWork, payment, proposeVendor, proposeWork, refusal, send, standingApproval } from "../interface/src/tx.js";
+import { ABI, approvedRefusal, carryOut, collectLevies, confirmWork, payment, proposeVendor, proposeWork, refusal, send, standingApproval, walletBalance } from "../interface/src/tx.js";
 import { buildView } from "../interface/src/view.js";
 import { advance, deployBuilding } from "../scripts/building.js";
 import { replay } from "../scripts/replay.js";
@@ -48,6 +48,9 @@ async function outcome(
 const ZERO = "0x" + "11".repeat(20);
 const STATES = ["Open", "Extended", "Passed", "Failed", "Queued", "Executed"];
 
+// Markup as the words a viewer reads.
+const text = (html: string) => html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+
 // Each workspace's routes, the heading each screen opens with, and the link
 // marked current. A route of the other workspace opens Home, and says so.
 const ROUTES = {
@@ -55,7 +58,7 @@ const ROUTES = {
     ["#/", "Home", "Home"],
     ["#/proposals", "Proposals", "Proposals"],
     ["#/proposal/2", "Roof repair", "Proposals"],
-    ["#/units", "Your units and levies", "Your units"],
+    ["#/units", "Your units", "Your units"],
     ["#/building", "Building", "Building"],
     ["#/activity", "Activity", "Activity"],
     ["#/no-such-screen", "Home", "Home"],
@@ -124,7 +127,15 @@ describe("Read interface (#72, #149)", () => {
         building.fromBlock,
       );
       const now = BigInt((await ethers.provider.getBlock("latest"))!.timestamp);
-      const view = buildView(derived, now, viewer);
+      // The viewer's wallet from the token's events, as main.tsx reads it.
+      const token = String(building.contracts.token.target);
+      const ownWallet = viewer
+        ? {
+            approved: await standingApproval(ethers.provider, token, building.addresses.levyLedger, viewer, building.fromBlock),
+            balance: await walletBalance(ethers.provider, token, viewer, building.fromBlock),
+          }
+        : undefined;
+      const view = buildView(derived, now, viewer, ownWallet);
       return {
         view,
         html: renderToStaticMarkup(
@@ -191,10 +202,10 @@ describe("Read interface (#72, #149)", () => {
   it("shows the viewer's own arrears, and stops surfacing a resolved arrear (R4)", async () => {
     const { signers, contracts, render } = await setUp();
     const { alice, bob, carol } = signers;
-    // An overdue charge on Your units: its amount, then its number and due
-    // date.
+    // An overdue charge on Your units: its Alert, with the date the firm
+    // collected it.
     const overdue =
-      /<p class="charge-amount">NZD 250\.00<\/p><p class="field-hint"[^>]*>Charge #1 · was due \d{1,2} [A-Z][a-z]{2} \d{4} · not covered when the firm collected<\/p>/;
+      /Charge #1 was not covered when the firm collected it on \d{1,2} [A-Z][a-z]{2,3} \d{4}/;
 
     // Alice's unit 2 is overdue: her own page gives the amount and due date.
     let { view, html } = await render(alice.address, "#/units");
@@ -223,7 +234,8 @@ describe("Read interface (#72, #149)", () => {
       charges: [],
     });
     expect(html).to.not.match(overdue);
-    expect(html).to.not.contain("was due");
+    expect(html).to.not.contain(">#1<");
+    expect(html).to.not.contain("in arrears");
     ({ view } = await render(carol.address, "#/units"));
     expect(view.otherUnits.find((u) => u.unitId === 2n)?.status).to.equal(
       "current",
@@ -245,17 +257,31 @@ describe("Read interface (#72, #149)", () => {
           chargeId: 4n,
           amount: 250n * 10n ** 18n,
           dueDate: unit(view, 1n).charges[0].dueDate,
-          issued: false,
+          collected: undefined,
+          due: false,
           overdue: false,
         },
       ]);
-      expect(unit(view, 2n).charges.map((c) => [c.chargeId, c.issued, c.overdue])).to.deep.equal([
-        [1n, true, true],
+      expect(unit(view, 2n).charges.map((c) => [c.chargeId, c.collected !== undefined, c.due, c.overdue])).to.deep.equal([
+        [1n, true, true, true],
       ]);
       expect(unit(view, 1n).status).to.equal("current");
-      expect(html).to.match(/Charge #4 · due \d{1,2} [A-Z][a-z]{2,3} \d{4} · not yet collected/);
-      expect(html).to.match(/Charge #1 · was due \d{1,2} [A-Z][a-z]{2,3} \d{4} · not covered when the firm collected/);
-      expect(html).to.contain('<button class="btn" type="button">Pay NZD 250.00</button>');
+      // One card per unit, its StatusBadge, and a row per charge: number,
+      // due date, amount, state and Pay.
+      const card = (n: number) => html.split(`id="h-unit-${n}"`)[1].split('<div data-slot="card"')[0];
+      const rows = (n: number) =>
+        [...card(n).matchAll(/<tr data-slot="table-row"[^>]*>([\s\S]*?)<\/tr>/g)].slice(1).map(([, row]) => text(row));
+      expect(card(1)).to.contain('data-tone="ok">current</span>');
+      expect(card(2)).to.contain('data-tone="late">in arrears</span>');
+      expect(rows(1)).to.deep.equal([`#4 ${date(unit(view, 1n).charges[0].dueDate)} NZD 250.00 Scheduled Pay early`]);
+      expect(rows(2)).to.deep.equal([`#1 ${date(unit(view, 2n).charges[0].dueDate)} NZD 250.00 in arrears Pay now`]);
+      expect(text(card(2))).to.match(/Charge #1 was not covered when the firm collected it on \d{1,2} [A-Z][a-z]{2,3} \d{4} Pay it now to clear the arrear\./);
+      expect(text(card(1))).to.not.contain("not covered");
+      // Pay sits beside "Signed in your wallet." and the rules it needs.
+      for (const n of [1, 2]) {
+        expect(card(n)).to.contain("Signed in your wallet.");
+        expect(card(n)).to.match(/<\/svg>Rules<\/button>/);
+      }
       // Carol's unit 4 is in arrears, and alice sees nothing but its status.
       expect(view.ownUnits.map((u) => u.unitId)).to.deep.equal([1n, 2n]);
       expect(html).to.not.contain("Charge #3");
@@ -280,21 +306,21 @@ describe("Read interface (#72, #149)", () => {
         ["current", []],
         ["current", []],
       ]);
-      expect(html).to.not.contain("Pay NZD");
-      expect(html).to.not.contain("Charge #");
+      expect(html).to.not.match(/Pay (now|early)/);
+      expect(html.match(/No unpaid charges\./g)).to.have.length(2);
     });
 
     it("offers Pay on Your units and not on Home", async () => {
       const { signers, render } = await setUp();
       const units = await render(signers.alice.address, "#/units");
       const home = await render(signers.alice.address, "#/");
-      expect(units.html.match(/Pay NZD 250\.00/g)).to.have.length(2);
-      expect(home.html).to.not.contain("Pay NZD");
+      expect(units.html.match(/>Pay (now|early)</g)).to.have.length(2);
+      expect(home.html).to.not.match(/Pay (now|early)/);
       // Home names the arrear only: unit 2's charge #1, not unit 1's
       // scheduled #4.
       expect(home.html).to.not.contain("Charge #4");
       expect(home.html).to.contain("Charge #1 was not covered when it was collected.");
-      expect(units.html).to.contain("Charge #4 · due");
+      expect(units.html).to.contain(">#4<");
     });
 
     it("disables every other Pay while one payment is in progress", async () => {
@@ -305,15 +331,16 @@ describe("Read interface (#72, #149)", () => {
           hash: "#/units",
           view,
           onPay: () => {},
+          onDebit: () => {},
           paying: 1n,
         }),
       );
-      // Charge 1 shows the wait; charge 4's Pay stays but cannot be pressed.
+      // Charge 1 shows the wait; charge 4's Pay stays but cannot be pressed,
+      // and nor can the direct debit's approval.
       expect(html).to.contain("Waiting for your wallet…");
-      expect(html).to.contain(
-        '<button class="btn" type="button" aria-disabled="true">Pay NZD 250.00</button>',
-      );
-      expect(html).to.not.contain('<button class="btn" type="button">Pay');
+      expect(html).to.match(/<button [^>]*aria-disabled="true">Pay early<\/button>/);
+      expect(html).to.match(/<button [^>]*aria-disabled="true"><svg[^>]*>[\s\S]*?<\/svg>Set up direct debit<\/button>/);
+      expect(html.match(/<button [^>]*>(?:<svg[^>]*>[\s\S]*?<\/svg>)?(?:Pay|Approve)/g)!.every((b) => b.includes('aria-disabled="true"'))).to.equal(true);
     });
 
     it("gives a levy payment's signing sentence the two signatures it needs", () => {
@@ -329,8 +356,6 @@ describe("Read interface (#72, #149)", () => {
   describe("Firm workspace (#157)", () => {
     const DAY = 24n * 60n * 60n;
     const CONTROLS = /<(?:input|textarea|select)\b|<button class="btn" type="submit"/g;
-    const text = (html: string) => html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-
     // The Firm screen as `viewer` sees it, with the firm's address from the
     // deployment file. `onFirm` is given as App gives it to the firm's wallet.
     async function firmPage(s: Awaited<ReturnType<typeof setUp>>, viewer?: string, wallet?: Wallet) {
@@ -452,6 +477,44 @@ describe("Read interface (#72, #149)", () => {
       await agrees();
     });
 
+    it("interface.md §3: rebuilds the direct debit and the wallet balance from MockNZD's events, as the token itself counts them", async () => {
+      const s = await setUp();
+      const { alice, bob, firm } = s.signers;
+      const { token } = s.contracts;
+      const UNIT = 10n ** 18n;
+      // What Your units is given, against the token's own allowance and
+      // balance. Only the test calls the token; the interface reads logs.
+      const agrees = async () =>
+        expect((await s.render(alice.address, "#/units")).view.ownWallet).to.deep.equal({
+          approved: await token.allowance(alice.address, s.addresses.levyLedger),
+          balance: await token.balanceOf(alice.address),
+        });
+      await agrees();
+      // A mint and plain transfers, which no levy event records.
+      await token.mint(alice.address, 300n * UNIT);
+      await token.connect(alice).transfer(bob.address, 40n * UNIT);
+      await token.connect(bob).transfer(alice.address, 15n * UNIT);
+      await agrees();
+      // Direct debit through tx.ts's ABI, then the firm takes charge 1, late,
+      // and charge 4 once it falls due.
+      await (await new Contract(String(token.target), ABI, alice).approve(s.addresses.levyLedger, 500n * UNIT)).wait();
+      await agrees();
+      const ledger = new Contract(s.addresses.levyLedger, ABI, firm);
+      await (await ledger.collect([1n])).wait();
+      await agrees();
+      await advance(s.ethers, 31n * DAY);
+      await (await ledger.collect([4n])).wait();
+      await agrees();
+      // The Direct debit card and Home show the same two figures.
+      const { view, html } = await s.render(alice.address, "#/units");
+      const { approved, balance } = view.ownWallet!;
+      expect([approved, balance]).to.deep.equal([0n, 25n * UNIT]);
+      const card = html.split('id="h-debit"')[1].split('<div data-slot="card"')[0];
+      expect(text(card)).to.contain(`Scheduled total NZD 0.00 Approved ${nzd(approved)} Wallet balance ${nzd(balance)}`);
+      const home = (await s.render(alice.address, "#/")).html;
+      expect(text(home)).to.contain(`Direct debit approved for ${nzd(approved)} Wallet balance ${nzd(balance)}`);
+    });
+
     it("ADR-020: Set up direct debit approves the levy ledger for the owner's unpaid total", async () => {
       const s = await setUp();
       const units = async (viewer: string, props: object = {}) =>
@@ -460,12 +523,14 @@ describe("Read interface (#72, #149)", () => {
         );
       // Alice's unpaid charges are 1 and 4, NZD 250.00 each.
       const html = await units(s.signers.alice.address);
-      expect(text(html)).to.contain("take up to NZD 500.00, your unpaid charges");
-      expect(html).to.contain('<button class="btn" type="button">Set up direct debit</button>');
+      const card = html.split('id="h-debit"')[1].split('<div data-slot="card"')[0];
+      expect(text(card)).to.contain("Scheduled total NZD 500.00");
+      expect(card).to.match(/<button [^>]*><svg[^>]*>[\s\S]*?<\/svg>Set up direct debit<\/button>/);
+      expect(card).to.contain("Signed in your wallet.");
       expect(await units(s.signers.stranger.address)).to.not.contain("Set up direct debit");
       const busy = await units(s.signers.alice.address, { acting: { action: "debit", id: 0n } });
       expect(busy).to.contain("Waiting for your wallet…");
-      expect(busy).to.not.contain(">Set up direct debit<");
+      expect(busy).to.not.contain("Set up direct debit");
     });
 
     it("FR17: proposes work and a vendor through tx.ts's ABI, and both appear in the replayed View", async () => {
@@ -665,9 +730,10 @@ describe("Read interface (#72, #149)", () => {
     expect(levies).to.contain("Unit 2 is in arrears");
     expect(levies).to.contain("Charge #1 was not covered when it was collected. Pay it to clear the arrear.");
     expect(levies).to.not.contain("Unit 1 is in arrears");
-    // The approval and the wallet balance wait on interface.md §3's [OPEN].
-    expect(levies).to.not.contain("Direct debit approved for");
-    expect(levies).to.not.contain("Wallet balance");
+    // The direct debit and the balance, rebuilt from the token's events:
+    // alice approved charge 0 alone and paid it, so nothing stands.
+    expect(view.ownWallet).to.deep.equal({ approved: 0n, balance: 250n * 10n ** 18n });
+    expect(text(levies)).to.contain("Direct debit approved for NZD 0.00 Wallet balance NZD 250.00 Next charge");
     const next = view.ownUnits.flatMap((u) => u.charges).find((c) => !c.overdue)!;
     expect(levies).to.contain(`${nzd(next.amount)} on ${date(next.dueDate)}`);
     expect(levies).to.contain('<a href="#/units"');
@@ -1648,6 +1714,8 @@ describe("Read interface (#72, #149)", () => {
     expect(nzd(999n * 10n ** 13n)).to.equal("NZD 0.00");
     expect(nzd(String(19_999n * 10n ** 15n))).to.equal("NZD 19.99");
     // 13 Oct 2026, 11:30 UTC is 14 Oct 2026, 00:30 in New Zealand.
+    // Three-letter months, September too, whatever the locale's own.
+    expect(date(BigInt(Date.UTC(2027, 8, 8) / 1000))).to.equal("8 Sep 2027");
     expect(date(BigInt(Date.UTC(2026, 9, 13, 11, 30) / 1000))).to.equal(
       "14 Oct 2026",
     );

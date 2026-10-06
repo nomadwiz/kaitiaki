@@ -161,16 +161,21 @@ export type View = {
   ownUnits: {
     unitId: bigint;
     status: Status;
-    // Every unpaid charge: issued or only scheduled (ADR-016), overdue once
-    // issued and past due.
+    // Every unpaid charge: collected or only scheduled (ADR-016), `due` once
+    // its due date has arrived, overdue once collected and past due.
     charges: {
       chargeId: bigint;
       amount: bigint;
       dueDate: bigint;
-      issued: boolean;
+      // When the firm's collection asked for it and took nothing (ADR-020).
+      collected?: bigint;
+      due: boolean;
       overdue: boolean;
     }[];
   }[];
+  // The viewer's direct debit and NZD balance, rebuilt from MockNZD's
+  // events (interface.md §3); absent until main.tsx has read them.
+  ownWallet?: { approved: bigint; balance: bigint };
   // Status only, by construction.
   otherUnits: { unitId: bigint; status: Status }[];
   // Every event, newest first, as its plain sentence (Activity). A levy
@@ -211,11 +216,13 @@ export type View = {
 /**
  * @param now the latest block's timestamp
  * @param viewer the wallet viewing, if any; its bound units are its own
+ * @param ownWallet the viewer's approval and balance, from the token's events
  */
 export function buildView(
   derived: Derived,
   now: bigint,
   viewer: string | undefined,
+  ownWallet?: View["ownWallet"],
 ): View {
   type Created = {
     proposalId: bigint;
@@ -230,9 +237,11 @@ export function buildView(
   };
   const created: Created[] = [];
   const votedUnits = new Map<bigint, Set<bigint>>();
+  const collectedAt = new Map<bigint, bigint>();
   for (const t of derived.transitions) {
     const a = t.args as Record<string, unknown>;
     if (t.name === "ProposalCreated") created.push(a as Created);
+    if (t.name === "ChargeIssued") collectedAt.set(a.chargeId as bigint, t.time);
     if (t.name === "VoteCast") {
       const id = a.proposalId as bigint;
       const units = votedUnits.get(id) ?? new Set<bigint>();
@@ -375,6 +384,7 @@ export function buildView(
 
   return {
     viewer,
+    ownWallet,
     funds: derived.funds,
     queued,
     proposals,
@@ -387,7 +397,8 @@ export function buildView(
           chargeId,
           amount: c.amount,
           dueDate: c.dueDate,
-          issued: c.issued,
+          collected: collectedAt.get(chargeId),
+          due: now >= c.dueDate,
           // arrearsAt's predicate, per charge.
           overdue: c.issued && now > c.dueDate,
         })),

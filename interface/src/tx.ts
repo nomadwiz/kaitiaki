@@ -148,12 +148,14 @@ export const payment = (unitId: bigint, chargeId: bigint, amount: bigint) => ({
   refused: "Your payment was not made",
 });
 
-// The two events that decide how much the levy ledger may still take from
-// `owner`: the token's Approval sets it, and the ledger's LevyPaid spends it,
-// because the ledger moves an owner's NZD only by `transferFrom` in `_pay`.
-const ALLOWANCE = new Interface([
+// The events that rebuild an owner's wallet (interface.md §3). The token's
+// Approval sets how much the levy ledger may still take from `owner`, and the
+// ledger's LevyPaid spends it, because the ledger moves an owner's NZD only by
+// `transferFrom` in `_pay`. The token's Transfer moves the balance.
+const WALLET = new Interface([
   "event Approval(address indexed owner, address indexed spender, uint256 value)",
   "event LevyPaid(uint256 indexed chargeId, uint256 indexed unitId, address indexed payer, uint256 amount)",
+  "event Transfer(address indexed from, address indexed to, uint256 value)",
 ]);
 
 /**
@@ -174,23 +176,48 @@ export async function standingApproval(
     provider.getLogs({
       address: token,
       fromBlock,
-      topics: ALLOWANCE.encodeFilterTopics("Approval", [owner, levyLedger]),
+      topics: WALLET.encodeFilterTopics("Approval", [owner, levyLedger]),
     }),
     provider.getLogs({
       address: levyLedger,
       fromBlock,
-      topics: ALLOWANCE.encodeFilterTopics("LevyPaid", [null, null, owner]),
+      topics: WALLET.encodeFilterTopics("LevyPaid", [null, null, owner]),
     }),
   ]);
   let allowance = 0n;
   for (const log of [...approvals, ...payments].sort(
     (a, b) => a.blockNumber - b.blockNumber || a.index - b.index,
   )) {
-    const { name, args } = ALLOWANCE.parseLog(log)!;
+    const { name, args } = WALLET.parseLog(log)!;
     if (name === "Approval") allowance = args.value;
     else if (allowance !== MaxUint256) allowance -= args.amount;
   }
   return allowance;
+}
+
+/**
+ * The NZD `owner` holds, rebuilt from the token's events alone (FR41): every
+ * Transfer to it, a mint included, less every Transfer from it. `fromBlock`
+ * must be at or before the token's deployment, or a mint is missed.
+ */
+export async function walletBalance(
+  provider: Pick<Provider, "getLogs">,
+  token: string,
+  owner: string,
+  fromBlock: number,
+) {
+  const [incoming, outgoing] = await Promise.all(
+    [[null, owner], [owner]].map((args) =>
+      provider.getLogs({
+        address: token,
+        fromBlock,
+        topics: WALLET.encodeFilterTopics("Transfer", args),
+      }),
+    ),
+  );
+  const sum = (logs: typeof incoming) =>
+    logs.reduce((total, log) => total + WALLET.parseLog(log)!.args.value, 0n);
+  return sum(incoming) - sum(outgoing);
 }
 
 // Setting up direct debit: one approval, for every unpaid charge (ADR-020).

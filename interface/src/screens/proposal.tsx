@@ -92,7 +92,7 @@ function Heading({ id, children }: { id: string; children: string }) {
   );
 }
 
-function Signed() {
+export function Signed() {
   return (
     <span className="flex items-center gap-2 text-base text-muted-foreground">
       <Wallet aria-hidden="true" className="size-4" />
