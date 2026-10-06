@@ -58,6 +58,8 @@ type Props = {
   onViewer?: (address: string) => void;
   onVote?: (proposalId: bigint, inFavour: boolean) => void;
   onPay?: (unitId: bigint, chargeId: bigint, amount: bigint) => void;
+  // Set up direct debit: approve the levy ledger for `total` (ADR-020).
+  onDebit?: (total: bigint) => void;
   // The Anyone's actions the wallet is signing, and the one pressed.
   acting?: Acting;
   onAct?: OnAct;
@@ -78,6 +80,7 @@ type Context = {
   onVote?: Props["onVote"];
   paying?: bigint;
   onPay?: Props["onPay"];
+  onDebit?: Props["onDebit"];
   acting?: Props["acting"];
   onAct?: Props["onAct"];
   // Set only for the firm's wallet, on the deployment's chain.
@@ -111,6 +114,8 @@ const SCREENS: Record<string, (c: Context) => ReactNode> = {
       units={c.view.ownUnits}
       onPay={c.canAct ? c.onPay : undefined}
       paying={c.paying}
+      onDebit={c.canAct ? c.onDebit : undefined}
+      acting={c.acting}
     >
       {c.walletState}
     </YourUnits>
@@ -128,6 +133,7 @@ const SCREENS: Record<string, (c: Context) => ReactNode> = {
     <Firm
       vendors={c.view.vendors}
       toConfirm={c.view.toConfirm}
+      toCollect={c.view.toCollect}
       act={c.onFirm}
       acting={c.acting}
       fresh={c.fresh}
@@ -150,6 +156,7 @@ export function App({
   onViewer,
   onVote,
   onPay,
+  onDebit,
   acting,
   onAct,
   firm,
@@ -208,6 +215,7 @@ export function App({
               onVote,
               paying,
               onPay,
+              onDebit,
               acting,
               onAct,
               onFirm:

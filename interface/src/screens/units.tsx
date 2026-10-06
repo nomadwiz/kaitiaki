@@ -1,11 +1,13 @@
 // Screen 3, Your units (`#/units`): the viewer's own units, every unpaid
-// charge of each, and Pay (#153). `OwnUnits` is also Home's Your levies card,
-// which passes no `onPay`: Home has no action.
+// charge of each, Pay (#153), and Set up direct debit (#173, ADR-020).
+// `OwnUnits` is also Home's Your levies card, which passes no `onPay`: Home
+// has no action.
 import { Fragment, type ReactNode } from "react";
 
 import { date, nzd } from "../format.js";
 import { PageHead } from "../shell.js";
 import type { View } from "../view.js";
+import type { Acting } from "./actions.js";
 
 export function OwnUnits({
   units,
@@ -62,7 +64,9 @@ export function OwnUnits({
                       >
                         Charge #{String(c.chargeId)} ·{" "}
                         {c.overdue ? "was due" : "due"} {date(c.dueDate)} ·{" "}
-                        {c.issued ? "issued" : "scheduled"}
+                        {c.issued
+                          ? "not covered when the firm collected"
+                          : "not yet collected"}
                       </p>
                     </div>
                     {onPay && (
@@ -104,14 +108,27 @@ export function YourUnits({
   units,
   onPay,
   paying,
+  onDebit,
+  acting,
   children,
 }: {
   units: View["ownUnits"];
   onPay?: (unitId: bigint, chargeId: bigint, amount: bigint) => void;
   paying?: bigint;
+  // Approves the levy ledger for `total`. Without it, no button.
+  onDebit?: (total: bigint) => void;
+  acting?: Acting;
   // The wallet's Screen 8 state, if any.
   children?: ReactNode;
 }) {
+  // Every unpaid charge of the viewer's units, the most the firm can take.
+  // ponytail: the approval already given is not shown, because the replay
+  // reads the six contracts' logs and not the token's Approval events; read
+  // them if owners need to see their standing approval.
+  const total = units
+    .flatMap((u) => u.charges)
+    .reduce((sum, c) => sum + c.amount, 0n);
+  const busy = acting !== undefined || paying !== undefined;
   return (
     <>
       <PageHead title="Your units and levies">
@@ -135,14 +152,42 @@ export function YourUnits({
             </div>
             <div className="card-content stack">
               <p className="body-sm">
-                Each charge has a unit, an amount and a due date. A unit is{" "}
-                <b>in arrears</b> while a charge is issued, unpaid and past due.
+                Each charge has a unit, an amount and a due date. On the due
+                date the management firm collects it from your wallet, if you
+                have set up direct debit and hold the amount. If not, the
+                charge stays owed and the unit is <b>in arrears</b> until it is
+                paid.
               </p>
               <p className="body-sm">
                 Each payment is split between the Operating and Long-term
                 maintenance funds.
               </p>
               <p className="body-sm">You pay from your own wallet, in NZD.</p>
+              {onDebit && total > 0n && (
+                <>
+                  <p className="body-sm">
+                    Direct debit approves the levy ledger to take up to{" "}
+                    {nzd(total)}, your unpaid charges. It can take only a
+                    charge that is due, only for your units, and only into the
+                    treasury.
+                  </p>
+                  <button
+                    className="btn"
+                    type="button"
+                    aria-disabled={busy || undefined}
+                    onClick={busy ? undefined : () => onDebit(total)}
+                  >
+                    {acting?.action === "debit" ? (
+                      <>
+                        <span className="spinner" aria-hidden="true"></span>
+                        Waiting for your wallet…
+                      </>
+                    ) : (
+                      "Set up direct debit"
+                    )}
+                  </button>
+                </>
+              )}
             </div>
           </section>
         </div>

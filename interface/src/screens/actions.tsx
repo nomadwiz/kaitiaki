@@ -1,16 +1,18 @@
-// Screen 7, Anyone's actions (`#/actions`): issue a due charge, queue a passed
-// proposal, carry out a ready one (#156). A button appears only once its date
-// has arrived, by the latest block's time, which view.ts decides. Any wallet
-// may press them (FR6, NFR7), so nothing here looks at the viewer.
+// Screen 7, Anyone's actions (`#/actions`): queue a passed proposal, carry out
+// a ready one (#156). A button appears only once its date has arrived, by the
+// latest block's time, which view.ts decides. Any wallet may press them
+// (FR22, NFR7), so nothing here looks at the viewer. Collecting a due levy is
+// the firm's alone (ADR-020), so it is on the Firm screen.
 import { date } from "../format.js";
 import { PageHead } from "../shell.js";
 import type { View } from "../view.js";
 
-export type Act = "issue" | "queue" | "execute";
-// The write the wallet is signing. The firm's three share the lock, and a
-// proposal being created has no number yet, so its `id` is 0.
+export type Act = "queue" | "execute";
+// The write the wallet is signing. The firm's four and an owner's direct
+// debit share the lock. A proposal being created has no number yet, and a
+// collection or a direct debit names several charges, so their `id` is 0.
 export type Acting = {
-  action: Act | "work" | "vendor" | "confirm";
+  action: Act | "work" | "vendor" | "confirm" | "collect" | "debit";
   id: bigint;
 };
 export type OnAct = (action: Act, id: bigint) => void;
@@ -72,52 +74,6 @@ export function Actions({
           Anyone may press them, owner or not. Each is signed in your wallet.
         </p>
       </PageHead>
-      <section className="card">
-        <div className="card-header">
-          <h2 className="card-title">Issue due charges</h2>
-          <p className="card-description">
-            Turns a scheduled levy charge into one that is owed. Charges are
-            listed without their unit.
-          </p>
-        </div>
-        <div className="card-content" style={{ overflowX: "auto" }}>
-          {actions.charges.length === 0 ? (
-            <p className="muted-text">No charge is waiting to be issued.</p>
-          ) : (
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Charge</th>
-                  <th>Can be issued from</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {actions.charges.map((c) => (
-                  <tr key={String(c.chargeId)}>
-                    <td>Charge #{String(c.chargeId)}</td>
-                    <td>{date(c.dueDate)}</td>
-                    {c.due ? (
-                      <td className="num">
-                        <ActButton
-                          action="issue"
-                          id={c.chargeId}
-                          label="Issue charge"
-                          {...button}
-                        />
-                      </td>
-                    ) : (
-                      <td className="num muted-text">
-                        Available from {date(c.dueDate)}
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </section>
       <div className="grid-2">
         <section className="card">
           <div className="card-header">

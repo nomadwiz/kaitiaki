@@ -184,11 +184,8 @@ export type View = {
   // event for another owner's unit is the anonymous sentence and nothing
   // more (NFR10).
   activity: { time: bigint; kind: string; text: string }[];
-  // What anyone may do once its date has arrived (Anyone's actions). A charge
-  // is listed without its unit.
+  // What anyone may do once its date has arrived (Anyone's actions).
   actions: {
-    // Every unissued charge: `due` once its due date has arrived.
-    charges: { chargeId: bigint; dueDate: bigint; due: boolean }[];
     // Proposals that passed and wait for Queue.
     toQueue: { id: bigint; title: string }[];
     // Proposals still being voted on, which Queue waits for.
@@ -204,6 +201,15 @@ export type View = {
       waiting?: "date";
     }[];
   };
+  // Every unpaid charge, for the firm to collect (Firm, ADR-020), listed
+  // without its unit or amount, as Anyone's actions listed them: `due` once its due date has arrived, `attempted` once
+  // a collection has issued it and taken nothing.
+  toCollect: {
+    chargeId: bigint;
+    dueDate: bigint;
+    due: boolean;
+    attempted: boolean;
+  }[];
   // Queued Work proposals the firm has not yet confirmed (Firm), `due` once
   // the wait has ended.
   toConfirm: {
@@ -300,10 +306,15 @@ export function buildView(
       case "Deposited":
         return `${nzd(a.amount)} deposited: ${nzd(a.operatingAmount)} to Operating, ${nzd(a.maintenanceAmount)} to Long-term maintenance.`;
       case "ChargeScheduled":
+        return own
+          ? `Charge #${a.chargeId} scheduled for your Unit ${a.unitId}: ${nzd(a.amount)}, due ${date(a.dueDate)}.`
+          : "A levy charge was scheduled for another owner's unit.";
+      // The firm collected: it asked for payment, whether or not the
+      // wallet covered it (ADR-020). A LevyPaid follows if it did.
       case "ChargeIssued":
         return own
-          ? `Charge #${a.chargeId} ${name === "ChargeIssued" ? "issued" : "scheduled"} for your Unit ${a.unitId}: ${nzd(a.amount)}, due ${date(a.dueDate)}.`
-          : `A levy charge was ${name === "ChargeIssued" ? "issued" : "scheduled"} for another owner's unit.`;
+          ? `The firm asked for payment of Charge #${a.chargeId} for your Unit ${a.unitId}: ${nzd(a.amount)}, due ${date(a.dueDate)}.`
+          : "The firm asked for payment of a levy charge for another owner's unit.";
       case "LevyPaid":
         return own
           ? `Your Unit ${a.unitId}'s levy of ${nzd(a.amount)} was paid.`
@@ -378,13 +389,6 @@ export function buildView(
   const title = (p: View["proposals"][number]) =>
     p.kind === "Work" ? p.description : `Admit ${p.description}`;
   const actions: View["actions"] = {
-    charges: [...derived.charges]
-      .filter(([, c]) => !c.issued)
-      .map(([chargeId, c]) => ({
-        chargeId,
-        dueDate: c.dueDate,
-        due: now >= c.dueDate,
-      })),
     toQueue: proposals
       .filter((p) => p.state === "Passed")
       .map((p) => ({ id: p.id, title: title(p) })),
@@ -432,6 +436,14 @@ export function buildView(
     })),
     activity,
     actions,
+    toCollect: [...derived.charges]
+      .filter(([, c]) => !c.paid)
+      .map(([chargeId, c]) => ({
+        chargeId,
+        dueDate: c.dueDate,
+        due: now >= c.dueDate,
+        attempted: c.issued,
+      })),
     toConfirm: proposals
       .filter(
         (p) =>

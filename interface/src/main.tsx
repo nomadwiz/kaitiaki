@@ -25,8 +25,9 @@ import {
   ABI,
   approvedRefusal,
   carryOut,
+  collectLevies,
   confirmWork,
-  issue,
+  directDebit,
   payment,
   proposeVendor,
   proposeWork,
@@ -254,31 +255,36 @@ function Root() {
     setPaying(undefined);
   }
 
-  // One signature each, and any wallet may send them.
-  async function act(action: Act, id: bigint) {
-    const { governance, levyLedger } = env!.config.addresses;
-    setActing({ action, id });
-    await sendTx(
-      { issue, queue, execute: carryOut }[action](id),
-      (at) =>
-        action === "issue"
-          ? at(levyLedger).issueCharges([id])
-          : at(governance)[action](id),
+  // One signature: the token approves the levy ledger for every unpaid
+  // charge, so the firm's collection can take each as it falls due.
+  async function debit(total: bigint) {
+    setActing({ action: "debit", id: 0n });
+    await sendTx(directDebit(total), (at) =>
+      at(env!.config.token).approve(env!.config.addresses.levyLedger, total),
     );
     setActing(undefined);
   }
 
-  // The firm's writes, one signature each, on the lock `act` uses. `propose`
-  // is overloaded, so each is called by its signature.
+  // One signature each, and any wallet may send them.
+  async function act(action: Act, id: bigint) {
+    setActing({ action, id });
+    await sendTx({ queue, execute: carryOut }[action](id), (at) =>
+      at(env!.config.addresses.governance)[action](id),
+    );
+    setActing(undefined);
+  }
+
+  // The firm's writes, one signature each, on the lock `act` uses, to
+  // Governance unless `to` names the levy ledger. `propose` is overloaded,
+  // so each is called by its signature.
   async function firmSend(
     acting: Acting,
     action: Parameters<typeof send>[0],
-    call: (governance: Contract) => Promise<ContractTransactionResponse>,
+    call: (contract: Contract) => Promise<ContractTransactionResponse>,
+    to = env!.config.addresses.governance,
   ) {
     setActing(acting);
-    const sent = await sendTx(action, (at) =>
-      call(at(env!.config.addresses.governance)),
-    );
+    const sent = await sendTx(action, (at) => call(at(to)));
     const { action: form } = acting;
     if (sent && (form === "work" || form === "vendor")) {
       setFresh((f) => ({ ...f, [form]: f[form] + 1 }));
@@ -303,6 +309,7 @@ function Root() {
       onViewer={setChosen}
       onVote={(id, inFavour) => void vote(id, inFavour)}
       onPay={(unit, id, amount) => void pay(unit, id, amount)}
+      onDebit={(total) => void debit(total)}
       onAct={(action, id) => void act(action, id)}
       firm={env?.config.firm}
       fresh={fresh}
@@ -328,6 +335,13 @@ function Root() {
         onConfirm: (id, evidenceHash) =>
           void firmSend({ action: "confirm", id }, confirmWork(id), (g) =>
             g.attest(id, evidenceHash),
+          ),
+        onCollect: (ids) =>
+          void firmSend(
+            { action: "collect", id: 0n },
+            collectLevies(ids.length),
+            (ledger) => ledger.collect(ids),
+            env!.config.addresses.levyLedger,
           ),
       }}
     />

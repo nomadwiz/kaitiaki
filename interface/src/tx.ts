@@ -16,7 +16,6 @@ export const ABI = new Interface([
   "function approve(address spender, uint256 value) returns (bool)",
   "function payLevy(uint256 chargeId)",
   // Anyone's actions: each waits for its date, and any wallet may call it
-  "function issueCharges(uint256[] chargeIds)",
   "function queue(uint256 proposalId) returns (uint256 eta)",
   "function execute(uint256 proposalId)",
   // The firm's: propose work, propose a vendor (the overload, ADR-018), and
@@ -24,6 +23,8 @@ export const ABI = new Interface([
   "function propose(string description, uint256 limit, uint8 fund, address vendor, bytes32 quoteHash) returns (uint256 proposalId)",
   "function propose(address vendor, string name, string companyId) returns (uint256 proposalId)",
   "function attest(uint256 proposalId, bytes32 evidenceHash)",
+  // The firm collects due levies from owners' wallets (ADR-020)
+  "function collect(uint256[] chargeIds)",
   // Treasury, and the OpenZeppelin AccessControl it inherits
   "error AccessControlBadConfirmation()",
   "error AccessControlUnauthorizedAccount(address account, bytes32 neededRole)",
@@ -70,8 +71,8 @@ export const ABI = new Interface([
   "error NotAdapter(address caller)",
   "error UnitAlreadyBound(uint256 unitId, address boundTo)",
   "error WalletIsZero()",
-  // LevyLedger; TreasuryIsZero is Governance's too
-  "error ChargeAlreadyIssued(uint256 chargeId)",
+  // LevyLedger; TreasuryIsZero, MembershipRegistryIsZero, FirmIsZero and
+  // NotFirm are Governance's too
   "error ChargeAlreadyPaid(uint256 chargeId)",
   "error ChargeNotDue(uint256 chargeId, uint256 dueDate)",
   "error LevyTransferFailed(address payer, uint256 amount)",
@@ -112,9 +113,8 @@ const MESSAGES: Record<string, (args: bigint[]) => string> = {
   NotAttested: () => "Payment waits for the firm to confirm the work is done.",
   PayeeNotRegistered: () => "This vendor has not been approved by owners.",
   ChargeNotDue: ([, dueDate]) =>
-    `This charge cannot be issued before ${date(dueDate)}.`,
-  NotFirm: () =>
-    "Only the management firm’s wallet can propose or confirm work.",
+    `This charge cannot be collected before ${date(dueDate)}.`,
+  NotFirm: () => "Only the management firm’s wallet can do this.",
   AlreadyAttested: () => "The firm has already confirmed this work.",
   EvidenceHashIsZero: () => "Add the evidence hash before confirming.",
   NotPassed: () => "Only a proposal that passed can be queued.",
@@ -122,7 +122,6 @@ const MESSAGES: Record<string, (args: bigint[]) => string> = {
   NotQueued: () => "This proposal is not queued for payment.",
   AlreadyExecuted: () => "This proposal has already been carried out.",
   UnknownProposal: () => "There is no proposal with that number.",
-  ChargeAlreadyIssued: () => "This charge has already been issued.",
   ChargeAlreadyPaid: () => "This charge has already been paid.",
   // The cap is the fourth argument, `limit`, not the amount asked for.
   AmountExceedsLimit: ([, , , limit]) =>
@@ -149,12 +148,17 @@ export const payment = (unitId: bigint, chargeId: bigint, amount: bigint) => ({
   refused: "Your payment was not made",
 });
 
-// The same for Anyone's actions, which take one signature each.
-export const issue = (chargeId: bigint) => ({
-  signing: `issuing Charge #${chargeId}`,
-  done: { title: "Charge issued", body: `Charge #${chargeId} is issued.` },
-  refused: "The charge was not issued",
+// Setting up direct debit: one approval, for every unpaid charge (ADR-020).
+export const directDebit = (total: bigint) => ({
+  signing: `approving the levy ledger to collect up to ${nzd(total)} from this wallet`,
+  done: {
+    title: "Direct debit set up",
+    body: `The firm can now collect up to ${nzd(total)} of your levies as they fall due.`,
+  },
+  refused: "Direct debit was not set up",
 });
+
+// The same for Anyone's actions, which take one signature each.
 export const queue = (proposalId: bigint) => ({
   signing: `queueing Proposal #${proposalId}`,
   done: {
@@ -196,6 +200,14 @@ export const confirmWork = (proposalId: bigint) => ({
     body: `The work on Proposal #${proposalId} is confirmed as done.`,
   },
   refused: "The work was not confirmed",
+});
+export const collectLevies = (count: number) => ({
+  signing: `collecting ${count} due levy charge${count === 1 ? "" : "s"} from owners' wallets`,
+  done: {
+    title: "Levies collected",
+    body: `${count} due charge${count === 1 ? "" : "s"} collected. Any an owner's wallet did not cover ${count === 1 ? "is" : "are"} recorded as owed.`,
+  },
+  refused: "The levies were not collected",
 });
 
 /**
