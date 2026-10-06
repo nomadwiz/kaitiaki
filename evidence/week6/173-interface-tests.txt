@@ -1,0 +1,129 @@
+# npm run test:mocha
+
+> kaitiaki@0.1.0 test:mocha
+> hardhat test mocha
+
+No contracts to compile
+
+Running Mocha tests
+
+
+  check-config-secrets
+    ✔ passes a clean tree (77ms)
+    ✔ fails on a tracked file holding a private-key-shaped value (79ms)
+    ✔ fails on a tracked .env (65ms)
+    ✔ fails when a line of .env.example has a value (82ms)
+    ✔ passes a committed Ignition journal, whose transaction hashes are key-shaped (69ms)
+    ✔ fails closed outside a git repository
+
+  Read interface (#72, #149)
+    ✔ NFR10: for a unit other than the viewer's own, renders exactly one of {current, in arrears} and no digit (806ms)
+    ✔ FR13: Register lists the approved vendor by name, shortened address and company identifier, and a Work card names it (41ms)
+    ✔ shows the viewer's own arrears, and stops surfacing a resolved arrear (R4) (70ms)
+    ✔ shows fund balances and proposals in the state Governance gives them (90ms)
+    ✔ FR40: Home's queued-to-pay figure is the sum of the Queued limits on that fund, from events (50ms)
+    ✔ lists what needs the viewer's vote, each with the date voting closes (48ms)
+    ✔ shows the viewer's own units and the Guarantees line on Home
+    ✔ offers a vote only to a unit that has not voted, and only while voting is open (54ms)
+    ✔ Home leaves Your levies out when the viewer holds no unit
+    ✔ FR40: a queued long-term maintenance proposal is on that fund's card and not Operating's (39ms)
+    ✔ puts every route inside the shell with one current link, and keeps the privacy line on Register (78ms)
+    ✔ FR41: holds no key, and its ABI has no view or pure function
+    ✔ shows the signing Dialog, the success Toast and a RefusalNotice in the design system's markup
+    ✔ names a wallet on another chain and offers it nothing; asks an unconnected wallet to connect; tells a wallet with no unit (80ms)
+    ✔ shows the loading state until the log is read, and only the notice if reading fails
+    ✔ points the Menu button at the Sheet only while the Sheet exists
+    ✔ formats money exactly, truncated to the cent, and dates in New Zealand time
+    Your units (#153)
+      ✔ lists every unpaid charge of the viewer's units, collected or not yet, and no one else's
+      ✔ pays a scheduled charge before it is issued, and an overdue one, approve then payLevy (43ms)
+      ✔ offers Pay on Your units and not on Home, which shares the unit card (38ms)
+      ✔ disables every other Pay while one payment is in progress
+      ✔ says two signatures are needed in the signing Dialog
+    Anyone's actions (#156)
+      ✔ ADR-020: lists no levy charge, because collecting is the firm's
+      ✔ says an open proposal can be queued if it passes, with the day voting closes
+      ✔ offers Queue to a Passed proposal, and queue succeeds (39ms)
+      ✔ offers Carry out to a queued Admit proposal only once its wait has ended (50ms)
+      ✔ offers Carry out to a queued Work proposal only after its wait and the firm's confirmation (55ms)
+      ✔ offers no button to a wallet on the wrong chain, and shows the wait on the action being signed
+    Firm workspace (#157)
+      ✔ FR16, FR17: enables the forms for the firm's wallet only, and states the firm's limits to everyone (65ms)
+      ✔ lists only admitted vendors, by name, in the vendor select
+      ✔ ADR-020: lists every unpaid charge without its unit or amount, and offers Collect for the due ones
+      ✔ ADR-020: collect through tx.ts's ABI takes a direct-debited levy and leaves an uncovered one owed (48ms)
+      ✔ ADR-020: Set up direct debit approves the levy ledger for the owner's unpaid total (44ms)
+      ✔ FR17: proposes work and a vendor through tx.ts's ABI, and both appear in the replayed View
+      ✔ NotFirm and VendorNameIsEmpty show their RefusalNotice messages
+      ✔ FR25: Confirm is aria-disabled with its date until the wait ends, then enabled, and attest succeeds (66ms)
+      ✔ lists only queued Work proposals the firm has not confirmed, and no Admit proposal (48ms)
+      ✔ catches a malformed hash, address or cap before anything is sent, and leaves emptiness to the contract
+    Proposal screen (#152)
+      ✔ meters both quorum conditions as Governance.quorumReached does, at every state (148ms)
+      ✔ draws the timeline from stateAt and block times, and waives quorum in the extension (51ms)
+      ✔ follows a proposal through queueing, confirmation and payment, and a failure (74ms)
+      ✔ shows the tally in units, the rule that a tie fails, and both quorum bars
+      ✔ the vote control names the viewer's units that have not voted (50ms)
+      ✔ says plainly that a proposal does not exist
+    Activity (#155)
+      ✔ lists every event newest first, each as its plain sentence, and names the viewer's own levy events (39ms)
+      ✔ NFR10: a levy event for another owner's unit names no unit, amount or charge, and with no viewer every levy event is anonymous (68ms)
+      ✔ names a payee not yet admitted by its shortened address, never a guessed name
+      ✔ shows a plain line for an empty log
+
+  Transactions (#150)
+    ✔ knows every custom error of the six contracts and MockNZD
+    ✔ decodes each named error to its RefusalNotice message
+    ✔ names an error it has no message for, and never guesses a reason
+    ✔ never throws on revert data it cannot decode
+    ✔ tells the truth when a payment is refused after its approval was mined
+    ✔ has its own sentence for a wallet rejection
+    ✔ decodes a real refusal: a wallet with no unit votes
+    send
+      ✔ shows the Dialog only while the wallet signs, then the Toast, then reads the log again
+      ✔ resolves true only when the transaction was mined, which is when a form is emptied
+      ✔ closes the Dialog and shows a RefusalNotice when the contract refuses
+      ✔ opens no Dialog when the local node signs, because no wallet asks anything
+    real refusals on the seeded building (#156)
+      ✔ NotReady: carrying out, or the firm confirming, before the wait ends names the date
+      ✔ ChargeNotDue: the firm collecting a charge before its due date names the date
+      ✔ NotFirm: an owner collecting a due levy is refused in plain words
+
+  QAS-4 replay
+    ✔ derives fund balances, role holders, tallies, quorum, proposal states, eligibility, payees, queueing, attestation and arrears from events alone (55ms)
+    ✔ refuses a VoteCast naming a unit no UnitBound gave the voter
+    ✔ refuses a unit counted twice on one proposal
+    ✔ refuses a VoteCast whose weight is not its number of units
+    ✔ refuses a VoteCast on a proposal no ProposalCreated made
+    ✔ refuses a payee admitted twice
+    ✔ refuses a release to a payee no PayeeAdmitted admitted
+    ✔ refuses a release on an admission proposal
+    ✔ refuses a charge paid for a unit other than the one it was scheduled for
+    ✔ refuses a charge issued for a different amount than it was scheduled for
+    ✔ refuses a charge issued for a different due date than it was scheduled for
+    ✔ refuses a charge issued that was never scheduled
+    ✔ refuses a charge paid that was never scheduled
+    ✔ refuses a charge scheduled twice
+    ✔ refuses a charge issued twice
+    ✔ refuses a charge paid twice
+    ✔ refuses a ProposalQueued on a proposal no ProposalCreated made
+    ✔ refuses a proposal queued twice
+    ✔ refuses a WorkAttested on an admission proposal
+    ✔ refuses a WorkAttested on a proposal never queued
+    ✔ refuses a proposal attested twice
+    ✔ refuses a PayeeAdmitted on a proposal never queued
+    ✔ refuses a PayeeAdmitted before its proposal's eta
+    ✔ refuses a PaymentReleased on a proposal never queued
+    ✔ refuses a PaymentReleased before its proposal's eta
+    ✔ refuses a log from a replayed address with no known event
+    ✔ derives quorum's unit half, rounded up, from principal units
+    ✔ keeps a proposal Extended after a vote in the extension
+
+  toolchain
+    ✔ connects to the in-process simulated network
+    ✔ gives tests funded signers
+
+
+  98 passing (3s)
+
+
