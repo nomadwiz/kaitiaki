@@ -8,12 +8,12 @@
 import { isAddress, isHexString, parseUnits } from "ethers";
 import { useState, type FormEvent, type ReactNode } from "react";
 
+import { FUND_NAMES } from "../components/kaitiaki.js";
 import { date, nzd } from "../format.js";
 import { PageHead } from "../shell.js";
 import { Waiting } from "../states.js";
 import type { View } from "../view.js";
 import type { Acting } from "./actions.js";
-import { FUNDS } from "./proposals.js";
 
 export type Work = {
   description: string;
@@ -222,7 +222,7 @@ function ProposeWork({
                 name="fund"
                 disabled={!act}
               >
-                {FUNDS.map(([, name], i) => (
+                {FUND_NAMES.map((name, i) => (
                   <option key={name} value={i}>
                     {name}
                   </option>
@@ -290,7 +290,6 @@ function ConfirmWork({
 }) {
   const [hints, setHints] = useState<Hints>({});
   const id = `a-hash-${work.id}`;
-  const fund = FUNDS[Number(work.fund)];
   return (
     <form
       className="stack"
@@ -315,8 +314,8 @@ function ConfirmWork({
       </div>
       <p className="body-sm">
         Up to {nzd(work.limit)} from{" "}
-        <span className="fund-tag" data-fund={fund[0]}>
-          {fund[1]}
+        <span className="fund-tag" data-fund={work.fund === 0n ? "op" : "ltm"}>
+          {FUND_NAMES[Number(work.fund)]}
         </span>{" "}
         to {work.vendor}.
       </p>

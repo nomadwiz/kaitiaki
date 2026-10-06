@@ -145,6 +145,8 @@ export type View = {
     // What the admitting proposal carried for `payee`, if one did.
     vendor?: { name: string; companyId: string };
     description: string;
+    // The company identifier an Admit proposal carries; empty for Work.
+    companyId: string;
     quoteHash: string;
     limit: bigint;
     fund: bigint;
@@ -249,6 +251,7 @@ export function buildView(
     fund: bigint;
     description: string;
     quoteHash: string;
+    companyId: string;
   };
   const created: Created[] = [];
   const votedUnits = new Map<bigint, Set<bigint>>();
@@ -364,6 +367,7 @@ export function buildView(
       payee: p.payee,
       vendor: derived.payeeDetails.get(p.payee),
       description: p.description,
+      companyId: p.companyId,
       quoteHash: p.quoteHash,
       limit: p.limit,
       fund: p.fund,

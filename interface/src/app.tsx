@@ -95,8 +95,9 @@ export function workspaceOf(
   return ownUnits.length ? "owner" : "no-unit";
 }
 
-const proposals = (c: Context) => (
+const proposals = (workspace: Workspace) => (c: Context) => (
   <Proposals
+    workspace={workspace}
     proposals={c.view.proposals}
     actions={c.view.actions}
     onAct={c.canAct ? c.onAct : undefined}
@@ -126,7 +127,7 @@ const SCREENS: Record<Workspace, Record<string, (c: Context) => ReactNode>> = {
         ownUnits={c.view.ownUnits}
       />
     ),
-    "#/proposals": proposals,
+    "#/proposals": proposals("owner"),
     "#/units": (c) => (
       <YourUnits
         units={c.view.ownUnits}
@@ -143,7 +144,7 @@ const SCREENS: Record<Workspace, Record<string, (c: Context) => ReactNode>> = {
   },
   firm: {
     "#/": firm,
-    "#/proposals": proposals,
+    "#/proposals": proposals("firm"),
     "#/propose": firm,
     "#/collect": firm,
     "#/vendors": firm,
