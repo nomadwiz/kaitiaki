@@ -79,8 +79,8 @@ npm run interface             # terminal 3: then open the URL it prints
 
 - **As an owner.** Without a browser wallet, "Viewing as" lists the wallets bound to units. `?as=<wallet>` in the URL adds and selects any other address.
 - **As the firm.** Use `?as=<firm>`, with `firm` taken from `interface/public/deployment.json`.
-- **Signing.** Every action is signed by the viewer's wallet: a browser wallet shows its signing dialog, and the unlocked local account signs with no dialog.
-- **Time.** The local node's clock moves only when `npm run demo:loop` moves it. It carries proposal 2 through the rest of the loop, and `UNTIL` stops it part-way so each stage can be seen: `UNTIL=passed` (the voting window has closed), `UNTIL=ready` (queued, delay passed), `UNTIL=attested` (the firm has attested), and with no `UNTIL` it runs to executed. Each run does only the steps still to do. Reload the interface after each.
+- **Signing.** Every action is signed by the viewer's wallet: a browser wallet shows its signing dialog, and the unlocked local account signs with no dialog ([`interface.md` §3](https://github.com/nomadwiz/kaitiki-doc/blob/master/doc/design/interface.md)).
+- **Time.** The local node's clock moves only when a script moves it: `npm run demo` while seeding, then `npm run demo:loop`, which carries proposal 2 through the rest of the loop, and `UNTIL` stops it part-way so each stage can be seen: `UNTIL=passed` (the voting window has closed), `UNTIL=ready` (queued, delay passed), `UNTIL=attested` (the firm has attested), and with no `UNTIL` it runs to executed. Each run does only the steps still to do. Reload the interface after each.
 
 The screenshots under `evidence/week6/` are captured with [`scripts/screenshot.mjs`](scripts/screenshot.mjs); `evidence/README.md` has the sequence.
 
