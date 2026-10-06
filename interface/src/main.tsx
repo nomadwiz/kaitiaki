@@ -20,7 +20,7 @@ import { replay } from "../../scripts/replay.js";
 import { App, type Wallet } from "./app.js";
 import { unitsLabel } from "./format.js";
 import type { Done, Notice } from "./states.js";
-import { ABI, send } from "./tx.js";
+import { ABI, refusal, send } from "./tx.js";
 import { buildView } from "./view.js";
 
 // Written by scripts/demo.ts. `token`, `timelock` and `firm` are there too,
@@ -79,9 +79,6 @@ function subscribe(callback: () => void) {
   return () => window.removeEventListener("hashchange", callback);
 }
 
-const message = (error: unknown) =>
-  (error as { shortMessage?: string }).shortMessage ?? String(error);
-
 function Root() {
   const hash = useSyncExternalStore(subscribe, () => location.hash);
   const [env, setEnv] = useState<Env>();
@@ -99,7 +96,11 @@ function Root() {
 
   const fail = (title: string, error: unknown) => {
     setFailed(true);
-    setNotice({ variant: "destructive", title, description: message(error) });
+    setNotice({
+      variant: "destructive",
+      title,
+      description: refusal(error).message,
+    });
   };
 
   async function load({ config, reader }: Env) {
@@ -161,7 +162,7 @@ function Root() {
       setNotice({
         variant: "destructive",
         title: "The wallet did not connect.",
-        description: message(error),
+        description: refusal(error).message,
       });
     }
   }
