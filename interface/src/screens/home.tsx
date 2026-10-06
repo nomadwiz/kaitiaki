@@ -54,7 +54,14 @@ function Guarantees() {
 }
 
 // What a proposal buys, from where, and from whom.
-export function ProposalMeta({ proposal: p }: { proposal: Proposal }) {
+export function ProposalMeta({
+  proposal: p,
+  withQuote,
+}: {
+  proposal: Proposal;
+  // The Proposal screen adds the hash of the quote.
+  withQuote?: boolean;
+}) {
   const work = p.kind === "Work";
   return (
     <dl className="meta">
@@ -78,6 +85,14 @@ export function ProposalMeta({ proposal: p }: { proposal: Proposal }) {
               <Address value={p.payee} />
             </dd>
           </div>
+          {withQuote && (
+            <div>
+              <dt>Quote hash</dt>
+              <dd>
+                <Address value={p.quoteHash} label="Copy quote hash" />
+              </dd>
+            </div>
+          )}
         </>
       ) : (
         <>
@@ -207,59 +222,58 @@ export function Home({
             </div>
           )}
         </section>
-        <section aria-labelledby="h-units">
-          <div className="section-head">
-            <h2 id="h-units">Your levies</h2>
-            <a href="#/units">Your units</a>
-          </div>
-          {ownUnits.length === 0 && (
-            <p className="muted-text">
-              Connect a wallet that holds a unit to see your levies.
-            </p>
-          )}
-          {ownUnits.length > 0 && (
-            <div className="card">
-              <div
-                className="card-content stack"
-                style={{ paddingTop: "var(--space-6)" }}
-              >
-                {ownUnits.map((u, i) => (
-                  <Fragment key={String(u.unitId)}>
-                    {i > 0 && <hr className="separator" />}
-                    <div className="own-unit">
-                      <div className="row">
-                        <h3 className="card-title">Unit {String(u.unitId)}</h3>
-                        <span
-                          className="status"
-                          data-tone={u.status === "current" ? "ok" : "late"}
-                        >
-                          {u.status}
-                        </span>
-                      </div>
-                      {u.overdue.length === 0 && (
-                        <p className="muted-text">No overdue charges.</p>
-                      )}
-                      {u.overdue.map((c) => (
-                        <div key={String(c.chargeId)} className="charge">
-                          <div>
-                            <p className="charge-amount">{nzd(c.amount)}</p>
-                            <p
-                              className="field-hint"
-                              style={{ color: "var(--foreground)" }}
-                            >
-                              Charge #{String(c.chargeId)} · was due{" "}
-                              {date(c.dueDate)}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </Fragment>
-                ))}
-              </div>
+        {ownUnits.length > 0 && (
+          <section aria-labelledby="h-units">
+            <div className="section-head">
+              <h2 id="h-units">Your levies</h2>
+              <a href="#/units">Your units</a>
             </div>
-          )}
-        </section>
+            {
+              <div className="card">
+                <div
+                  className="card-content stack"
+                  style={{ paddingTop: "var(--space-6)" }}
+                >
+                  {ownUnits.map((u, i) => (
+                    <Fragment key={String(u.unitId)}>
+                      {i > 0 && <hr className="separator" />}
+                      <div className="own-unit">
+                        <div className="row">
+                          <h3 className="card-title">
+                            Unit {String(u.unitId)}
+                          </h3>
+                          <span
+                            className="status"
+                            data-tone={u.status === "current" ? "ok" : "late"}
+                          >
+                            {u.status}
+                          </span>
+                        </div>
+                        {u.overdue.length === 0 && (
+                          <p className="muted-text">No overdue charges.</p>
+                        )}
+                        {u.overdue.map((c) => (
+                          <div key={String(c.chargeId)} className="charge">
+                            <div>
+                              <p className="charge-amount">{nzd(c.amount)}</p>
+                              <p
+                                className="field-hint"
+                                style={{ color: "var(--foreground)" }}
+                              >
+                                Charge #{String(c.chargeId)} · was due{" "}
+                                {date(c.dueDate)}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </Fragment>
+                  ))}
+                </div>
+              </div>
+            }
+          </section>
+        )}
       </div>
       <section aria-labelledby="h-all">
         <div className="section-head">

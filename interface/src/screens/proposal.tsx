@@ -17,7 +17,7 @@ function Timeline({ steps }: { steps: ProposalView["steps"] }) {
           <span className="t-name">{s.name}</span>
           {s.date !== undefined && (
             <span className="t-date">
-              {s.closing ? (s.step === "current" ? "Closes " : "Closed ") : ""}
+              {s.dateLabel && `${s.dateLabel} `}
               {date(s.date)}
             </span>
           )}
@@ -245,7 +245,7 @@ export function Proposal({
             <p className="card-description">{p.description}</p>
           </div>
           <div className="card-content">
-            <ProposalMeta proposal={p} />
+            <ProposalMeta proposal={p} withQuote />
           </div>
         </section>
         <section className="card" aria-labelledby="h-v">

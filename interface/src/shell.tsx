@@ -14,14 +14,21 @@ export const NAV = [
   ["#/firm", "Firm"],
 ];
 
-export function Address({ value }: { value: string }) {
+// A value shortened to its ends, with a button that copies all of it.
+export function Address({
+  value,
+  label = "Copy address",
+}: {
+  value: string;
+  label?: string;
+}) {
   return (
     <span className="addr">
       {`${value.slice(0, 6)}…${value.slice(-4)}`}
       <button
         className="btn"
         type="button"
-        aria-label="Copy address"
+        aria-label={label}
         // A refused clipboard leaves the address on screen; nothing is lost.
         onClick={() => navigator.clipboard?.writeText(value).catch(() => {})}
       >

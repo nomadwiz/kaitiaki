@@ -45,7 +45,7 @@ function stepsOf(
     Passed: 3,
     Failed: 3,
     Queued: !ready ? 4 : work && !derived.attested.has(id) ? 5 : 6,
-    Executed: 6,
+    Executed: 7,
   }[state];
   const status = (i: number): Step["step"] =>
     i < at
@@ -61,7 +61,7 @@ function stepsOf(
       name: "Open",
       step: status(1),
       date: windowEnd,
-      closing: true,
+      dateLabel: status(1) === "current" ? "Closes" : "Closed",
       note: "14-day vote",
     },
     waived
@@ -69,7 +69,7 @@ function stepsOf(
           name: "Extended",
           step: status(2),
           date: extensionEnd,
-          closing: true,
+          dateLabel: status(2) === "current" ? "Closes" : "Closed",
           note:
             state === "Extended"
               ? "Quorum waived. One owner's vote can decide."
@@ -95,19 +95,25 @@ function stepsOf(
       name: "Queued",
       step: status(4),
       date: eta,
+      dateLabel: "Wait ends",
       note: "Fixed 7-day wait",
     },
   ];
   if (work) {
+    const attestation = derived.attested.get(id);
     steps.push({
       name: "Firm confirms work",
       step: status(5),
+      // From the wait's end, until the firm has confirmed.
+      date: attestation?.time ?? eta,
+      dateLabel: attestation ? "Confirmed" : "From",
       note: "With an evidence hash",
     });
   }
   steps.push({
     name: "Executed",
     step: status(6),
+    date: derived.executedAt.get(id),
     note: work ? "Vendor paid" : "Vendor admitted",
   });
   return steps;
@@ -115,13 +121,13 @@ function stepsOf(
 
 export type Status = "current" | "in arrears";
 
-// One step of a proposal's lifecycle (LifecycleTimeline). A date that is a
-// vote's end is `closing`.
+// One step of a proposal's lifecycle (LifecycleTimeline). `dateLabel` leads
+// the date: "Closes", "Wait ends" and the like.
 export type Step = {
   name: string;
   step: "done" | "current" | "todo" | "skipped";
   date?: bigint;
-  closing?: boolean;
+  dateLabel?: string;
   note: string;
 };
 
@@ -135,6 +141,7 @@ export type View = {
     kind: "Admit" | "Work";
     payee: string;
     description: string;
+    quoteHash: string;
     limit: bigint;
     fund: bigint;
     state: ProposalState;
@@ -179,6 +186,7 @@ export function buildView(
     limit: bigint;
     fund: bigint;
     description: string;
+    quoteHash: string;
   };
   const created: Created[] = [];
   const votedUnits = new Map<bigint, Set<bigint>>();
@@ -230,6 +238,7 @@ export function buildView(
       kind: p.kind === WORK ? "Work" : "Admit",
       payee: p.payee,
       description: p.description,
+      quoteHash: p.quoteHash,
       limit: p.limit,
       fund: p.fund,
       state,

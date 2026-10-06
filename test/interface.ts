@@ -295,12 +295,10 @@ describe("Read interface (#72, #149)", () => {
     );
   });
 
-  it("Home's Your levies says so when the viewer holds no unit", async () => {
+  it("Home leaves Your levies out when the viewer holds no unit", async () => {
     const { signers, render } = await setUp();
     const { html } = await render(signers.stranger.address);
-    expect(html).to.contain(
-      '<h2 id="h-units">Your levies</h2><a href="#/units">Your units</a></div><p class="muted-text">Connect a wallet that holds a unit to see your levies.</p>',
-    );
+    expect(html).to.not.contain("Your levies");
   });
 
   it("FR40: a queued long-term maintenance proposal is on that fund's card and not Operating's", async () => {
@@ -508,9 +506,14 @@ describe("Read interface (#72, #149)", () => {
       await governance.connect(signers.bob).castVote(2, true);
       await governance.connect(signers.carol).castVote(2, false);
       await advance(ethers, await governance.VOTING_PERIOD());
-      await governance.connect(signers.stranger).queue(2);
+      const queued = await governance.connect(signers.stranger).queue(2);
+      // The wait ends a fixed delay after the block that queued it.
+      const eta =
+        (await block(ethers, (await queued.wait())!.blockNumber)) +
+        (await governance.TIMELOCK_DELAY());
       let { html } = await render(signers.carol.address, "#/proposal/2");
       const steps = () => timeline(html).map(([s, n]) => `${s} ${n}`);
+      const dates = () => timeline(html).map(([, , when]) => when);
       expect(steps()).to.deep.equal([
         "done Proposed",
         "done Open",
@@ -520,24 +523,52 @@ describe("Read interface (#72, #149)", () => {
         "todo Firm confirms work",
         "todo Executed",
       ]);
+      expect(dates().slice(3)).to.deep.equal([
+        date(eta - (await governance.TIMELOCK_DELAY())),
+        `Wait ends ${date(eta)}`,
+        `From ${date(eta)}`,
+        undefined,
+      ]);
       expect(html).to.contain("Not needed: quorum was met");
       await advance(ethers, await governance.TIMELOCK_DELAY());
       ({ html } = await render(signers.carol.address, "#/proposal/2"));
       expect(steps()[4]).to.equal("done Queued");
       expect(steps()[5]).to.equal("current Firm confirms work");
-      await governance
+      const attested = await governance
         .connect(signers.firm)
         .attest(2, zeroPadValue("0x05", 32));
+      const attestedAt = await block(
+        ethers,
+        (await attested.wait())!.blockNumber,
+      );
       ({ html } = await render(signers.carol.address, "#/proposal/2"));
       expect(steps().slice(-2)).to.deep.equal([
         "done Firm confirms work",
         "current Executed",
       ]);
+      expect(dates()[5]).to.equal(`Confirmed ${date(attestedAt)}`);
+      // Executed: nothing is pending, so every reached step is done.
+      const executed = await governance.connect(signers.stranger).execute(2);
+      const executedAt = await block(
+        ethers,
+        (await executed.wait())!.blockNumber,
+      );
+      ({ html } = await render(signers.carol.address, "#/proposal/2"));
+      expect(steps()).to.deep.equal([
+        "done Proposed",
+        "done Open",
+        "skipped Extended",
+        "done Passed",
+        "done Queued",
+        "done Firm confirms work",
+        "done Executed",
+      ]);
+      expect(dates()[6]).to.equal(date(executedAt));
 
       // Proposal 1 admitted a vendor: no firm step. Proposal 3 fails.
       ({ html } = await render(signers.carol.address, "#/proposal/1"));
       expect(steps()).to.not.include("done Firm confirms work");
-      expect(steps().at(-1)).to.equal("current Executed");
+      expect(steps().at(-1)).to.equal("done Executed");
       await governance
         .connect(signers.firm)
         .getFunction("propose(string,uint256,uint8,address,bytes32)")(
@@ -579,6 +610,12 @@ describe("Read interface (#72, #149)", () => {
         '<div class="tally-side"><span>Against</span><b>0</b><span>units</span></div>',
       );
       expect(html).to.contain("A tie fails.");
+      // The quote's hash is shortened like an address, with its own Copy.
+      expect(html).to.contain("<dt>Quote hash</dt>");
+      expect(html).to.contain('aria-label="Copy quote hash"');
+      expect(html).to.contain(
+        `${p.quoteHash.slice(0, 6)}…${p.quoteHash.slice(-4)}`,
+      );
       // One unit is a quarter of four; one wallet is not two.
       expect(html).to.contain("<b>2 of 1</b> units");
       expect(html).to.contain("<b>1 of 2</b> owners");

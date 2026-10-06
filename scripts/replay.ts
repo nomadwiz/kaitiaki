@@ -95,8 +95,10 @@ export async function replay(
   const queued = new Map<bigint, bigint>();
   const attested = new Map<
     bigint,
-    { attester: string; evidenceHash: string }
+    { attester: string; evidenceHash: string; time: bigint }
   >();
+  // Proposal to the block time its effect (payment or admission) landed.
+  const executedAt = new Map<bigint, bigint>();
   // ponytail: roles are Treasury's alone; key them by contract address once a
   // second replayed contract uses AccessControl.
   const roles = new Map<string, Set<string>>();
@@ -164,6 +166,7 @@ export async function replay(
         );
       }
       payees.set(a.payee, a.proposalId);
+      executedAt.set(a.proposalId, time);
     }
     if (event.name === "ProposalQueued") {
       // Governance.queue refuses an unknown proposal (UnknownProposal) and
@@ -192,6 +195,7 @@ export async function replay(
       attested.set(a.proposalId, {
         attester: a.attester,
         evidenceHash: a.evidenceHash,
+        time,
       });
     }
     if (event.name === "UnitBound") owners.set(a.unitId, a.wallet);
@@ -250,6 +254,7 @@ export async function replay(
       }
       if (a.fund === OPERATING) funds.operating -= a.amount;
       else funds.maintenance -= a.amount;
+      executedAt.set(a.proposalId, time);
       releasedByProposal.set(
         a.proposalId,
         (releasedByProposal.get(a.proposalId) ?? 0n) + a.amount,
@@ -324,6 +329,7 @@ export async function replay(
     payees,
     queued,
     attested,
+    executedAt,
     roles,
     charges,
     transitions,
