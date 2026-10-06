@@ -79,7 +79,14 @@ const treasury = await ethers.deployContract(
 );
 const ledger = await ethers.deployContract(
   "LevyLedger",
-  [treasury.target, unitIds, unitIds.map(() => LEVY), unitIds.map(() => due)],
+  [
+    treasury.target,
+    members.target,
+    firm.address,
+    unitIds,
+    unitIds.map(() => LEVY),
+    unitIds.map(() => due),
+  ],
   deployer,
 );
 const governance = await ethers.deployContract(
@@ -112,33 +119,27 @@ for (const owner of owners) {
 
 // --- One levy cycle ---------------------------------------------------------
 
-await advance(ethers, DAY);
-await measure(
-  "levy",
-  "issueCharges (all 40 charges, one batch)",
-  "stranger",
-  "anyone",
-  call(ledger, stranger, "issueCharges(uint256[])")(unitIds.map((u) => u - 1n)),
-);
+// Each owner sets up direct debit by approving the ledger for their units'
+// levies; then the firm collects all 40 charges in one call, which takes each
+// levy from its owner's wallet (ADR-020).
 for (const owner of owners) {
   const units = owner.last - owner.first + 1;
   await measure(
     "levy",
-    "approve (the ledger, once per cycle)",
+    "approve (the ledger: direct debit)",
     owner.name,
     "owner",
     call(token, owner.signer, "approve(address,uint256)")(ledger.target, BigInt(units) * LEVY),
   );
-  for (let unit = owner.first; unit <= owner.last; ++unit) {
-    await measure(
-      "levy",
-      "payLevy (one charge, one unit)",
-      owner.name,
-      "owner",
-      call(ledger, owner.signer, "payLevy(uint256)")(BigInt(unit - 1)),
-    );
-  }
 }
+await advance(ethers, DAY);
+await measure(
+  "levy",
+  "collect (all 40 charges, one batch)",
+  "firm",
+  "firm",
+  call(ledger, firm, "collect(uint256[])")(unitIds.map((u) => u - 1n)),
+);
 
 // --- One full loop: admit a vendor, then pay it for approved work ------------
 
@@ -270,15 +271,15 @@ const ownerRows = owners.map((o) => {
 });
 console.log(table(["Owner", "Units", "Gas, levy cycle", "Gas per unit"], ownerRows));
 
-const issue = sum(levy.filter((s) => s.role === "anyone"));
+const collect = sum(levy.filter((s) => s.role === "firm"));
 const levyTotal = sum(levy);
 console.log("\n## One levy cycle, the whole building\n");
 console.log(
   table(
     ["Measure", "Gas"],
     [
-      ["Issuing the charges (anyone, once)", fmt(issue)],
-      ["All owners' approvals and payments", fmt(levyTotal - issue)],
+      ["Collecting the charges (the firm, once)", fmt(collect)],
+      ["All owners' approvals", fmt(levyTotal - collect)],
       ["Total for the building", fmt(levyTotal)],
       [`Per unit (÷ ${UNITS})`, fmt(levyTotal / BigInt(UNITS))],
       [`Per owner (÷ ${owners.length})`, fmt(levyTotal / BigInt(owners.length))],

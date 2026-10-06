@@ -70,12 +70,14 @@ describe("QAS-4 replay", () => {
     ]);
     expect(treasury.target).to.equal(treasuryAddress);
     // Three charges due at `due`: unit 1's is paid early, unit 3's late, and
-    // unit 4's never. A fourth, unit 2's, is due long after and never issued
-    // or paid. 333 does not split evenly, so rounding is exercised.
+    // unit 4's never. A fourth, unit 2's, is due long after and never
+    // collected or paid. 333 does not split evenly, so rounding is exercised.
     const due =
       BigInt((await ethers.provider.getBlock("latest"))!.timestamp) + 1_000n;
     const ledger = await ethers.deployContract("LevyLedger", [
       treasury.target,
+      registry.target,
+      firm.address,
       [1n, 3n, 4n, 2n],
       [1_000n, 333n, 50n, 70n],
       [due, due, due, due + 1_000_000n],
@@ -102,16 +104,19 @@ describe("QAS-4 replay", () => {
     await registry.connect(adapter).bindUnit(3, bob.address);
     await registry.connect(adapter).bindUnit(4, carol.address);
 
-    // Two levy receipts. Alice pays before the charge is issued (ADR-016);
-    // then anyone issues all three once due, and bob pays after.
+    // Two levy receipts. Alice pays by hand before the due date (ADR-016),
+    // so the firm has nothing of hers to collect. Once due, the firm collects
+    // the other two (ADR-020): nobody has approved the ledger, so both are
+    // issued and nothing is taken. Bob then approves, and the firm collects
+    // his again, late.
     await token.mint(alice.address, 1_000n);
     await token.mint(bob.address, 333n);
     await token.connect(alice).approve(ledger.target, 1_000n);
-    await token.connect(bob).approve(ledger.target, 333n);
     await ledger.connect(alice).payLevy(0);
     await ethers.provider.send("evm_setNextBlockTimestamp", [Number(due) + 1]);
-    await ledger.connect(stranger).issueCharges([0, 1, 2]);
-    await ledger.connect(bob).payLevy(1);
+    await ledger.connect(firm).collect([1, 2]);
+    await token.connect(bob).approve(ledger.target, 333n);
+    await ledger.connect(firm).collect([1]);
 
     // A direct token transfer: Treasury holds it, but no fund is credited.
     await token.mint(stranger.address, 500n);
@@ -293,7 +298,8 @@ describe("QAS-4 replay", () => {
 
     // FR39, FR40: each charge's record, from ChargeScheduled, ChargeIssued and
     // LevyPaid alone, matches the contract's storage: scheduled only (3),
-    // paid before issue (0), issued then paid (1), issued and overdue (2).
+    // paid by hand and never collected (0), collected late (1), collection
+    // failed and overdue (2).
     expect(derived.charges.size).to.equal(4);
     for (let i = 0n; i < 4n; i++) {
       const [unitId, amount, dueDate, issued, paid] = await ledger.charges(i);
@@ -308,7 +314,7 @@ describe("QAS-4 replay", () => {
     expect(
       [...derived.charges.values()].map((c) => [c.issued, c.paid]),
     ).to.deep.equal([
-      [true, true],
+      [false, true],
       [true, true],
       [true, false],
       [false, false],
@@ -326,7 +332,8 @@ describe("QAS-4 replay", () => {
 
     // Treasury's four role events at construction, the four charges
     // scheduled at the ledger's, then four bindings, an
-    // early payment, three charges issued, a late payment, the admission
+    // early payment, two charges collected without payment, a late
+    // collection, the admission
     // proposal with two votes, queued and executed, four work proposals, a
     // fifth binding, six votes, proposal 2 queued, attested and paid, then
     // proposal 3 queued.
@@ -339,7 +346,7 @@ describe("QAS-4 replay", () => {
       ...Array(4).fill("UnitBound"),
       "Deposited",
       "LevyPaid",
-      ...Array(3).fill("ChargeIssued"),
+      ...Array(2).fill("ChargeIssued"),
       "Deposited",
       "LevyPaid",
       "ProposalCreated",

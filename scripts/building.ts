@@ -7,11 +7,14 @@
 //
 // The state it leaves, chosen so each thing the interface shows has a case:
 //   units 1 and 2 are alice's, 3 bob's, 4 carol's
-//   unit 1's charge was paid before it was issued — current
-//   unit 2's is unpaid and overdue — alice's own arrear
-//   unit 3's was paid late — a resolved arrear, which must not surface
-//   unit 4's is unpaid and overdue — another unit in arrears
-//   unit 1's second (charge 4) is scheduled for 30 days on, not yet issued
+//   unit 1's charge was paid by hand before it was due — current
+//   unit 2's: the firm's collection failed, alice had approved nothing more —
+//     unpaid and overdue, alice's own arrear
+//   unit 3's: the first collection failed, bob then set up direct debit and
+//     the firm collected it again, late — a resolved arrear, which must not
+//     surface
+//   unit 4's: the collection failed — another unit in arrears
+//   unit 1's second (charge 4) is scheduled for 30 days on, not yet collected
 //   proposal 1 admitted the vendor and has executed
 //   proposal 2, roof repair for that vendor, is open with alice's vote for
 import { ZeroAddress, getCreateAddress, id, parseUnits } from "ethers";
@@ -68,6 +71,8 @@ export async function deployBuilding(ethers: Ethers) {
     BigInt((await ethers.provider.getBlock("latest"))!.timestamp) + 1_000n;
   const ledger = await ethers.deployContract("LevyLedger", [
     treasury.target,
+    registry.target,
+    firm.address,
     [1n, 2n, 3n, 4n, 1n],
     [LEVY, LEVY, LEVY, LEVY, LEVY],
     [due, due, due, due, due + 30n * 86_400n],
@@ -86,16 +91,17 @@ export async function deployBuilding(ethers: Ethers) {
   await registry.connect(adapter).bindUnit(4, carol.address);
 
   // Charges 0 to 3, one per unit, and charge 4, scheduled for later. Alice
-  // pays unit 1's before it is issued (ADR-016); anyone issues charges 0 to 3
-  // once due; bob pays unit 3's late.
-  for (const owner of [alice, bob]) {
-    await token.mint(owner.address, LEVY * 2n);
-    await token.connect(owner).approve(ledger.target, LEVY * 2n);
-  }
+  // pays unit 1's by hand before it is due (ADR-016), approving only that.
+  // Once due, the firm collects charges 1 to 3 (ADR-020); nobody has approved
+  // enough, so each is issued and nothing is taken. Bob then sets up direct
+  // debit and the firm collects unit 3's again, late.
+  for (const owner of [alice, bob]) await token.mint(owner.address, LEVY * 2n);
+  await token.connect(alice).approve(ledger.target, LEVY);
   await ledger.connect(alice).payLevy(0);
   await ethers.provider.send("evm_setNextBlockTimestamp", [Number(due) + 1]);
-  await ledger.connect(stranger).issueCharges([0, 1, 2, 3]);
-  await ledger.connect(bob).payLevy(2);
+  await ledger.connect(firm).collect([1, 2, 3]);
+  await token.connect(bob).approve(ledger.target, LEVY * 2n);
+  await ledger.connect(firm).collect([2]);
 
   // Proposal 1 admits the vendor through the whole loop: two owners vote
   // for it, it waits out the window and the timelock, and anyone executes.
