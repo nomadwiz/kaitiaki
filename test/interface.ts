@@ -6,13 +6,20 @@
 // checks exactly the markup the browser is given, built from the event log of
 // a building on the real contracts (scripts/building.ts).
 import { expect } from "chai";
+import {
+  Contract,
+  Interface,
+  makeError,
+  type FunctionFragment,
+} from "ethers";
 import { readFile, readdir } from "node:fs/promises";
-import { network } from "hardhat";
+import hre, { network } from "hardhat";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { App, type Wallet } from "../interface/src/app.js";
 import { date, nzd } from "../interface/src/format.js";
+import { ABI, refusal, send } from "../interface/src/tx.js";
 import { buildView } from "../interface/src/view.js";
 import { deployBuilding } from "../scripts/building.js";
 import { replay } from "../scripts/replay.js";
@@ -215,31 +222,63 @@ describe("Read interface (#72, #149)", () => {
     );
   });
 
-  it("FR41: holds no key, and knows no contract function but castVote", async () => {
+  it("FR41: holds no key, and its ABI has no view or pure function", async () => {
+    const functions = ABI.fragments.filter(
+      (f): f is FunctionFragment => f.type === "function",
+    );
+    expect(functions.map((f) => f.name)).to.include("castVote");
+    for (const f of functions) {
+      expect(["view", "pure"], f.format()).to.not.include(f.stateMutability);
+    }
+
     const dir = new URL("../interface/src/", import.meta.url);
     // Every source file, at any depth: a file that moves or changes
     // extension is still checked.
     const files = (await readdir(dir, { recursive: true })).filter((f) =>
       /\.tsx?$/.test(f),
     );
-    // The one file that may name a contract function.
-    const signer = "main.tsx";
-    expect(files).to.include(signer);
+    expect(files).to.include("tx.ts");
     for (const file of files) {
       const source = await readFile(new URL(file, dir), "utf8");
       expect(source, file).to.not.match(/0x[0-9a-fA-F]{64}/);
       expect(source, file).to.not.match(/\bnew Wallet\b|privateKey|mnemonic/i);
-      const fragments = [...source.matchAll(/"function [^"]*"/g)].map(
-        ([f]) => f,
-      );
-      expect(fragments, file).to.deep.equal(
-        file === signer
-          ? [
-              '"function castVote(uint256 proposalId, bool inFavour) returns (uint256)"',
-            ]
-          : [],
-      );
+      // tx.ts's ABI is the only one: no other file may name a function.
+      if (file !== "tx.ts") expect(source, file).to.not.match(/"function /);
     }
+  });
+
+  it("shows the signing Dialog, the success Toast and a RefusalNotice in the design system's markup", () => {
+    const html = (props: object) =>
+      renderToStaticMarkup(createElement(App, { hash: "#/", ...props }));
+    expect(
+      html({ signing: "a vote for Proposal #2 with Units 1 and 2" }),
+    ).to.contain(
+      '<dialog class="dialog" aria-labelledby="signing-title"><p class="dialog-title" id="signing-title">Sign in your wallet</p><p class="muted-text" style="margin-top:8px">Your wallet is asking you to confirm a vote for Proposal #2 with Units 1 and 2.</p><div class="dialog-footer"><button class="btn" type="button" aria-disabled="true"><span class="spinner" aria-hidden="true"></span>Waiting for your wallet…</button></div></dialog>',
+    );
+    expect(html({})).to.not.contain("<dialog");
+    expect(
+      html({
+        toast: {
+          title: "Vote recorded",
+          body: "Units 1 and 2 voted for Proposal #2.",
+        },
+      }),
+    ).to.contain(
+      '<div class="toast" role="status"><div><p class="alert-title">Vote recorded</p><p class="body-sm">Units 1 and 2 voted for Proposal #2.</p></div><button class="btn" data-variant="ghost" data-size="icon" type="button" aria-label="Dismiss">✕</button></div>',
+    );
+    expect(
+      html({
+        notice: {
+          variant: "destructive",
+          title: "Your vote was not recorded",
+          description:
+            "This wallet holds no unit in this building, so it cannot vote.",
+          code: "NotBoundOwner",
+        },
+      }),
+    ).to.contain(
+      '<div class="alert" data-variant="destructive" role="alert"><p class="alert-title">Your vote was not recorded</p><p class="alert-description">This wallet holds no unit in this building, so it cannot vote.</p><p class="alert-code">Contract refusal: NotBoundOwner</p></div>',
+    );
   });
 
   it("names a wallet on another chain and offers it nothing; asks an unconnected wallet to connect; tells a wallet with no unit", async () => {
@@ -344,5 +383,198 @@ describe("Read interface (#72, #149)", () => {
     expect(date(BigInt(Date.UTC(2026, 9, 13, 11, 30) / 1000))).to.equal(
       "14 Oct 2026",
     );
+  });
+});
+
+describe("Transactions (#150)", () => {
+  const UNIT = 10n ** 18n;
+  const who = "0x0000000000000000000000000000000000000001";
+  // 13 Oct 2026, 11:30 UTC: 14 Oct 2026 in New Zealand.
+  const when = BigInt(Date.UTC(2026, 9, 13, 11, 30) / 1000);
+  // Each error the design names, arguments to encode, and its message
+  // (RefusalNotice's table and interface.md §3's additions).
+  const MESSAGES: [string, unknown[], string][] = [
+    ["NotBoundOwner", [who], "This wallet holds no unit in this building, so it cannot vote."],
+    ["AlreadyVoted", [2, who], "Your units have already voted on this proposal."],
+    ["VotingClosed", [2], "Voting on this proposal has closed."],
+    ["NotReady", [2, when], "The 7-day wait ends on 14 Oct 2026."],
+    ["NotAttested", [2], "Payment waits for the firm to confirm the work is done."],
+    ["PayeeNotRegistered", [who], "This vendor has not been approved by owners."],
+    ["ChargeNotDue", [1, when], "This charge cannot be issued before 14 Oct 2026."],
+    ["NotFirm", [who], "Only the management firm’s wallet can propose or confirm work."],
+    ["AlreadyAttested", [2], "The firm has already confirmed this work."],
+    ["EvidenceHashIsZero", [], "Add the evidence hash before confirming."],
+    ["NotPassed", [2, 0], "Only a proposal that passed can be queued."],
+    ["AlreadyQueued", [2], "This proposal is already queued."],
+    ["NotQueued", [2, 0], "This proposal is not queued for payment."],
+    ["AlreadyExecuted", [2], "This proposal has already been carried out."],
+    ["UnknownProposal", [9], "There is no proposal with that number."],
+    ["ChargeAlreadyIssued", [1], "This charge has already been issued."],
+    ["ChargeAlreadyPaid", [1], "This charge has already been paid."],
+    // amount, alreadyReleased and limit differ, so the wrong one shows.
+    ["AmountExceedsLimit", [2, 600n * UNIT, 100n * UNIT, 500n * UNIT], "This payment would go over the proposal’s cap of NZD 500.00."],
+    ["VendorNameIsEmpty", [], "Add the vendor's name before proposing."],
+    ["CompanyIdIsEmpty", [], "Add the vendor's company identifier before proposing."],
+    ["NotWorkProposal", [2], "Only a work proposal needs the firm to confirm the work."],
+    ["ERC20InsufficientBalance", [who, 0, 1], "This wallet does not hold enough NZD to pay this charge."],
+    ["ERC20InsufficientAllowance", [who, 0, 1], "The levy ledger was not approved to take this payment. Approve it in your wallet, then pay."],
+  ];
+
+  it("knows every custom error of the six contracts and MockNZD", async () => {
+    for (const name of [
+      "Treasury",
+      "Governance",
+      "MembershipRegistry",
+      "LevyLedger",
+      "PayeeRegistry",
+      "TimelockController",
+      "MockNZD",
+    ]) {
+      const { abi } = await hre.artifacts.readArtifact(name);
+      new Interface(abi).forEachError((e) =>
+        expect(ABI.getError(e.format()), `${name}.${e.name}`).to.not.equal(
+          null,
+        ),
+      );
+    }
+  });
+
+  it("decodes each named error to its RefusalNotice message", () => {
+    for (const [name, args, message] of MESSAGES) {
+      expect(refusal({ data: ABI.encodeErrorResult(name, args) })).to.deep.equal({
+        name,
+        message,
+      });
+    }
+  });
+
+  it("names an error it has no message for, and never guesses a reason", () => {
+    expect(
+      refusal({ data: ABI.encodeErrorResult("FailedCall", []) }),
+    ).to.deep.equal({
+      name: "FailedCall",
+      message: "The contract refused this action (FailedCall).",
+    });
+  });
+
+  it("never throws on revert data it cannot decode", () => {
+    // ethers gives an empty revert, `revert()` or a bare `require`, as "0x".
+    for (const data of ["0x", "0x1234", ABI.getError("NotReady")!.selector]) {
+      expect(refusal({ data, shortMessage: "execution reverted" }), data).to.deep.equal({
+        message: "execution reverted",
+      });
+    }
+    expect(refusal(undefined)).to.deep.equal({ message: "undefined" });
+  });
+
+  it("has its own sentence for a wallet rejection", () => {
+    expect(
+      refusal(
+        makeError("user rejected action", "ACTION_REJECTED", {
+          action: "sendTransaction",
+          reason: "rejected",
+        }),
+      ),
+    ).to.deep.equal({
+      message: "You cancelled the request in your wallet. Nothing was sent.",
+    });
+  });
+
+  describe("send", () => {
+    const VOTE = {
+      signing: "a vote for Proposal #2 with Unit 4",
+      done: { title: "Vote recorded", body: "Unit 4 voted for Proposal #2." },
+      refused: "Your vote was not recorded",
+    };
+    // The page's state as send leaves it, and a copy of it at each moment the
+    // fake transaction is asked to sign and to wait.
+    function page(prompt: boolean) {
+      const state: Record<string, unknown> = {
+        signing: undefined,
+        // What the previous transaction left behind.
+        toast: { title: "Vote recorded", body: "earlier" },
+        notice: { variant: "destructive", title: "earlier", description: "" },
+        reloads: 0,
+      };
+      const seen: Record<string, Record<string, unknown>> = {};
+      const ui = {
+        prompt,
+        setSigning: (v?: string) => (state.signing = v),
+        setToast: (v?: object) => (state.toast = v),
+        setNotice: (v?: object) => (state.notice = v),
+        reload: async () => void (state.reloads = (state.reloads as number) + 1),
+      };
+      const sign = (wait: () => Promise<unknown>) => async () => {
+        seen.signing = { ...state };
+        return {
+          wait: () => {
+            seen.waiting = { ...state };
+            return wait();
+          },
+        };
+      };
+      return { state, seen, ui, sign };
+    }
+
+    it("shows the Dialog only while the wallet signs, then the Toast, then reads the log again", async () => {
+      const { state, seen, ui, sign } = page(true);
+      await send(VOTE, sign(async () => {}), ui);
+      // The last transaction's Toast and notice go as the Dialog opens.
+      expect(seen.signing).to.include({
+        signing: VOTE.signing,
+        toast: undefined,
+        notice: undefined,
+      });
+      // Signed: the chain, not the wallet, is what is left, and the log is
+      // read only once the block has it.
+      expect(seen.waiting).to.include({ signing: undefined, reloads: 0 });
+      expect(state).to.deep.equal({
+        signing: undefined,
+        toast: VOTE.done,
+        notice: undefined,
+        reloads: 1,
+      });
+    });
+
+    it("closes the Dialog and shows a RefusalNotice when the contract refuses", async () => {
+      const { state, ui } = page(true);
+      const data = ABI.encodeErrorResult("NotBoundOwner", [who]);
+      await send(VOTE, () => Promise.reject({ data }), ui);
+      expect(state).to.deep.equal({
+        signing: undefined,
+        toast: undefined,
+        notice: {
+          variant: "destructive",
+          title: "Your vote was not recorded",
+          description:
+            "This wallet holds no unit in this building, so it cannot vote.",
+          code: "NotBoundOwner",
+        },
+        reloads: 1,
+      });
+    });
+
+    it("opens no Dialog when the local node signs, because no wallet asks anything", async () => {
+      const { state, seen, ui, sign } = page(false);
+      await send(VOTE, sign(async () => {}), ui);
+      expect(seen.signing).to.include({ signing: undefined });
+      expect(state).to.include({ toast: VOTE.done, reloads: 1 });
+    });
+  });
+
+  it("decodes a real refusal: a wallet with no unit votes", async () => {
+    const { ethers } = await network.getOrCreate();
+    const { addresses, signers } = await deployBuilding(ethers);
+    const governance = new Contract(
+      addresses.governance,
+      ABI,
+      signers.stranger,
+    );
+    const error = await governance.castVote(2, true).catch((e: unknown) => e);
+    expect(refusal(error)).to.deep.equal({
+      name: "NotBoundOwner",
+      message:
+        "This wallet holds no unit in this building, so it cannot vote.",
+    });
   });
 });

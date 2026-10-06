@@ -1,14 +1,15 @@
 // The read interface (#72, #149, FR41): reads events only and holds no key
 // and no role. It reads through `replay`, which asks the node for logs and
 // their blocks' headers and nothing else, plus the latest block's timestamp.
-// Its one write is a vote, signed by the viewer's own wallet — a browser
-// wallet through EIP-1193 if one is present, otherwise an account the local
-// node itself unlocks, chosen with `?as=<address>`. The interface never sees
-// a key. The markup is in app.tsx; this file holds the state.
+// Every write goes through `send` (#150), signed by the viewer's own wallet —
+// a browser wallet through EIP-1193 if one is present, otherwise an account
+// the local node itself unlocks, chosen with `?as=<address>`. The interface
+// never sees a key. The markup is in app.tsx; this file holds the state.
 import {
   BrowserProvider,
   Contract,
   JsonRpcProvider,
+  type ContractTransactionResponse,
   type Eip1193Provider,
   type Signer,
 } from "ethers";
@@ -17,7 +18,9 @@ import { createRoot } from "react-dom/client";
 
 import { replay } from "../../scripts/replay.js";
 import { App, type Wallet } from "./app.js";
-import type { Notice } from "./states.js";
+import { unitsLabel } from "./format.js";
+import type { Done, Notice } from "./states.js";
+import { ABI, send } from "./tx.js";
 import { buildView } from "./view.js";
 
 // Written by scripts/demo.ts. `token`, `timelock` and `firm` are there too,
@@ -28,12 +31,6 @@ type Config = {
   fromBlock: number;
   addresses: Parameters<typeof replay>[1];
 };
-
-// The only contract function the interface knows: it cannot read storage
-// through an ABI it does not have.
-const VOTE_ABI = [
-  "function castVote(uint256 proposalId, bool inFavour) returns (uint256)",
-];
 
 const injected = (
   window as {
@@ -96,6 +93,8 @@ function Root() {
   const [account, setAccount] = useState<string>();
   const [chosen, setChosen] = useState(as);
   const [notice, setNotice] = useState<Notice>();
+  const [signing, setSigning] = useState<string>();
+  const [toast, setToast] = useState<Done>();
   const [voting, setVoting] = useState<bigint>();
 
   const fail = (title: string, error: unknown) => {
@@ -167,39 +166,51 @@ function Root() {
     }
   }
 
+  // Every transaction goes through tx.ts's `send` (#150). `call` is handed
+  // contracts that know only tx.ts's ABI, signed by the viewer's wallet.
+  const sendTx = (
+    action: Parameters<typeof send>[0],
+    call: (
+      at: (address: string) => Contract,
+    ) => Promise<ContractTransactionResponse>,
+  ) =>
+    send(
+      action,
+      async () => {
+        const { browserWallet, reader } = env!;
+        const signer: Signer = browserWallet
+          ? await browserWallet.getSigner(account)
+          : await reader.getSigner(viewer);
+        return call((address) => new Contract(address, ABI, signer));
+      },
+      {
+        prompt: Boolean(env!.browserWallet),
+        setSigning,
+        setToast,
+        setNotice,
+        reload: () => load(env!),
+      },
+    );
+
   async function vote(proposalId: bigint, inFavour: boolean) {
+    const units = unitsLabel(
+      view?.proposals.find((p) => p.id === proposalId)?.unvoted ?? [],
+    );
+    const side = inFavour ? "for" : "against";
     setVoting(proposalId);
-    setNotice({
-      variant: "default",
-      title: `Sending your vote on proposal #${proposalId}…`,
-      description: "Confirm it in your wallet.",
-    });
-    try {
-      const { browserWallet, reader, config } = env!;
-      const signer: Signer = browserWallet
-        ? await browserWallet.getSigner(account)
-        : await reader.getSigner(viewer);
-      const governance = new Contract(
-        config.addresses.governance,
-        VOTE_ABI,
-        signer,
-      );
-      const tx = await governance.castVote(proposalId, inFavour);
-      await tx.wait();
-      setNotice({
-        variant: "success",
-        title: "Vote recorded",
-        description: `Your units voted ${inFavour ? "for" : "against"} Proposal #${proposalId} in transaction ${tx.hash.slice(0, 6)}…${tx.hash.slice(-4)}.`,
-      });
-    } catch (error) {
-      setNotice({
-        variant: "destructive",
-        title: "Your vote was not recorded",
-        description: message(error),
-      });
-    }
+    await sendTx(
+      {
+        signing: `a vote ${side} Proposal #${proposalId} with ${units}`,
+        done: {
+          title: "Vote recorded",
+          body: `${units} voted ${side} Proposal #${proposalId}.`,
+        },
+        refused: "Your vote was not recorded",
+      },
+      (at) =>
+        at(env!.config.addresses.governance).castVote(proposalId, inFavour),
+    );
     setVoting(undefined);
-    await load(env!);
   }
 
   return (
@@ -208,6 +219,9 @@ function Root() {
       view={view}
       wallet={wallet}
       notice={notice}
+      signing={signing}
+      toast={toast}
+      onDismissToast={() => setToast(undefined)}
       voting={voting}
       failed={failed}
       onConnect={() => void connect()}

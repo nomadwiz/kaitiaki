@@ -19,6 +19,9 @@ import {
   ConnectWallet,
   Loading,
   NoUnit,
+  SigningDialog,
+  Toast,
+  type Done,
   type Notice,
 } from "./states.js";
 import type { View } from "./view.js";
@@ -40,6 +43,11 @@ type Props = {
   view?: View;
   wallet?: Wallet;
   notice?: Notice;
+  // What the wallet is signing, as the Dialog's sentence ends it.
+  signing?: string;
+  // The last transaction that succeeded, until dismissed or the next one.
+  toast?: Done;
+  onDismissToast?: () => void;
   // The proposal whose vote the wallet is signing.
   voting?: bigint;
   // Reading failed: the notice says why, and nothing is loading.
@@ -87,6 +95,9 @@ export function App({
   view,
   wallet,
   notice,
+  signing,
+  toast,
+  onDismissToast,
   voting,
   failed,
   onConnect,
@@ -133,6 +144,7 @@ export function App({
           />
         )}
         {notice && <Alert {...notice} />}
+        {toast && <Toast {...toast} onDismiss={onDismissToast} />}
         {view
           ? SCREENS[route]({
               view,
@@ -144,6 +156,7 @@ export function App({
             })
           : !failed && <Loading />}
       </main>
+      {signing && <SigningDialog signing={signing} />}
     </>
   );
 }
