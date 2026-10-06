@@ -5,7 +5,7 @@
 // `pure` fragment: the interface cannot read storage through an ABI that has
 // none. Signatures are copied from the compiled contracts; test/interface.ts
 // fails if one drifts or a contract gains an error missing here.
-import { Interface, isError } from "ethers";
+import { Interface, MaxUint256, isError, type Provider } from "ethers";
 
 import { date, nzd } from "./format.js";
 import type { Done, Notice } from "./states.js";
@@ -147,6 +147,51 @@ export const payment = (unitId: bigint, chargeId: bigint, amount: bigint) => ({
   },
   refused: "Your payment was not made",
 });
+
+// The two events that decide how much the levy ledger may still take from
+// `owner`: the token's Approval sets it, and the ledger's LevyPaid spends it,
+// because the ledger moves an owner's NZD only by `transferFrom` in `_pay`.
+const ALLOWANCE = new Interface([
+  "event Approval(address indexed owner, address indexed spender, uint256 value)",
+  "event LevyPaid(uint256 indexed chargeId, uint256 indexed unitId, address indexed payer, uint256 amount)",
+]);
+
+/**
+ * The levy ledger's standing approval from `owner`, rebuilt from events alone
+ * (FR41): the last Approval to the ledger, less every LevyPaid after it that
+ * `owner` paid. OpenZeppelin's ERC-20 emits no Approval when an allowance is
+ * spent, so the payments are needed, and it never spends an unlimited one.
+ * Paying by hand approves this plus the charge, so a direct debit survives it.
+ */
+export async function standingApproval(
+  provider: Pick<Provider, "getLogs">,
+  token: string,
+  levyLedger: string,
+  owner: string,
+  fromBlock: number,
+) {
+  const [approvals, payments] = await Promise.all([
+    provider.getLogs({
+      address: token,
+      fromBlock,
+      topics: ALLOWANCE.encodeFilterTopics("Approval", [owner, levyLedger]),
+    }),
+    provider.getLogs({
+      address: levyLedger,
+      fromBlock,
+      topics: ALLOWANCE.encodeFilterTopics("LevyPaid", [null, null, owner]),
+    }),
+  ]);
+  let allowance = 0n;
+  for (const log of [...approvals, ...payments].sort(
+    (a, b) => a.blockNumber - b.blockNumber || a.index - b.index,
+  )) {
+    const { name, args } = ALLOWANCE.parseLog(log)!;
+    if (name === "Approval") allowance = args.value;
+    else if (allowance !== MaxUint256) allowance -= args.amount;
+  }
+  return allowance;
+}
 
 // Setting up direct debit: one approval, for every unpaid charge (ADR-020).
 export const directDebit = (total: bigint) => ({

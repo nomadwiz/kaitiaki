@@ -8,6 +8,7 @@
 import {
   BrowserProvider,
   Contract,
+  MaxUint256,
   JsonRpcProvider,
   type ContractTransactionResponse,
   type Eip1193Provider,
@@ -34,6 +35,7 @@ import {
   queue,
   refusal,
   send,
+  standingApproval,
 } from "./tx.js";
 import { buildView } from "./view.js";
 
@@ -235,10 +237,12 @@ function Root() {
     setVoting(undefined);
   }
 
-  // Two signatures: the token approves the ledger for the amount, then the
-  // ledger takes it. If the second is refused, the approval stands.
+  // Two signatures: the token approves the ledger for the amount on top of
+  // any standing direct debit, then the ledger takes the amount, leaving the
+  // direct debit as it was. If the second is refused, the approval stands.
   async function pay(unitId: bigint, chargeId: bigint, amount: bigint) {
     const { levyLedger } = env!.config.addresses;
+    const { reader, config } = env!;
     let approved = false;
     setPaying(chargeId);
     await sendTx(
@@ -247,7 +251,15 @@ function Root() {
         refuse: (error) => (approved ? approvedRefusal : refusal)(error),
       },
       async (at) => {
-        await (await at(env!.config.token).approve(levyLedger, amount)).wait();
+        const standing = await standingApproval(
+          reader,
+          config.token,
+          levyLedger,
+          viewer!,
+          config.fromBlock,
+        );
+        const allowance = standing === MaxUint256 ? standing : standing + amount;
+        await (await at(config.token).approve(levyLedger, allowance)).wait();
         approved = true;
         return at(levyLedger).payLevy(chargeId);
       },

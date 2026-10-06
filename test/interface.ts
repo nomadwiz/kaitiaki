@@ -23,7 +23,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { App, type Wallet } from "../interface/src/app.js";
 import { checkEvidence, checkVendor, checkWork } from "../interface/src/screens/firm.js";
 import { date, nzd, short } from "../interface/src/format.js";
-import { ABI, approvedRefusal, carryOut, collectLevies, confirmWork, payment, proposeVendor, proposeWork, refusal, send } from "../interface/src/tx.js";
+import { ABI, approvedRefusal, carryOut, collectLevies, confirmWork, payment, proposeVendor, proposeWork, refusal, send, standingApproval } from "../interface/src/tx.js";
 import { buildView } from "../interface/src/view.js";
 import { advance, deployBuilding } from "../scripts/building.js";
 import { replay } from "../scripts/replay.js";
@@ -513,6 +513,35 @@ describe("Read interface (#72, #149)", () => {
       const { view } = await firmPage(s, firm.address);
       expect(view.toCollect.map((c) => [c.chargeId, c.attempted])).to.deep.equal([[3n, true]]);
       expect((await s.render(carol.address, "#/units")).view.ownUnits[0].status).to.equal("in arrears");
+    });
+
+    it("ADR-020: paying one charge by hand leaves the direct debit standing for the rest, rebuilt from events alone", async () => {
+      const s = await setUp();
+      const { firm, alice } = s.signers;
+      const UNIT = 10n ** 18n;
+      const token = new Contract(String(s.contracts.token.target), ABI, alice);
+      const ledger = new Contract(s.addresses.levyLedger, ABI, alice);
+      const standing = () =>
+        standingApproval(s.ethers.provider, String(s.contracts.token.target), s.addresses.levyLedger, alice.address, s.fromBlock);
+      // The events agree with the token's own count at every step.
+      const agrees = async () =>
+        expect(await standing()).to.equal(await s.contracts.token.allowance(alice.address, s.addresses.levyLedger));
+      await agrees();
+      // Alice sets up direct debit for charges 1 and 4, then pays charge 1 by
+      // hand as main.tsx's Pay does: the standing approval plus the charge.
+      await s.contracts.token.mint(alice.address, 250n * UNIT);
+      await (await token.approve(s.addresses.levyLedger, 500n * UNIT)).wait();
+      await agrees();
+      await (await token.approve(s.addresses.levyLedger, (await standing()) + 250n * UNIT)).wait();
+      await (await ledger.payLevy(1n)).wait();
+      expect(await standing()).to.equal(500n * UNIT);
+      await agrees();
+      // Charge 4 falls due, and the firm's collection still takes it.
+      await advance(s.ethers, 31n * DAY);
+      await (await new Contract(s.addresses.levyLedger, ABI, firm).collect([4n])).wait();
+      expect((await s.render(alice.address, "#/units")).view.ownUnits.flatMap((u) => u.charges)).to.deep.equal([]);
+      expect(await standing()).to.equal(250n * UNIT);
+      await agrees();
     });
 
     it("ADR-020: Set up direct debit approves the levy ledger for the owner's unpaid total", async () => {

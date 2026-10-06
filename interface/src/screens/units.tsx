@@ -6,6 +6,7 @@ import { Fragment, type ReactNode } from "react";
 
 import { date, nzd } from "../format.js";
 import { PageHead } from "../shell.js";
+import { Waiting } from "../states.js";
 import type { View } from "../view.js";
 import type { Acting } from "./actions.js";
 
@@ -83,10 +84,7 @@ export function OwnUnits({
                         }
                       >
                         {paying === c.chargeId ? (
-                          <>
-                            <span className="spinner" aria-hidden="true"></span>
-                            Waiting for your wallet…
-                          </>
+                          <Waiting />
                         ) : (
                           `Pay ${nzd(c.amount)}`
                         )}
@@ -122,9 +120,9 @@ export function YourUnits({
   children?: ReactNode;
 }) {
   // Every unpaid charge of the viewer's units, the most the firm can take.
-  // ponytail: the approval already given is not shown, because the replay
-  // reads the six contracts' logs and not the token's Approval events; read
-  // them if owners need to see their standing approval.
+  // ponytail: the standing approval is not shown here. tx.ts's
+  // standingApproval rebuilds it from events when Pay needs it; show it if
+  // owners need to see it before paying.
   const total = units
     .flatMap((u) => u.charges)
     .reduce((sum, c) => sum + c.amount, 0n);
@@ -178,10 +176,7 @@ export function YourUnits({
                     onClick={busy ? undefined : () => onDebit(total)}
                   >
                     {acting?.action === "debit" ? (
-                      <>
-                        <span className="spinner" aria-hidden="true"></span>
-                        Waiting for your wallet…
-                      </>
+                      <Waiting />
                     ) : (
                       "Set up direct debit"
                     )}
