@@ -52,7 +52,7 @@ export function Heading({ id, children }: { id: string; children: string }) {
   );
 }
 
-const rows = "flex flex-col [&>li]:border-t [&>li]:py-3.5 [&>li:first-child]:border-t-0 [&>li:first-child]:pt-0 [&>li:last-child]:pb-0";
+export const rows = "flex flex-col [&>li]:border-t [&>li]:py-3.5 [&>li:first-child]:border-t-0 [&>li:first-child]:pt-0 [&>li:last-child]:pb-0";
 const meta = "flex flex-wrap gap-x-4 gap-y-1 text-base text-muted-foreground";
 
 function VoteRow({ proposal: p }: { proposal: Proposal }) {

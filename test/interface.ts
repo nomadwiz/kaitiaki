@@ -21,6 +21,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { App, ELSEWHERE, isElsewhere, type Wallet } from "../interface/src/app.js";
+import { GUARANTEES } from "../interface/src/screens/building.js";
 import { votesRules } from "../interface/src/screens/proposal.js";
 import { checkEvidence, checkVendor, checkWork } from "../interface/src/screens/firm.js";
 import { date, nzd, short } from "../interface/src/format.js";
@@ -91,8 +92,18 @@ const navs = (html: string) =>
       ),
     );
 
+// The design system's disclosure line, as Building renders it: the Alert's
+// title, then its description.
 const PRIVACY_LINE =
-  '<p class="privacy-line">The full record is public on the chain. This page chooses to show only whether each unit is current or in arrears. That is a presentation choice, not protection.</p>';
+  "The full record is public on the chain. This page chooses to show only whether each unit is current or in arrears.";
+
+// Building's two FundCards, each as the words a viewer reads, from its
+// `data-fund` to the next card.
+const fundCards = (html: string) =>
+  html
+    .split(/data-fund="(?:op|ltm)"/)
+    .slice(1)
+    .map((card) => text(card.split('<div data-slot="card"')[0].replace(/^[^>]*>/, "")));
 
 // The rows for units other than the viewer's own, as rendered text. React
 // writes an empty attribute as `=""`.
@@ -177,6 +188,9 @@ describe("Read interface (#72, #149)", () => {
       { text: "Unit 3 current", statuses: ["current"] },
       { text: "Unit 4 in arrears", statuses: ["in arrears"] },
     ]);
+    // The viewer's own units are named only as a link to Your units.
+    expect(text(html)).to.contain("Units 1 and 2 are on Your units");
+    expect(text((await render(bob.address, "#/building")).html)).to.contain("Unit 3 is on Your units");
   });
 
   it("FR13: Building lists the approved vendor by name, shortened address and company identifier, and a Work card names it", async () => {
@@ -187,9 +201,11 @@ describe("Read interface (#72, #149)", () => {
     expect(view.vendors.map((v) => [v.payee, v.name, v.companyId])).to.deep.equal([
       [vendor, "Harbour Lifts Ltd", "DEMO-0001"],
     ]);
-    const row = html.match(/<tr><td><b>Harbour Lifts Ltd<\/b><\/td>([\s\S]*?)<\/tr>/)![1];
-    expect(row).to.contain(short);
-    expect(row).to.contain("DEMO-0001");
+    // Name first, then the company identifier and the admitting proposal,
+    // then the shortened address with Copy.
+    const vendors = html.split('id="h-vendors"')[1];
+    expect(text(vendors)).to.contain(`Harbour Lifts Ltd DEMO-0001, admitted by proposal #${view.vendors[0].proposalId} ${short} Copy`);
+    expect(vendors).to.contain('aria-label="Copy Harbour Lifts Ltd&#x27;s address"');
     // Vendor rows are not unit rows, so NFR10's check never reads them.
     expect(otherUnitRows(html).join()).to.not.contain("Harbour");
 
@@ -205,7 +221,7 @@ describe("Read interface (#72, #149)", () => {
     // An overdue charge on Your units: its Alert, with the date the firm
     // collected it.
     const overdue =
-      /Charge #1 was not covered when the firm collected it on \d{1,2} [A-Z][a-z]{2,3} \d{4}/;
+      /Charge #1 was not covered when the firm collected it on \d{1,2} [A-Z][a-z]{2} \d{4}/;
 
     // Alice's unit 2 is overdue: her own page gives the amount and due date.
     let { view, html } = await render(alice.address, "#/units");
@@ -275,7 +291,7 @@ describe("Read interface (#72, #149)", () => {
       expect(card(2)).to.contain('data-tone="late">in arrears</span>');
       expect(rows(1)).to.deep.equal([`#4 ${date(unit(view, 1n).charges[0].dueDate)} NZD 250.00 Scheduled Pay early`]);
       expect(rows(2)).to.deep.equal([`#1 ${date(unit(view, 2n).charges[0].dueDate)} NZD 250.00 in arrears Pay now`]);
-      expect(text(card(2))).to.match(/Charge #1 was not covered when the firm collected it on \d{1,2} [A-Z][a-z]{2,3} \d{4} Pay it now to clear the arrear\./);
+      expect(text(card(2))).to.match(/Charge #1 was not covered when the firm collected it on \d{1,2} [A-Z][a-z]{2} \d{4} Pay it now to clear the arrear\./);
       expect(text(card(1))).to.not.contain("not covered");
       // Pay sits beside "Signed in your wallet." and the rules it needs.
       for (const n of [1, 2]) {
@@ -677,6 +693,11 @@ describe("Read interface (#72, #149)", () => {
     expect(queued).to.contain("Roof repair");
     expect(queued).to.contain("Harbour Lifts Ltd");
     expect(queued).to.contain(`Payment possible from ${date(eta)}`);
+    // Building's FundCards give the figure on each fund, never summed.
+    expect(fundCards((await render(signers.carol.address, "#/building")).html)).to.deep.equal([
+      `Operating ${nzd(view.funds.operating)} Queued to pay, at most NZD 400.00`,
+      `Long-term maintenance ${nzd(view.funds.maintenance)} Queued to pay, at most NZD 0.00`,
+    ]);
   });
 
   it("lists what needs the viewer's vote, each with the date voting closes", async () => {
@@ -740,11 +761,15 @@ describe("Read interface (#72, #149)", () => {
     // Needs your vote and Your levies have rules; the other two cards do not.
     expect(html.match(/aria-haspopup="dialog"[^>]*>[\s\S]*?<\/svg>Rules<\/button>/g)).to.have.length(2);
     expect(html).to.not.contain("Unit 3");
-    // The guarantees are on Building now.
+    // The guarantees are on Building, the four lines visible and the
+    // explanation behind Rules, as the vendors' is.
     const building = (await render(signers.alice.address, "#/building")).html;
-    for (const g of ["Approved proposal", "Approved vendor", "Within the cap", "Right fund"]) {
-      expect(building).to.contain(`<summary>${g}</summary>`);
-    }
+    const guarantees = building.split('id="h-guarantees"')[1].split('id="h-units"')[0];
+    expect(text(guarantees).replaceAll("&#x27;", "'")).to.contain(GUARANTEES.join(" "));
+    expect(guarantees).to.contain("Rules</button>");
+    expect(building.split('id="h-vendors"')[1]).to.contain("Rules</button>");
+    // No page description: the heading is followed by the first card.
+    expect(building).to.match(/<h1>Building<\/h1><div class="grid[^"]*"><div data-slot="card"/);
   });
 
   it("offers a vote only to a unit that has not voted, and only while voting is open", async () => {
@@ -786,6 +811,10 @@ describe("Read interface (#72, #149)", () => {
       operating: 0n,
       maintenance: parseUnits("900", 18),
     });
+    expect(fundCards((await render(signers.carol.address, "#/building")).html)).to.deep.equal([
+      `Operating ${nzd(view.funds.operating)} Queued to pay, at most NZD 0.00`,
+      `Long-term maintenance ${nzd(view.funds.maintenance)} Queued to pay, at most NZD 900.00`,
+    ]);
   });
 
   describe("Proposal screen (#178)", () => {
@@ -1525,7 +1554,9 @@ describe("Read interface (#72, #149)", () => {
         expect(html, at).to.not.contain(ELSEWHERE);
       }
     }
-    expect((await render(signers.alice.address, "#/building")).html).to.contain(PRIVACY_LINE);
+    const building = (await render(signers.alice.address, "#/building")).html;
+    expect(text(building)).to.contain(PRIVACY_LINE);
+    expect(building).to.not.contain("presentation choice");
   });
 
   it("ADR-021: a firm's address that holds a unit is offered no vote", async () => {
