@@ -131,6 +131,6 @@ export async function deployBuilding(ethers: Ethers) {
       payeeRegistry: String(payees.target),
     },
     signers: { firm, alice, bob, carol, vendor, stranger },
-    contracts: { token, ledger, governance },
+    contracts: { token, ledger, governance, timelock },
   };
 }
