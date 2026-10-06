@@ -95,8 +95,9 @@ export async function replay(
   const queued = new Map<bigint, bigint>();
   const attested = new Map<
     bigint,
-    { attester: string; evidenceHash: string; time: bigint }
+    { attester: string; evidenceHash: string }
   >();
+  const attestedAt = new Map<bigint, bigint>();
   // Proposal to the block time its effect (payment or admission) landed.
   const executedAt = new Map<bigint, bigint>();
   // ponytail: roles are Treasury's alone; key them by contract address once a
@@ -195,8 +196,8 @@ export async function replay(
       attested.set(a.proposalId, {
         attester: a.attester,
         evidenceHash: a.evidenceHash,
-        time,
       });
+      attestedAt.set(a.proposalId, time);
     }
     if (event.name === "UnitBound") owners.set(a.unitId, a.wallet);
     if (event.name === "ChargeScheduled") {
@@ -329,6 +330,7 @@ export async function replay(
     payees,
     queued,
     attested,
+    attestedAt,
     executedAt,
     roles,
     charges,

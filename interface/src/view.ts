@@ -100,13 +100,13 @@ function stepsOf(
     },
   ];
   if (work) {
-    const attestation = derived.attested.get(id);
+    const attestedAt = derived.attestedAt.get(id);
     steps.push({
       name: "Firm confirms work",
       step: status(5),
       // From the wait's end, until the firm has confirmed.
-      date: attestation?.time ?? eta,
-      dateLabel: attestation ? "Confirmed" : "From",
+      date: attestedAt ?? eta,
+      dateLabel: attestedAt ? "Confirmed" : "From",
       note: "With an evidence hash",
     });
   }
