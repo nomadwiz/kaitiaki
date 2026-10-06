@@ -1,0 +1,116 @@
+/* Kaitiaki design tokens, written from doc/asset/design-system/tokens.json
+   (the design system's page generates this file; it is not one of the
+   transcribed files). Light values on :root; dark values follow
+   prefers-color-scheme unless <html data-theme="light">, and always apply
+   under <html data-theme="dark">. Aliases stay aliases, so they follow the
+   theme. Load before bundle.css. */
+
+:root {
+  --background: #f5f4ef;
+  --foreground: #16202a;
+  --card: #ffffff;
+  --card-foreground: var(--foreground);
+  --muted: #e9e7e0;
+  --muted-foreground: #4a5561;
+  --primary: #1d4f7c;
+  --primary-foreground: #ffffff;
+  --secondary: #e3e8ee;
+  --secondary-foreground: var(--foreground);
+  --accent: #dce7f1;
+  --accent-foreground: #123a5e;
+  --info: var(--primary);
+  --info-soft: var(--accent);
+  --success: #1c6b3a;
+  --success-soft: #e2f1e6;
+  --success-foreground: #ffffff;
+  --warning: #8a4b00;
+  --warning-soft: #fcefd9;
+  --destructive: #a8241c;
+  --destructive-soft: #fbe6e3;
+  --destructive-foreground: #ffffff;
+  --border: #d3d1c9;
+  --input: #6a7480;
+  --ring: #1d4f7c;
+  --fund-operating: #1d4f7c;
+  --fund-ltm: #5b3a7a;
+  --shadow-sm: 0 1px 2px rgba(22,32,42,0.06);
+  --shadow-lg: 0 12px 32px rgba(22,32,42,0.18);
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --radius-sm: 4px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+  --control-h: 44px;
+  --content-max: 1200px;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --background: #10151b;
+    --foreground: #eef1f4;
+    --card: #18202a;
+    --muted: #222c37;
+    --muted-foreground: #b3bcc6;
+    --primary: #8cb8e4;
+    --primary-foreground: #0b1622;
+    --secondary: #26313d;
+    --accent: #1d3247;
+    --accent-foreground: #d6e6f6;
+    --success: #86d6a2;
+    --success-soft: #14301f;
+    --success-foreground: #0b1a11;
+    --warning: #f2b766;
+    --warning-soft: #3a2a0f;
+    --destructive: #ff9d92;
+    --destructive-soft: #3e1714;
+    --destructive-foreground: #200806;
+    --border: #334050;
+    --input: #7f8a97;
+    --ring: #8cb8e4;
+    --fund-operating: #8cb8e4;
+    --fund-ltm: #cfadef;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,0.6);
+  }
+}
+
+:root[data-theme="dark"] {
+  --background: #10151b;
+  --foreground: #eef1f4;
+  --card: #18202a;
+  --muted: #222c37;
+  --muted-foreground: #b3bcc6;
+  --primary: #8cb8e4;
+  --primary-foreground: #0b1622;
+  --secondary: #26313d;
+  --accent: #1d3247;
+  --accent-foreground: #d6e6f6;
+  --success: #86d6a2;
+  --success-soft: #14301f;
+  --success-foreground: #0b1a11;
+  --warning: #f2b766;
+  --warning-soft: #3a2a0f;
+  --destructive: #ff9d92;
+  --destructive-soft: #3e1714;
+  --destructive-foreground: #200806;
+  --border: #334050;
+  --input: #7f8a97;
+  --ring: #8cb8e4;
+  --fund-operating: #8cb8e4;
+  --fund-ltm: #cfadef;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
+  --shadow-lg: 0 12px 32px rgba(0,0,0,0.6);
+}
+
+/* Projected: everything grows by an eighth. */
+html.projector {
+  font-size: 112.5%;
+}
