@@ -35,8 +35,6 @@ const VOTE_ABI = [
   "function castVote(uint256 proposalId, bool inFavour) returns (uint256)",
 ];
 
-const config: Config = await (await fetch("/deployment.json")).json();
-const reader = new JsonRpcProvider(config.rpcUrl);
 const injected = (
   window as {
     ethereum?: Eip1193Provider & {
@@ -44,19 +42,38 @@ const injected = (
     };
   }
 ).ethereum;
-const browserWallet = injected && new BrowserProvider(injected);
 // A new account or network makes everything shown stale.
 injected?.on("accountsChanged", () => location.reload());
 injected?.on("chainChanged", () => location.reload());
-// `eth_accounts` never prompts; the wallet is asked to connect only when the
-// viewer presses Connect wallet.
-const [connected]: (string | undefined)[] = browserWallet
-  ? await browserWallet.send("eth_accounts", [])
-  : [];
-const walletChainId = browserWallet
-  ? BigInt(await browserWallet.send("eth_chainId", []))
-  : 0n;
 const as = new URLSearchParams(location.search).get("as") ?? undefined;
+
+// What the page needs before it can read: the deployment file and, with a
+// browser wallet, its account and chain. Started at once; the root is
+// mounted without waiting, so the loading state shows meanwhile.
+async function start() {
+  const response = await fetch("/deployment.json");
+  if (!response.ok) {
+    throw new Error(`deployment.json: HTTP ${response.status}`);
+  }
+  const config: Config = await response.json();
+  const browserWallet = injected && new BrowserProvider(injected);
+  // `eth_accounts` never prompts; the wallet is asked to connect only when
+  // the viewer presses Connect wallet.
+  const [connected]: (string | undefined)[] = browserWallet
+    ? await browserWallet.send("eth_accounts", [])
+    : [];
+  return {
+    config,
+    reader: new JsonRpcProvider(config.rpcUrl),
+    browserWallet,
+    connected,
+    walletChainId: browserWallet
+      ? BigInt(await browserWallet.send("eth_chainId", []))
+      : 0n,
+  };
+}
+type Env = Awaited<ReturnType<typeof start>>;
+const started = start();
 
 // The route is the address's hash.
 // Source: https://react.dev/reference/react/useSyncExternalStore
@@ -70,41 +87,53 @@ const message = (error: unknown) =>
 
 function Root() {
   const hash = useSyncExternalStore(subscribe, () => location.hash);
+  const [env, setEnv] = useState<Env>();
   const [log, setLog] = useState<{
     derived: Awaited<ReturnType<typeof replay>>;
     now: bigint;
   }>();
-  const [account, setAccount] = useState(connected);
+  const [failed, setFailed] = useState(false);
+  const [account, setAccount] = useState<string>();
   const [chosen, setChosen] = useState(as);
   const [notice, setNotice] = useState<Notice>();
   const [voting, setVoting] = useState<bigint>();
 
-  async function load() {
+  const fail = (title: string, error: unknown) => {
+    setFailed(true);
+    setNotice({ variant: "destructive", title, description: message(error) });
+  };
+
+  async function load({ config, reader }: Env) {
     try {
       const derived = await replay(reader, config.addresses, config.fromBlock);
       const now = BigInt((await reader.getBlock("latest"))!.timestamp);
       setLog({ derived, now });
     } catch (error) {
-      setNotice({
-        variant: "destructive",
-        title: "The event log could not be read.",
-        description: message(error),
-      });
+      fail("The event log could not be read.", error);
     }
   }
-  useEffect(() => void load(), []);
+  useEffect(() => {
+    started.then(
+      (env) => {
+        setEnv(env);
+        setAccount(env.connected);
+        return load(env);
+      },
+      (error) => fail("Kaitiaki could not start.", error),
+    );
+  }, []);
 
-  let wallet: Wallet;
+  let wallet: Wallet | undefined;
   let viewer: string | undefined;
-  if (browserWallet) {
+  if (env?.browserWallet) {
     wallet = {
       kind: "browser",
       account,
-      chainId: walletChainId,
-      deploymentChainId: BigInt(config.chainId),
+      chainId: env.walletChainId,
+      deploymentChainId: BigInt(env.config.chainId),
     };
     viewer = account;
-  } else {
+  } else if (env) {
     // Bound wallets, from UnitBound, each with its units. `?as=` picks one,
     // or any other address, so a page can be seen as any owner or none.
     const unitsOf = new Map<string, bigint[]>();
@@ -127,7 +156,7 @@ function Root() {
 
   async function connect() {
     try {
-      const [first] = await browserWallet!.send("eth_requestAccounts", []);
+      const [first] = await env!.browserWallet!.send("eth_requestAccounts", []);
       setAccount(first);
     } catch (error) {
       setNotice({
@@ -146,6 +175,7 @@ function Root() {
       description: "Confirm it in your wallet.",
     });
     try {
+      const { browserWallet, reader, config } = env!;
       const signer: Signer = browserWallet
         ? await browserWallet.getSigner(account)
         : await reader.getSigner(viewer);
@@ -169,7 +199,7 @@ function Root() {
       });
     }
     setVoting(undefined);
-    await load();
+    await load(env!);
   }
 
   return (
@@ -179,6 +209,7 @@ function Root() {
       wallet={wallet}
       notice={notice}
       voting={voting}
+      failed={failed}
       onConnect={() => void connect()}
       onViewer={setChosen}
       onVote={(id, inFavour) => void vote(id, inFavour)}
