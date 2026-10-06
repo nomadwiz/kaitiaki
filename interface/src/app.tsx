@@ -74,15 +74,20 @@ const SCREENS: Record<string, (c: Context) => ReactNode> = {
       queued={c.view.queued}
       proposals={c.view.proposals}
       ownUnits={c.view.ownUnits}
-      canAct={c.canAct}
-      voting={c.voting}
-      onVote={c.onVote}
     >
       {c.walletState}
     </Home>
   ),
   // Keyed without "#/", so no hash names it: only #/proposal/<n> reaches it.
-  proposal: (c) => <Proposal id={c.id} />,
+  proposal: (c) => (
+    <Proposal
+      id={c.id}
+      proposal={c.view.proposals.find((p) => String(p.id) === c.id)}
+      canAct={c.canAct}
+      voting={c.voting}
+      onVote={c.onVote}
+    />
+  ),
   "#/units": (c) => (
     <YourUnits units={c.view.ownUnits}>{c.walletState}</YourUnits>
   ),

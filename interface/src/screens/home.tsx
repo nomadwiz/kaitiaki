@@ -1,16 +1,15 @@
 // Screen 1, Home (`#/`): the two funds, what needs the viewer's vote, their
-// levies and the four guarantees. A proposal the viewer can vote on carries
-// its VoteControl here until #152 moves the vote to the proposal screen.
-import { Fragment, type FormEvent, type ReactNode } from "react";
+// levies and the four guarantees. It offers no action: each proposal links to
+// its own screen, where the vote is.
+import { Fragment, type ReactNode } from "react";
 
 import { date, nzd } from "../format.js";
 import { Address, PageHead } from "../shell.js";
 import type { View } from "../view.js";
 
-type Proposal = View["proposals"][number];
-type OnVote = (proposalId: bigint, inFavour: boolean) => void;
+export type Proposal = View["proposals"][number];
 
-const TONE = {
+export const TONE = {
   Open: "info",
   Extended: "wait",
   Passed: "ok",
@@ -19,7 +18,7 @@ const TONE = {
   Executed: "done",
 } as const;
 
-const FUNDS = [
+export const FUNDS = [
   ["op", "Operating", "Running costs: cleaning, power, insurance."],
   ["ltm", "Long-term maintenance", "Roof, lifts, cladding. Saved over years."],
 ] as const;
@@ -54,81 +53,66 @@ function Guarantees() {
   );
 }
 
-function VoteControl({
+// What a proposal buys, from where, and from whom.
+export function ProposalMeta({
   proposal: p,
-  voting,
-  onVote,
+  withQuote,
 }: {
   proposal: Proposal;
-  voting?: bigint;
-  onVote?: OnVote;
+  // The Proposal screen adds the hash of the quote.
+  withQuote?: boolean;
 }) {
-  const n = p.unvoted.length;
-  const submit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const button = (e.nativeEvent as SubmitEvent)
-      .submitter as HTMLButtonElement;
-    onVote?.(p.id, button.value === "true");
-  };
+  const work = p.kind === "Work";
   return (
-    <form className="vote" data-proposal={String(p.id)} onSubmit={submit}>
-      <p className="vote-units">
-        You hold <b>{n === 1 ? "1 unit" : `${n} units`}</b> that{" "}
-        {n === 1 ? "has" : "have"} not voted:{" "}
-        {p.unvoted.map((u) => `Unit ${u}`).join(", ")}.
-        {n === 2 ? " Both vote together." : n > 2 ? " All vote together." : ""}
-      </p>
-      <div className="vote-buttons">
-        {voting === p.id ? (
-          <>
-            <button className="btn" type="button" aria-disabled="true">
-              <span className="spinner" aria-hidden="true"></span>Waiting for
-              your wallet…
-            </button>
-            <button
-              className="btn"
-              data-variant="outline"
-              type="button"
-              aria-disabled="true"
-            >
-              Vote against
-            </button>
-          </>
-        ) : (
-          <>
-            <button className="btn" type="submit" name="inFavour" value="true">
-              Vote for
-            </button>
-            <button
-              className="btn"
-              data-variant="outline"
-              type="submit"
-              name="inFavour"
-              value="false"
-            >
-              Vote against
-            </button>
-          </>
-        )}
-      </div>
-      <p className="field-hint">
-        Your wallet will ask you to sign. Kaitiaki never sees your key.
-      </p>
-    </form>
+    <dl className="meta">
+      {work ? (
+        <>
+          <div>
+            <dt>Spending cap</dt>
+            <dd>{nzd(p.limit)}</dd>
+          </div>
+          <div>
+            <dt>Pays from</dt>
+            <dd>
+              <span className="fund-tag" data-fund={FUNDS[Number(p.fund)][0]}>
+                {FUNDS[Number(p.fund)][1]}
+              </span>
+            </dd>
+          </div>
+          <div>
+            <dt>Vendor</dt>
+            <dd>
+              <Address value={p.payee} />
+            </dd>
+          </div>
+          {withQuote && (
+            <div>
+              <dt>Quote hash</dt>
+              <dd>
+                <Address value={p.quoteHash} label="Copy quote hash" />
+              </dd>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <div>
+            <dt>Adds vendor</dt>
+            <dd>{p.description}</dd>
+          </div>
+          <div>
+            <dt>Vendor wallet</dt>
+            <dd>
+              <Address value={p.payee} />
+            </dd>
+          </div>
+        </>
+      )}
+    </dl>
   );
 }
 
-function ProposalCard({
-  proposal: p,
-  canAct,
-  voting,
-  onVote,
-}: {
-  proposal: Proposal;
-  canAct: boolean;
-  voting?: bigint;
-  onVote?: OnVote;
-}) {
+function ProposalCard({ proposal: p }: { proposal: Proposal }) {
   const work = p.kind === "Work";
   return (
     <article className="card proposal">
@@ -146,43 +130,7 @@ function ProposalCard({
           {work ? p.description : `Admit ${p.description}`}
         </a>
       </h3>
-      <dl className="meta">
-        {work ? (
-          <>
-            <div>
-              <dt>Spending cap</dt>
-              <dd>{nzd(p.limit)}</dd>
-            </div>
-            <div>
-              <dt>Pays from</dt>
-              <dd>
-                <span className="fund-tag" data-fund={FUNDS[Number(p.fund)][0]}>
-                  {FUNDS[Number(p.fund)][1]}
-                </span>
-              </dd>
-            </div>
-            <div>
-              <dt>Vendor</dt>
-              <dd>
-                <Address value={p.payee} />
-              </dd>
-            </div>
-          </>
-        ) : (
-          <>
-            <div>
-              <dt>Adds vendor</dt>
-              <dd>{p.description}</dd>
-            </div>
-            <div>
-              <dt>Vendor wallet</dt>
-              <dd>
-                <Address value={p.payee} />
-              </dd>
-            </div>
-          </>
-        )}
-      </dl>
+      <ProposalMeta proposal={p} />
       <div className="next">
         <span>
           {p.closes !== undefined && (
@@ -193,9 +141,6 @@ function ProposalCard({
           {String(p.forVotes)} for · {String(p.againstVotes)} against
         </span>
       </div>
-      {p.canVote && canAct && (
-        <VoteControl proposal={p} voting={voting} onVote={onVote} />
-      )}
     </article>
   );
 }
@@ -205,19 +150,12 @@ export function Home({
   queued,
   proposals,
   ownUnits,
-  canAct,
-  voting,
-  onVote,
   children,
 }: {
   funds: View["funds"];
   queued: View["queued"];
   proposals: Proposal[];
   ownUnits: View["ownUnits"];
-  // False when the wallet is on another chain: no vote is offered.
-  canAct: boolean;
-  voting?: bigint;
-  onVote?: OnVote;
   // The wallet's Screen 8 state, if any.
   children?: ReactNode;
 }) {
@@ -226,13 +164,7 @@ export function Home({
   const needVote = proposals.filter((p) => p.canVote);
   const others = proposals.filter((p) => !p.canVote);
   const card = (p: Proposal) => (
-    <ProposalCard
-      key={String(p.id)}
-      proposal={p}
-      canAct={canAct}
-      voting={voting}
-      onVote={onVote}
-    />
+    <ProposalCard key={String(p.id)} proposal={p} />
   );
   return (
     <>
@@ -290,12 +222,12 @@ export function Home({
             </div>
           )}
         </section>
-        <section aria-labelledby="h-units">
-          <div className="section-head">
-            <h2 id="h-units">Your levies</h2>
-            <a href="#/units">Your units</a>
-          </div>
-          {ownUnits.length > 0 && (
+        {ownUnits.length > 0 && (
+          <section aria-labelledby="h-units">
+            <div className="section-head">
+              <h2 id="h-units">Your levies</h2>
+              <a href="#/units">Your units</a>
+            </div>
             <div className="card">
               <div
                 className="card-content stack"
@@ -336,8 +268,8 @@ export function Home({
                 ))}
               </div>
             </div>
-          )}
-        </section>
+          </section>
+        )}
       </div>
       <section aria-labelledby="h-all">
         <div className="section-head">

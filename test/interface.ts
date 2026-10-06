@@ -31,7 +31,7 @@ const STATES = ["Open", "Extended", "Passed", "Failed", "Queued", "Executed"];
 // Each route, the heading its screen opens with, and the link marked current.
 const ROUTES = [
   ["#/", "Home", "Home"],
-  ["#/proposal/2", "Proposal #2", "Home"],
+  ["#/proposal/2", "Roof repair", "Home"],
   ["#/units", "Your units and levies", "Your units"],
   ["#/register", "Building register", "Register"],
   ["#/activity", "Activity", "Activity"],
@@ -240,10 +240,12 @@ describe("Read interface (#72, #149)", () => {
     let { view, html } = await render(signers.carol.address);
     expect(view.proposals.find((p) => p.id === 2n)?.closes).to.equal(closes);
     expect(html).to.contain(`Voting closes ${date(closes)}.`);
-    expect(html).to.contain("1 proposal");
-    expect(html).to.match(/<form class="vote" data-proposal="2">/);
+    expect(html).to.contain('<span class="muted-text">1 proposal</span>');
+    // Home links to the proposal and offers no action (interface.md §4).
+    expect(html).to.contain('<a href="#/proposal/2">Roof repair</a>');
+    expect(html).to.not.contain("<form");
     ({ html } = await render(signers.alice.address));
-    expect(html).to.contain("0 proposals");
+    expect(html).to.contain('<span class="muted-text">0 proposals</span>');
     expect(html).to.contain("Nothing needs your vote.");
 
     // One wallet voted, so no quorum: voting extends by seven days.
@@ -280,14 +282,417 @@ describe("Read interface (#72, #149)", () => {
   it("offers a vote only to a unit that has not voted, and only while voting is open", async () => {
     const { signers, render } = await setUp();
     // Carol's unit has not voted on proposal 2; alice's both have.
-    expect((await render(signers.carol.address)).html).to.match(
+    const at = "#/proposal/2";
+    expect((await render(signers.carol.address, at)).html).to.match(
       /<form class="vote" data-proposal="2">/,
     );
-    expect((await render(signers.alice.address)).html).to.not.contain("<form");
-    // A wallet with no unit cannot vote at all.
-    expect((await render(signers.stranger.address)).html).to.not.contain(
+    expect((await render(signers.alice.address, at)).html).to.not.contain(
       "<form",
     );
+    // A wallet with no unit cannot vote at all.
+    expect((await render(signers.stranger.address, at)).html).to.not.contain(
+      "<form",
+    );
+  });
+
+  it("Home leaves Your levies out when the viewer holds no unit", async () => {
+    const { signers, render } = await setUp();
+    const { html } = await render(signers.stranger.address);
+    expect(html).to.not.contain("Your levies");
+  });
+
+  it("FR40: a queued long-term maintenance proposal is on that fund's card and not Operating's", async () => {
+    const { ethers, contracts, signers, render } = await setUp();
+    const { governance } = contracts;
+    // Proposal 3 pays the admitted vendor from long-term maintenance (fund 1).
+    await governance
+      .connect(signers.firm)
+      .getFunction("propose(string,uint256,uint8,address,bytes32)")(
+      "Replace the lift cables",
+      parseUnits("900", 18),
+      1,
+      signers.vendor.address,
+      zeroPadValue("0x03", 32),
+    );
+    for (const owner of [signers.alice, signers.bob, signers.carol]) {
+      await governance.connect(owner).castVote(3, true);
+    }
+    await advance(ethers, await governance.VOTING_PERIOD());
+    await governance.connect(signers.stranger).queue(3);
+    const { view, html } = await render(signers.carol.address);
+    expect(view.queued).to.deep.equal({
+      operating: 0n,
+      maintenance: parseUnits("900", 18),
+    });
+    const cards = html.split('<section class="card fund"').slice(1);
+    expect(cards).to.have.length(2);
+    expect(cards[0]).to.contain("Operating");
+    expect(cards[0]).to.contain('Queued to pay, at most: <b class="num">none');
+    expect(cards[1]).to.contain("Long-term maintenance");
+    expect(cards[1]).to.contain(
+      `Queued to pay, at most: <b class="num">${nzd(parseUnits("900", 18))}</b>`,
+    );
+  });
+
+  describe("Proposal screen (#152)", () => {
+    // The timeline's steps as rendered: [status, name, date text].
+    const timeline = (html: string) =>
+      [
+        ...html.matchAll(
+          /<li data-step="(\w+)"><span class="t-name">([^<]*)<\/span>(?:<span class="t-date">([^<]*)<\/span>)?/g,
+        ),
+      ].map(([, step, name, when]) => [step, name, when]);
+    const block = async (ethers: any, n: number) =>
+      BigInt((await ethers.provider.getBlock(n))!.timestamp);
+
+    // Both quorum conditions, as the log gives them, against the contract's.
+    async function expectQuorumMatches(
+      ethers: any,
+      governance: any,
+      view: any,
+    ) {
+      for (const p of view.proposals) {
+        // The state each check is made in is the contract's too.
+        expect(p.state, `proposal ${p.id} state`).to.equal(
+          STATES[Number(await governance.state(p.id))],
+        );
+        const stored = await governance.proposal(p.id);
+        const tally = await governance.tallyOf(p.id);
+        const unitsVoted = tally.forVotes + tally.againstVotes;
+        const divisor = await governance.QUORUM_UNIT_DIVISOR();
+        const minVoters = await governance.QUORUM_MIN_VOTERS();
+        const q = p.quorum;
+        expect(q.unitsVoted, `proposal ${p.id} units`).to.equal(unitsVoted);
+        expect(q.unitsMet).to.equal(
+          unitsVoted * divisor >= stored.principalUnits,
+        );
+        expect(q.voters).to.equal(await governance.voterCount(p.id));
+        expect(q.votersNeeded).to.equal(minVoters);
+        expect(q.votersMet).to.equal(q.voters >= minVoters);
+        expect(q.unitsMet && q.votersMet, `proposal ${p.id} quorum`).to.equal(
+          await governance.quorumReached(p.id),
+        );
+      }
+    }
+
+    it("meters both quorum conditions as Governance.quorumReached does, at every state", async () => {
+      const { ethers, contracts, signers, render } = await setUp();
+      const { governance } = contracts;
+      const states: string[] = [];
+      const check = async () => {
+        const { view } = await render(signers.carol.address);
+        await expectQuorumMatches(ethers, governance, view);
+        const p = view.proposals.find((x) => x.id === 2n)!;
+        states.push(p.state);
+        return p;
+      };
+      // Alice's two units are one wallet: units are met, owners are not.
+      let p = await check();
+      expect(p.quorum).to.include({ unitsMet: true, votersMet: false });
+      // A proposal nobody has voted on meets neither.
+      await governance
+        .connect(signers.firm)
+        .getFunction("propose(string,uint256,uint8,address,bytes32)")(
+        "Paint the hallway",
+        parseUnits("100", 18),
+        0,
+        signers.vendor.address,
+        zeroPadValue("0x04", 32),
+      );
+      let { view } = await render(signers.carol.address);
+      await expectQuorumMatches(ethers, governance, view);
+      expect(view.proposals.find((x) => x.id === 3n)!.quorum).to.include({
+        unitsVoted: 0n,
+        unitsMet: false,
+        voters: 0,
+        votersMet: false,
+      });
+      // Bob's vote is the second wallet.
+      await governance.connect(signers.bob).castVote(2, true);
+      p = await check();
+      expect(p.quorum).to.include({ unitsMet: true, votersMet: true });
+      await advance(ethers, await governance.VOTING_PERIOD());
+      await check();
+      await governance.connect(signers.stranger).queue(2);
+      await check();
+      await advance(ethers, await governance.TIMELOCK_DELAY());
+      await governance
+        .connect(signers.firm)
+        .attest(2, zeroPadValue("0x05", 32));
+      await governance.connect(signers.stranger).execute(2);
+      await check();
+      expect(states).to.deep.equal([
+        "Open",
+        "Open",
+        "Passed",
+        "Queued",
+        "Executed",
+      ]);
+      const byId = async (id: bigint) => {
+        const { view } = await render(signers.carol.address);
+        await expectQuorumMatches(ethers, governance, view);
+        return view.proposals.find((x) => x.id === id)!;
+      };
+      // Proposal 3 got no vote and its window and extension have passed: it
+      // failed with quorum unmet.
+      let q = await byId(3n);
+      expect(q.state).to.equal("Failed");
+      expect(await governance.quorumReached(3)).to.equal(false);
+      // Proposal 4 is voted down by three wallets: quorum met, and Failed.
+      // Proposal 5 gets no vote, so it extends.
+      const propose = (name: string, hash: string) =>
+        governance
+          .connect(signers.firm)
+          .getFunction("propose(string,uint256,uint8,address,bytes32)")(
+          name,
+          parseUnits("100", 18),
+          0,
+          signers.vendor.address,
+          zeroPadValue(hash, 32),
+        );
+      await propose("Repaint the car park", "0x06");
+      await propose("Mow the lawn", "0x07");
+      for (const owner of [signers.alice, signers.bob, signers.carol]) {
+        await governance.connect(owner).castVote(4, false);
+      }
+      await advance(ethers, await governance.VOTING_PERIOD());
+      q = await byId(4n);
+      expect(q.state).to.equal("Failed");
+      expect(q.quorum).to.include({ unitsMet: true, votersMet: true });
+      expect(await governance.quorumReached(4)).to.equal(true);
+      q = await byId(5n);
+      expect(q.state).to.equal("Extended");
+      expect(q.quorum).to.include({ unitsMet: false, votersMet: false });
+      expect(await governance.quorumReached(5)).to.equal(false);
+      await advance(ethers, await governance.EXTENSION());
+      expect((await byId(5n)).state).to.equal("Failed");
+    });
+
+    it("draws the timeline from stateAt and block times, and waives quorum in the extension", async () => {
+      const { ethers, contracts, signers, addresses, fromBlock, render } =
+        await setUp();
+      const { governance } = contracts;
+      const [created] = await ethers.provider.getLogs({
+        address: addresses.governance,
+        fromBlock,
+        topics: [
+          governance.interface.getEvent("ProposalCreated").topicHash,
+          zeroPadValue("0x02", 32),
+        ],
+      });
+      const createdAt = await block(ethers, created.blockNumber);
+      const window = await governance.VOTING_PERIOD();
+      const extension = await governance.EXTENSION();
+      const names = (html: string) =>
+        timeline(html).map(([s, n]) => `${s} ${n}`);
+
+      let { html } = await render(signers.carol.address, "#/proposal/2");
+      expect(timeline(html)).to.deep.equal([
+        ["done", "Proposed", date(createdAt)],
+        ["current", "Open", `Closes ${date(createdAt + window)}`],
+        ["skipped", "Extended", undefined],
+        ["todo", "Passed", undefined],
+        ["todo", "Queued", undefined],
+        ["todo", "Firm confirms work", undefined],
+        ["todo", "Executed", undefined],
+      ]);
+      expect(html).to.contain("Only if too few owners vote");
+      expect(html).to.contain("Where it is");
+      expect(html).to.contain(
+        `Next date: voting closes ${date(createdAt + window)}.`,
+      );
+      expect(html).to.not.contain("Quorum waived");
+
+      // One wallet voted: voting extends, and quorum is waived.
+      await advance(ethers, window);
+      ({ html } = await render(signers.carol.address, "#/proposal/2"));
+      expect(names(html).slice(0, 4)).to.deep.equal([
+        "done Proposed",
+        "done Open",
+        "current Extended",
+        "todo Passed",
+      ]);
+      expect(timeline(html)[2][2]).to.equal(
+        `Closes ${date(createdAt + window + extension)}`,
+      );
+      expect(html).to.contain(
+        '<span class="t-note">Quorum waived. One owner\'s vote can decide.</span>'.replace(
+          "'",
+          "&#x27;",
+        ),
+      );
+      // The meter is replaced by the design system's waived notice.
+      expect(html).to.not.contain("quorum-row");
+      expect(html).to.contain(
+        '<p class="quorum-waived"><b>Quorum waived.</b> Too few owners voted in the first 14 days, so voting was extended 7 days and quorum no longer applies. One owner’s vote can decide. This is deliberate and lawful.</p>',
+      );
+
+      await advance(ethers, extension);
+      ({ html } = await render(signers.carol.address, "#/proposal/2"));
+      expect(names(html).slice(0, 4)).to.deep.equal([
+        "done Proposed",
+        "done Open",
+        "done Extended",
+        "current Passed",
+      ]);
+      // Voting is over, so no one is offered a vote.
+      expect(html).to.not.contain("<form");
+    });
+
+    it("follows a proposal through queueing, confirmation and payment, and a failure", async () => {
+      const { ethers, contracts, signers, render } = await setUp();
+      const { governance } = contracts;
+      await governance.connect(signers.bob).castVote(2, true);
+      await governance.connect(signers.carol).castVote(2, false);
+      await advance(ethers, await governance.VOTING_PERIOD());
+      const queued = await governance.connect(signers.stranger).queue(2);
+      // The wait ends a fixed delay after the block that queued it.
+      const eta =
+        (await block(ethers, (await queued.wait())!.blockNumber)) +
+        (await governance.TIMELOCK_DELAY());
+      let { html } = await render(signers.carol.address, "#/proposal/2");
+      const steps = () => timeline(html).map(([s, n]) => `${s} ${n}`);
+      const dates = () => timeline(html).map(([, , when]) => when);
+      expect(steps()).to.deep.equal([
+        "done Proposed",
+        "done Open",
+        "skipped Extended",
+        "done Passed",
+        "current Queued",
+        "todo Firm confirms work",
+        "todo Executed",
+      ]);
+      expect(dates().slice(3)).to.deep.equal([
+        date(eta - (await governance.TIMELOCK_DELAY())),
+        `Wait ends ${date(eta)}`,
+        `From ${date(eta)}`,
+        undefined,
+      ]);
+      expect(html).to.contain("Not needed: quorum was met");
+      await advance(ethers, await governance.TIMELOCK_DELAY());
+      ({ html } = await render(signers.carol.address, "#/proposal/2"));
+      expect(steps()[4]).to.equal("done Queued");
+      expect(steps()[5]).to.equal("current Firm confirms work");
+      const attested = await governance
+        .connect(signers.firm)
+        .attest(2, zeroPadValue("0x05", 32));
+      const attestedAt = await block(
+        ethers,
+        (await attested.wait())!.blockNumber,
+      );
+      ({ html } = await render(signers.carol.address, "#/proposal/2"));
+      expect(steps().slice(-2)).to.deep.equal([
+        "done Firm confirms work",
+        "current Executed",
+      ]);
+      expect(dates()[5]).to.equal(`Confirmed ${date(attestedAt)}`);
+      // Executed: nothing is pending, so every reached step is done.
+      const executed = await governance.connect(signers.stranger).execute(2);
+      const executedAt = await block(
+        ethers,
+        (await executed.wait())!.blockNumber,
+      );
+      ({ html } = await render(signers.carol.address, "#/proposal/2"));
+      expect(steps()).to.deep.equal([
+        "done Proposed",
+        "done Open",
+        "skipped Extended",
+        "done Passed",
+        "done Queued",
+        "done Firm confirms work",
+        "done Executed",
+      ]);
+      expect(dates()[6]).to.equal(date(executedAt));
+
+      // Proposal 1 admitted a vendor: no firm step. Proposal 3 fails.
+      ({ html } = await render(signers.carol.address, "#/proposal/1"));
+      expect(steps()).to.not.include("done Firm confirms work");
+      expect(steps().at(-1)).to.equal("done Executed");
+      await governance
+        .connect(signers.firm)
+        .getFunction("propose(string,uint256,uint8,address,bytes32)")(
+        "Paint the hallway",
+        parseUnits("100", 18),
+        0,
+        signers.vendor.address,
+        zeroPadValue("0x04", 32),
+      );
+      await governance.connect(signers.alice).castVote(3, false);
+      await governance.connect(signers.bob).castVote(3, true);
+      await governance.connect(signers.carol).castVote(3, false);
+      await advance(ethers, await governance.VOTING_PERIOD());
+      ({ html } = await render(signers.carol.address, "#/proposal/3"));
+      expect(steps()).to.deep.equal([
+        "done Proposed",
+        "done Open",
+        "skipped Extended",
+        "current Failed",
+        "skipped Queued",
+        "skipped Firm confirms work",
+        "skipped Executed",
+      ]);
+    });
+
+    it("shows the tally in units, the rule that a tie fails, and both quorum bars", async () => {
+      const { signers, render } = await setUp();
+      const { view, html } = await render(
+        signers.carol.address,
+        "#/proposal/2",
+      );
+      const p = view.proposals.find((x) => x.id === 2n)!;
+      // Alice's two units voted for it.
+      expect([p.forVotes, p.againstVotes]).to.deep.equal([2n, 0n]);
+      expect(html).to.contain(
+        '<div class="tally-side"><span>For</span><b>2</b><span>units</span></div>',
+      );
+      expect(html).to.contain(
+        '<div class="tally-side"><span>Against</span><b>0</b><span>units</span></div>',
+      );
+      expect(html).to.contain("A tie fails.");
+      // The quote's hash is shortened like an address, with its own Copy.
+      expect(html).to.contain("<dt>Quote hash</dt>");
+      expect(html).to.contain('aria-label="Copy quote hash"');
+      expect(html).to.contain(
+        `${p.quoteHash.slice(0, 6)}…${p.quoteHash.slice(-4)}`,
+      );
+      // One unit is a quarter of four; one wallet is not two.
+      expect(html).to.contain("<b>2 of 1</b> units");
+      expect(html).to.contain("<b>1 of 2</b> owners");
+      expect(html).to.match(/data-tone="ok">met<\/span>/);
+      expect(html).to.match(/data-tone="wait">not yet met<\/span>/);
+    });
+
+    it("the vote control names the viewer's units that have not voted", async () => {
+      const { signers, render } = await setUp();
+      let { html } = await render(signers.carol.address, "#/proposal/2");
+      expect(html).to.contain(
+        '<p class="vote-units">You hold <b>1 unit</b> that has not voted: Unit 4.</p>',
+      );
+      expect(html).to.contain('value="true" name="inFavour"');
+      expect(html).to.contain('value="false" name="inFavour"');
+      // While the wallet signs, the buttons are the spinner and a disabled one.
+      const { view } = await render(signers.carol.address);
+      html = renderToStaticMarkup(
+        createElement(App, { hash: "#/proposal/2", view, voting: 2n }),
+      );
+      expect(html).to.contain("Waiting for your wallet…");
+      expect(html).to.not.contain('name="inFavour"');
+      // A wrong-chain browser wallet is offered no vote.
+      ({ html } = await render(signers.carol.address, "#/proposal/2", {
+        kind: "browser",
+        account: signers.carol.address,
+        chainId: 1n,
+        deploymentChainId: 31337n,
+      }));
+      expect(html).to.not.contain("<form");
+    });
+
+    it("says plainly that a proposal does not exist", async () => {
+      const { signers, render } = await setUp();
+      const { html } = await render(signers.carol.address, "#/proposal/99");
+      expect(html).to.contain("<h1>Proposal #99</h1>");
+      expect(html).to.contain("There is no proposal #99.");
+    });
   });
 
   it("puts every route inside the shell with one current link, and keeps the privacy line on Register", async () => {
@@ -383,7 +788,11 @@ describe("Read interface (#72, #149)", () => {
     // action — not carol's vote, which she could cast on the right chain,
     // and not Connect wallet.
     for (const account of [undefined, carol.address]) {
-      const { html } = await render(account, "#/", browser(account, 1n));
+      const { html } = await render(
+        account,
+        "#/proposal/2",
+        browser(account, 1n),
+      );
       expect(html, account).to.contain(
         '<div class="alert" data-variant="destructive" role="alert"><p class="alert-title">Your wallet is on chain 1, and Kaitiaki is deployed on chain 31337.</p>',
       );
@@ -392,7 +801,13 @@ describe("Read interface (#72, #149)", () => {
     }
     // The control: on the right chain, carol is offered her vote.
     expect(
-      (await render(carol.address, "#/", browser(carol.address, 31337n))).html,
+      (
+        await render(
+          carol.address,
+          "#/proposal/2",
+          browser(carol.address, 31337n),
+        )
+      ).html,
     ).to.match(/<form class="vote" data-proposal="2">/);
 
     // On the right chain, not yet connected.

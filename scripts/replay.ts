@@ -48,6 +48,15 @@ const EXTENSION = 7n * 86_400n;
 export type ProposalState =
   "Open" | "Extended" | "Passed" | "Failed" | "Queued" | "Executed";
 
+export type QuorumParts = {
+  unitsVoted: bigint;
+  unitsNeeded: bigint;
+  unitsMet: boolean;
+  voters: number;
+  votersNeeded: number;
+  votersMet: boolean;
+};
+
 export async function replay(
   provider: Pick<Provider, "getLogs" | "getBlock">,
   addresses: {
@@ -88,6 +97,9 @@ export async function replay(
     bigint,
     { attester: string; evidenceHash: string }
   >();
+  const attestedAt = new Map<bigint, bigint>();
+  // Proposal to the block time its effect (payment or admission) landed.
+  const executedAt = new Map<bigint, bigint>();
   // ponytail: roles are Treasury's alone; key them by contract address once a
   // second replayed contract uses AccessControl.
   const roles = new Map<string, Set<string>>();
@@ -155,6 +167,7 @@ export async function replay(
         );
       }
       payees.set(a.payee, a.proposalId);
+      executedAt.set(a.proposalId, time);
     }
     if (event.name === "ProposalQueued") {
       // Governance.queue refuses an unknown proposal (UnknownProposal) and
@@ -184,6 +197,7 @@ export async function replay(
         attester: a.attester,
         evidenceHash: a.evidenceHash,
       });
+      attestedAt.set(a.proposalId, time);
     }
     if (event.name === "UnitBound") owners.set(a.unitId, a.wallet);
     if (event.name === "ChargeScheduled") {
@@ -241,6 +255,7 @@ export async function replay(
       }
       if (a.fund === OPERATING) funds.operating -= a.amount;
       else funds.maintenance -= a.amount;
+      executedAt.set(a.proposalId, time);
       releasedByProposal.set(
         a.proposalId,
         (releasedByProposal.get(a.proposalId) ?? 0n) + a.amount,
@@ -283,17 +298,25 @@ export async function replay(
       againstVotes: BigInt(ballot.size - inFavour),
     });
   }
-  // Quorum as Governance.quorumReached decides it, for every proposal: units
-  // voted are at least a quarter of its principal units, rounded up, and at
-  // least two distinct wallets cast them.
+  // Quorum as Governance.quorumReached decides it, for every proposal, one
+  // condition at a time: units voted are at least a quarter of its principal
+  // units, and at least two distinct wallets cast them. `unitsNeeded` is the
+  // quarter rounded up, the most a meter's first bar can ask for.
+  const quorumParts = new Map<bigint, QuorumParts>();
   const quorum = new Map<bigint, boolean>();
   for (const [proposalId, units] of principalUnits) {
     const unitsVoted = BigInt(votes.get(proposalId)?.size ?? 0);
-    const wallets = voters.get(proposalId)?.size ?? 0;
-    quorum.set(
-      proposalId,
-      unitsVoted * QUORUM_UNIT_DIVISOR >= units && wallets >= QUORUM_MIN_VOTERS,
-    );
+    const distinct = voters.get(proposalId)?.size ?? 0;
+    const parts = {
+      unitsVoted,
+      unitsNeeded: (units + QUORUM_UNIT_DIVISOR - 1n) / QUORUM_UNIT_DIVISOR,
+      unitsMet: unitsVoted * QUORUM_UNIT_DIVISOR >= units,
+      voters: distinct,
+      votersNeeded: QUORUM_MIN_VOTERS,
+      votersMet: distinct >= QUORUM_MIN_VOTERS,
+    };
+    quorumParts.set(proposalId, parts);
+    quorum.set(proposalId, parts.unitsMet && parts.votersMet);
   }
 
   return {
@@ -301,11 +324,14 @@ export async function replay(
     releasedByProposal,
     tallies,
     quorum,
+    quorumParts,
     proposals,
     owners,
     payees,
     queued,
     attested,
+    attestedAt,
+    executedAt,
     roles,
     charges,
     transitions,
@@ -325,6 +351,18 @@ export function arrearsAt(
   );
 }
 
+// Whether voting extends past its window: quorum was missed at the window's
+// close, or a vote came after it. Meaningful once the window has closed.
+export function extended(
+  derived: Awaited<ReturnType<typeof replay>>,
+  proposalId: bigint,
+) {
+  return (
+    derived.proposals.get(proposalId)!.votedInExtension ||
+    !derived.quorum.get(proposalId)
+  );
+}
+
 // FR20, #138: where a proposal stands at `timestamp`, decided as
 // Governance.state decides it, from the replayed log and block times alone.
 // A state moves with time even when no log does, so `timestamp` is an
@@ -341,8 +379,8 @@ export function stateAt(
   if (timestamp < windowEnd) return "Open";
   // No vote can be cast between the window closing and the first vote in
   // the extension, so until then the tally is the tally at close.
-  const extended = p.votedInExtension || !derived.quorum.get(proposalId);
-  if (extended && timestamp < windowEnd + EXTENSION) return "Extended";
+  if (extended(derived, proposalId) && timestamp < windowEnd + EXTENSION)
+    return "Extended";
   const tally = derived.tallies.get(proposalId);
   if ((tally?.forVotes ?? 0n) <= (tally?.againstVotes ?? 0n)) return "Failed";
   // The Timelock's operation has run once its effect is in the log.
