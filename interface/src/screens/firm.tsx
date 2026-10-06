@@ -1,10 +1,11 @@
 // Screen 6, Firm (`#/firm`, #157, #173): propose a vendor, collect due
 // levies; Propose work is its own screen (#183), Confirm work is on
 // Proposal (#178). Only the firm's wallet can (`NotFirm` in Governance and
-// LevyLedger), so for every other viewer the same forms are drawn disabled. Each form reads its fields
-// when submitted and holds only the hints for what failed; a malformed value
-// never reaches ethers. An empty name, identifier or description is left to
-// the contract, whose refusal the RefusalNotice words.
+// LevyLedger), so for every other viewer the same forms are drawn disabled.
+// Each form reads its fields when submitted and holds only the hints for
+// what failed; a malformed value never reaches ethers. An empty name,
+// identifier or description is left to the contract, whose refusal the
+// RefusalNotice words.
 import { isAddress, isHexString, parseUnits } from "ethers";
 import { useState, type FormEvent, type ReactNode } from "react";
 
