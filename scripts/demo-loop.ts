@@ -46,12 +46,14 @@ const [, , operationId] = await governance.operation(PROPOSAL);
 const state = async () => Number(await governance.state(PROPOSAL));
 const OPEN = 0;
 const PASSED = 2;
+const QUEUED = 4;
 const EXECUTED = 5;
 
 if ((await state()) === OPEN) await advance(ethers, await governance.VOTING_PERIOD());
 if (until >= 1) {
   if ((await state()) === PASSED) await (await governance.connect(stranger).queue(PROPOSAL)).wait();
-  if (!(await timelock.isOperationReady(operationId))) {
+  // Only a queued operation waits: once it is done it is no longer "ready".
+  if ((await state()) === QUEUED && !(await timelock.isOperationReady(operationId))) {
     await advance(ethers, await governance.TIMELOCK_DELAY());
   }
 }
@@ -66,7 +68,13 @@ if (until >= 3 && (await state()) !== EXECUTED) {
   await (await governance.connect(stranger).execute(PROPOSAL)).wait();
 }
 if (until < 3) {
-  console.log(`Proposal ${PROPOSAL} stopped at ${stages[until]}.`);
+  // The stage the chain is actually at, which may be past the one asked for.
+  const at = (await state()) === EXECUTED ? 3 : (await governance.attested(PROPOSAL)) ? 2 : (await state()) === QUEUED ? 1 : 0;
+  console.log(
+    at > until
+      ? `Proposal ${PROPOSAL} is already past ${stages[until]}: ${stages[at]}.`
+      : `Proposal ${PROPOSAL} stopped at ${stages[until]}.`,
+  );
   process.exit(0);
 }
 
