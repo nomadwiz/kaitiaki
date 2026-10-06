@@ -202,8 +202,9 @@ export type View = {
     }[];
   };
   // Every unpaid charge, for the firm to collect (Firm, ADR-020), listed
-  // without its unit or amount, as Anyone's actions listed them: `due` once its due date has arrived, `attempted` once
-  // a collection has issued it and taken nothing.
+  // without its unit or amount, as Anyone's actions listed them: `due` once
+  // its due date has arrived, `attempted` once a collection has issued it
+  // and taken nothing.
   toCollect: {
     chargeId: bigint;
     dueDate: bigint;

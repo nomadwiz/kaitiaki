@@ -121,7 +121,14 @@ contract LevyLedgerTest is Test {
 
     function test_RejectsZeroTreasury() public {
         vm.expectRevert(LevyLedger.TreasuryIsZero.selector);
-        new LevyLedger(address(0), members, firm, new uint256[](0), new uint256[](0), new uint256[](0));
+        new LevyLedger(
+            address(0),
+            members,
+            firm,
+            new uint256[](0),
+            new uint256[](0),
+            new uint256[](0)
+        );
     }
 
     function test_RejectsZeroMembershipRegistry() public {

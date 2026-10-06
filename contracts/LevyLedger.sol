@@ -7,10 +7,11 @@ import {Treasury} from "./Treasury.sol";
 import {IMembershipQuery} from "./interfaces/IMembershipQuery.sol";
 
 /// @title Levy charges, payment and arrears: the money-in side of the loop.
-/// @notice Issue #58 — FR5–FR9, NFR7; B1. A charge names a unit, an amount and
-/// a due date. The schedule is fixed at construction, with no setter and no
-/// role, because deriving it from the maintenance plan (FR11) is designed, not
-/// built (doc/design/spec.md §4). A charge's index in the schedule is its id.
+/// @notice Issues #58 and #173 — FR5, FR7–FR9; B1; ADR-020. A charge names a
+/// unit, an amount and a due date. The schedule is fixed at construction, with
+/// no setter and no role, because deriving it from the maintenance plan (FR11)
+/// is designed, not built (doc/design/spec.md §4). A charge's index in the
+/// schedule is its id.
 ///
 /// Only the management firm collects a charge, and not before it is due
 /// (FR5, B1, ADR-020). Collecting issues the charge and takes the amount from

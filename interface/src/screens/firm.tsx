@@ -10,6 +10,7 @@ import { useState, type FormEvent, type ReactNode } from "react";
 
 import { date, nzd } from "../format.js";
 import { PageHead } from "../shell.js";
+import { Waiting } from "../states.js";
 import type { View } from "../view.js";
 import type { Acting } from "./actions.js";
 import { FUNDS } from "./home.js";
@@ -156,10 +157,7 @@ function Submit({
       aria-disabled={acting !== undefined || undefined}
     >
       {mine ? (
-        <>
-          <span className="spinner" aria-hidden="true"></span>
-          Waiting for your wallet…
-        </>
+        <Waiting />
       ) : (
         label
       )}
@@ -345,10 +343,7 @@ function ConfirmWork({
           aria-disabled={acting !== undefined || !work.due || undefined}
         >
           {acting?.action === "confirm" && acting.id === work.id ? (
-            <>
-              <span className="spinner" aria-hidden="true"></span>
-              Waiting for your wallet…
-            </>
+            <Waiting />
           ) : (
             "Confirm work is done"
           )}
@@ -494,10 +489,7 @@ function CollectLevies({
             onClick={act && !busy ? () => act.onCollect(due) : undefined}
           >
             {acting?.action === "collect" ? (
-              <>
-                <span className="spinner" aria-hidden="true"></span>
-                Waiting for your wallet…
-              </>
+              <Waiting />
             ) : (
               `Collect ${due.length} due charge${due.length === 1 ? "" : "s"}`
             )}

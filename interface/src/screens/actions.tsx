@@ -5,6 +5,7 @@
 // the firm's alone (ADR-020), so it is on the Firm screen.
 import { date } from "../format.js";
 import { PageHead } from "../shell.js";
+import { Waiting } from "../states.js";
 import type { View } from "../view.js";
 
 export type Act = "queue" | "execute";
@@ -43,10 +44,7 @@ function ActButton({
       onClick={busy ? undefined : () => onAct(action, id)}
     >
       {mine ? (
-        <>
-          <span className="spinner" aria-hidden="true"></span>
-          Waiting for your wallet…
-        </>
+        <Waiting />
       ) : (
         label
       )}
