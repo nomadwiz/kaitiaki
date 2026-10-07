@@ -609,3 +609,12 @@ The screens the project owner's decisions of 07-10-2026 changed, each compared w
 | `202-units-owner-375.png` | The same at 375 px: each charge a stacked row, its number and amount, then its due date and state, then Pay early or Pay now across the card, in sight without scrolling sideways | The same, with `evidence/week6/202-units-owner-375.png` and a trailing `375` |
 | `202-proposals-waiting-owner-1440.png` | **FR20.** After the voting window: the Waiting to carry out tab, selected over the DevTools protocol, holds proposal 2, Passed, with "Voting closed" and its date | After the files above, `UNTIL=passed npm run demo:loop`, then `ACT='document.querySelector("[id$=trigger-waiting]").dispatchEvent(new MouseEvent("mousedown",{bubbles:true}))' node scripts/screenshot.mjs evidence/week6/202-proposals-waiting-owner-1440.png 'http://localhost:5173/?as=<carol>#/proposals'` |
 | `202-proposals-waiting-owner-375.png` | The same at 375 px | The same `ACT`, with `evidence/week6/202-proposals-waiting-owner-375.png` and a trailing `375` |
+
+### Issue #78 — the whole suites at the tip, for report Section 5
+
+The report's coverage figure came from `week5/70-qas8-stolen-firm-key-tests.txt`, which predates the contract changes in #147, #148 and #173. The row for `173-collect-tests.txt` above states 100% coverage, but that capture was run with `npm run test:solidity` and holds no coverage table; `78-solidity-coverage.txt` is the coverage run that backs it. Both captures were taken after the last contract change, #173.
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `78-solidity-coverage.txt` | The Solidity suites pass, 182 passing, with 100% line and statement coverage of `MockNZD`, `MembershipRegistry`, `PayeeRegistry`, `Governance`, `Treasury`, `LevyLedger` and the four stubs. `TimelockController` is OpenZeppelin's, used unchanged, and is not measured | `npm run test:coverage` |
+| `78-typescript-tests.txt` | The TypeScript suites pass, 111 passing: the configuration secrets check, the read interface, the transaction path, the QAS-4 replay and the toolchain | `npm run test:mocha` |
