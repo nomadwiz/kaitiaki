@@ -5,6 +5,7 @@
 // decides (FR22, NFR7); the firm confirms work. Each action is offered only
 // when its handler is given, so the firm's copy, given no vote, offers none
 // (ADR-021).
+import { isHexString } from "ethers";
 import {
   BadgeCheck,
   Banknote,
@@ -51,8 +52,9 @@ import { date, nzd, short, title, unitsLabel } from "../format.js";
 import { cn } from "../lib/utils.js";
 import { Waiting } from "../states.js";
 import type { View } from "../view.js";
-import { checkEvidence, type FirmActs } from "./firm.js";
 import { Heading } from "./home.js";
+import type { Work } from "./propose.js";
+import type { NewVendor } from "./vendors.js";
 
 type ProposalView = View["proposals"][number];
 
@@ -65,6 +67,13 @@ export type Acting = {
   id: bigint;
 };
 export type OnAct = (action: Act, id: bigint) => void;
+// What the firm's wallet can do. Absent, the firm's forms are drawn disabled.
+export type FirmActs = {
+  onWork: (work: Work) => void;
+  onVendor: (vendor: NewVendor) => void;
+  onConfirm: (proposalId: bigint, evidenceHash: string) => void;
+  onCollect: (chargeIds: bigint[]) => void;
+};
 type OnVote = (proposalId: bigint, inFavour: boolean) => void;
 
 const CONFIRM_RULES = [
@@ -296,6 +305,13 @@ function YourVote({
     </Card>
   );
 }
+
+// A malformed hash, caught before anything is sent; an empty evidence hash
+// has the design system's own words.
+export const hash = (v: string) =>
+  isHexString(v, 32) ? undefined : "A hash is 0x followed by 64 hexadecimal digits.";
+export const checkEvidence = (v: string) =>
+  v ? hash(v) : "Add the evidence hash before confirming.";
 
 // Confirm work: the firm's, once the 7-day wait has ended. A malformed hash
 // is caught before anything is sent.

@@ -32,9 +32,8 @@ import { date } from "../format.js";
 import { cn } from "../lib/utils.js";
 import { Waiting } from "../states.js";
 import type { View } from "../view.js";
-import type { FirmActs } from "./firm.js";
 import { Heading } from "./home.js";
-import { Signed, type Acting } from "./proposal.js";
+import { Signed, type Acting, type FirmActs } from "./proposal.js";
 
 export const COLLECT_RULES = [
   "Each due charge is taken from its owner's wallet, where the owner approved it and holds the amount.",
