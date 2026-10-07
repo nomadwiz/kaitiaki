@@ -78,6 +78,17 @@ npm run interface             # terminal 3: then open the URL it prints
 ```
 
 - **Whose workspace.** The address picks it ([ADR-021](https://github.com/nomadwiz/kaitiki-doc/blob/master/doc/design/decisions/adr/021-workspace-per-role.md)): the firm's address opens the Firm workspace, a wallet bound to a unit the Owner workspace, and any other address one screen with no building data. Without a browser wallet, `?as=<address>` in the URL picks the address, and with none the page opens as the first wallet bound to a unit. `firm` is in `interface/public/deployment.json`.
+- **Switching role.** `npm run demo` seeds the building from the local node's default accounts, in the order `deployBuilding` takes them. Account #1, the adapter, only binds units and has no workspace.
+
+  | Role | Account | URL |
+  | --- | --- | --- |
+  | Firm | #0 | `http://localhost:5173/?as=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266` |
+  | Alice, units 1 and 2 | #2 | `http://localhost:5173/?as=0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC` |
+  | Bob, unit 3 | #3 | `http://localhost:5173/?as=0x90F79bf6EB2c4f870365E785982E1f101E93b906` |
+  | Carol, unit 4 | #4 | `http://localhost:5173/?as=0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65` |
+  | Vendor, no unit | #5 | `http://localhost:5173/?as=0x9965507D1a55bcC2695C58ba16FB37d1a11A4dc8` |
+
+  Without a browser wallet, open the role's URL; if `npm run interface` printed a port other than 5173, change it. With one, the wallet's account wins over `?as=`: import accounts #0 and #2–#4 from `npx hardhat node`'s printout, add the network `http://127.0.0.1:8545` with chain ID 31337, and switch account in the wallet. The page reloads by itself.
 - **Signing.** Every action is signed by the viewer's wallet: a browser wallet shows its signing dialog, and the unlocked local account signs with no dialog ([`interface.md` §3](https://github.com/nomadwiz/kaitiki-doc/blob/master/doc/design/interface.md)).
 - **Time.** The local node's clock moves only when a script moves it: `npm run demo` while seeding, then `npm run demo:loop`, which carries proposal 2 through the rest of the loop, and `UNTIL` stops it part-way so each stage can be seen: `UNTIL=passed` (the voting window has closed), `UNTIL=ready` (queued, delay passed), `UNTIL=attested` (the firm has attested), and with no `UNTIL` it runs to executed. Each run does only the steps still to do. Reload the interface after each.
 
