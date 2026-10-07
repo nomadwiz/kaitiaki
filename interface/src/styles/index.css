@@ -1,17 +1,10 @@
 /* Tailwind and shadcn/ui on Kaitiaki's tokens (doc/asset/design-system/).
    tokens.css holds every value, in the one light theme; this file names them for
    Tailwind under shadcn/ui's variable names, and applies the design system's
-   overrides that are not a component's own classes.
-
-   The screens not yet rebuilt on shadcn/ui keep the old stylesheet,
-   bundle.css, in its own layer below Tailwind's components and utilities, so
-   a shadcn/ui class always wins over its element rules. */
-@layer theme, base, legacy, components, utilities;
-
+   overrides that are not a component's own classes. */
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "./tokens.css";
-@import "./bundle.css" layer(legacy);
 
 /* Kaitiaki has no dark theme, so shadcn/ui's own `dark:` classes never
    apply. */

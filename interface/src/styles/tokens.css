@@ -1,7 +1,7 @@
 /* Kaitiaki design tokens, written from doc/asset/design-system/tokens.json
    (the design system's page generates this file; it is not one of the
    transcribed files). Kaitiaki has one theme, light, so every value is on
-   :root. Load before bundle.css. */
+   :root. index.css imports it. */
 
 :root {
   --background: #f5f4ef;

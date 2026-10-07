@@ -994,7 +994,7 @@ describe("Read interface (#72, #149)", () => {
     // Carol's unit has not voted on proposal 2; alice's both have.
     const at = "#/proposal/2";
     expect((await render(signers.carol.address, at)).html).to.match(
-      /<form class="vote" data-proposal="2">/,
+      /<form [^>]*data-proposal="2">/,
     );
     expect((await render(signers.alice.address, at)).html).to.not.contain(
       "<form",
@@ -1260,7 +1260,7 @@ describe("Read interface (#72, #149)", () => {
       for (const html of [await owner(), await firm()]) {
         expect(buttons(html)).to.deep.equal([]);
       }
-      expect(await firm()).to.not.contain('class="vote"');
+      expect(await firm()).to.not.contain('data-proposal=');
 
       await governance.connect(signers.bob).castVote(2, true);
       await governance.connect(signers.carol).castVote(2, false);
@@ -1407,7 +1407,7 @@ describe("Read interface (#72, #149)", () => {
       let { html } = await render(signers.carol.address, "#/proposal/2");
       const vote = card(html, "h-your-vote");
       expect(text(vote)).to.equal("Your vote Unit 4 has not voted. Rules Vote for Vote against Signed in your wallet.");
-      expect(vote).to.contain('<form class="vote" data-proposal="2">');
+      expect(vote).to.contain('data-proposal="2"');
       for (const [value, label] of [["true", "Vote for"], ["false", "Vote against"]]) {
         expect(vote).to.match(new RegExp(`<button (?=[^>]*type="submit")(?=[^>]*name="inFavour")(?=[^>]*value="${value}")[^>]*>[\\s\\S]*?${label}</button>`));
       }
@@ -1864,46 +1864,103 @@ describe("Read interface (#72, #149)", () => {
     // the vote; named as the firm in the deployment file, she is not.
     const { view, html } = await render(signers.carol.address, "#/proposal/2");
     expect(view.proposals.find((p) => p.id === 2n)!.canVote).to.equal(true);
-    expect(html).to.contain('<form class="vote" data-proposal="2">');
+    expect(html).to.contain('data-proposal="2"');
     const asFirm = renderToStaticMarkup(
       createElement(App, { hash: "#/proposal/2", view, firm: signers.carol.address, onVote() {} }),
     );
     expect(asFirm).to.contain("Management firm");
-    expect(asFirm).to.not.contain('class="vote"');
+    expect(asFirm).to.not.contain('data-proposal=');
   });
 
-  it("ADR-021: an owner's markup holds none of the firm's navigation or actions, the firm's none of an owner's, and an address with no unit sees no building data", async () => {
-    const { signers, render } = await setUp();
-    const firmOnly = ["Collect levies", "Vendors", "Propose work", "Propose a vendor", "Confirm work", "Management firm", 'href="#/collect"', 'href="#/vendors"', 'href="#/propose"'];
-    const ownerOnly = ["Your units", "Building", "Your levies", 'href="#/units"', 'href="#/building"', '<form class="vote"'];
-    for (const hash of [...ROUTES.owner, ...ROUTES.firm].map(([h]) => h)) {
-      const owner = (await render(signers.alice.address, hash)).html;
-      for (const t of firmOnly) expect(owner, `owner ${hash}: ${t}`).to.not.contain(t);
-      const firm = (await render(signers.firm.address, hash)).html;
-      for (const t of ownerOnly) expect(firm, `firm ${hash}: ${t}`).to.not.contain(t);
-      for (const nobody of [signers.stranger.address, undefined]) {
-        const html = (await render(nobody, hash)).html;
-        expect(html, `${nobody} ${hash}`).to.not.contain('aria-label="Workspace"');
-        expect(html, `${nobody} ${hash}`).to.not.match(/NZD|Unit \d|Proposal #|Roof repair/);
-      }
-    }
-  });
-
-  it("#186: Connect and No unit show one Card holding no fund, proposal, unit or event data, on every route", async () => {
-    const { signers, render } = await setUp();
-    const { stranger } = signers;
+  // interface.md §2's workspace rule, over every screen, with every action
+  // App can be given, so each screen offers all its workspace has.
+  it("ADR-021, interface.md §2: every screen offers an owner none of the firm's navigation or actions, the firm none of an owner's, and a no-unit address no building data", async () => {
+    const { ethers, contracts, signers, render } = await setUp();
+    const { governance } = contracts;
     const browser = (account?: string): Wallet => ({ kind: "browser", account, chainId: 31337n, deploymentChainId: 31337n });
-    // Everything the building's log gives an owner and the firm: none of it
-    // may reach an entry screen.
+    const page = async (viewer: string | undefined, hash: string, wallet?: Wallet) => {
+      const { view } = await render(viewer, hash);
+      return renderToStaticMarkup(
+        createElement(App, {
+          hash, view, wallet, firm: signers.firm.address,
+          onConnect() {}, onVote() {}, onPay() {}, onDebit() {}, onAct() {},
+          onFirm: { onWork() {}, onVendor() {}, onConfirm() {}, onCollect() {} },
+        }),
+      );
+    };
+    // Each workspace's own navigation and actions, as its markup draws them.
+    // Queue and Carry out are anyone's (NFR7), so neither is listed.
+    const OWNER: [string, RegExp][] = [
+      ["Your units link", /href="#\/units"/],
+      ["Building link", /href="#\/building"/],
+      ["Your levies", /Your levies/],
+      ["Vote", /data-proposal="\d+"|Vote (?:for|against)<\/button>/],
+      ["Pay", /Pay (?:now|early)<\/button>/],
+      ["Set up direct debit", /Set up direct debit<\/button>/],
+    ];
+    const FIRM: [string, RegExp][] = [
+      ["Management firm", /Management firm/],
+      ["Collect levies link", /href="#\/collect"/],
+      ["Vendors link", /href="#\/vendors"/],
+      ["Propose work link", /href="#\/propose"/],
+      ["Propose", /Propose<\/button>/],
+      ["Propose vendor", /Propose vendor<\/button>/],
+      ["Confirm work", /Confirm work<\/button>/],
+      ["Collect", /Collect \d+ charges?<\/button>/],
+    ];
+    const hashes = [...new Set([...ROUTES.owner, ...ROUTES.firm].map(([h]) => h)), "#/proposal/1"];
+    // Everything the building's log gives an owner: none of it may reach a
+    // wallet with no unit, or no wallet.
     const owner = (await render(signers.carol.address, "#/")).view;
     const data = [
       ...owner.proposals.map((p) => p.description),
       ...owner.vendors.flatMap((v) => [v.name, v.companyId, v.payee, short(v.payee)]),
       ...owner.activity.map((e) => e.text),
     ];
-    expect(owner.proposals).to.not.be.empty;
-    expect(owner.vendors).to.not.be.empty;
-    expect(owner.activity).to.not.be.empty;
+    expect(data).to.not.be.empty;
+    const seen = { owner: new Set<string>(), firm: new Set<string>() };
+
+    // Two stages: as seeded (proposal 2 open, charges due), then with
+    // proposal 2 queued and its 7-day wait over, so Confirm work is offered.
+    for (const stage of ["seeded", "wait over"]) {
+      if (stage === "wait over") {
+        await governance.connect(signers.bob).castVote(2, true);
+        await advance(ethers, await governance.VOTING_PERIOD());
+        await governance.connect(signers.stranger).queue(2);
+        await advance(ethers, await governance.TIMELOCK_DELAY());
+      }
+      for (const hash of hashes) {
+        for (const viewer of [signers.alice, signers.carol]) {
+          const html = await page(viewer.address, hash);
+          for (const [name, mark] of FIRM) expect(html, `${stage}, owner ${hash}: ${name}`).to.not.match(mark);
+          for (const [name, mark] of OWNER) if (mark.test(html)) seen.owner.add(name);
+        }
+        const html = await page(signers.firm.address, hash);
+        for (const [name, mark] of OWNER) expect(html, `${stage}, firm ${hash}: ${name}`).to.not.match(mark);
+        for (const [name, mark] of FIRM) if (mark.test(html)) seen.firm.add(name);
+        for (const [who, html] of [
+          ["no unit", await page(signers.stranger.address, hash)],
+          ["no unit, browser", await page(signers.stranger.address, hash, browser(signers.stranger.address))],
+          ["no wallet", await page(undefined, hash, browser())],
+        ]) {
+          const at = `${stage}, ${who} ${hash}`;
+          expect(html, at).to.not.contain('aria-label="Workspace"');
+          for (const [name, mark] of [...OWNER, ...FIRM]) expect(html, `${at}: ${name}`).to.not.match(mark);
+          for (const d of data) expect(html, `${at}: ${d}`).to.not.contain(d);
+          expect(html, at).to.not.match(/NZD|Unit \d|Proposal #|Charge #|Operating|Long-term maintenance/);
+        }
+      }
+    }
+    // Each workspace was offered every one of its own, so the absences above
+    // are not vacuous.
+    expect([...seen.owner].sort()).to.deep.equal(OWNER.map(([n]) => n).sort());
+    expect([...seen.firm].sort()).to.deep.equal(FIRM.map(([n]) => n).sort());
+  });
+
+  it("#186: Connect and No unit show one Card with exactly its own words and no navigation, on every route", async () => {
+    const { signers, render } = await setUp();
+    const { stranger } = signers;
+    const browser = (account?: string): Wallet => ({ kind: "browser", account, chainId: 31337n, deploymentChainId: 31337n });
     const CONNECT = "Kaitiaki Connect your wallet Connect wallet Your wallet signs every action. Kaitiaki never asks for a key, seed phrase or password.";
     const NO_UNIT = `Kaitiaki This wallet holds no unit in this building If you own a unit here, switch to the wallet bound to it. Connected ${stranger.address}`;
     for (const hash of [...ROUTES.owner, ...ROUTES.firm].map(([h]) => h)) {
@@ -1917,8 +1974,6 @@ describe("Read interface (#72, #149)", () => {
         expect(text(html), hash).to.equal(words);
         expect(html.match(/data-slot="card"/g), hash).to.have.length(1);
         expect(html, hash).to.not.contain("<nav");
-        for (const d of data) expect(html, `${hash}: ${d}`).to.not.contain(d);
-        expect(html, hash).to.not.match(/NZD|Unit \d|Proposal #|Charge #|Operating|Long-term maintenance/);
       }
     }
   });
@@ -2014,7 +2069,7 @@ describe("Read interface (#72, #149)", () => {
           browser(carol.address, 31337n),
         )
       ).html,
-    ).to.match(/<form class="vote" data-proposal="2">/);
+    ).to.match(/<form [^>]*data-proposal="2">/);
 
     // On the right chain, not yet connected.
     for (const hash of ["#/", "#/units"]) {
@@ -2044,8 +2099,12 @@ describe("Read interface (#72, #149)", () => {
   it("shows the loading state until the log is read, and only the notice if reading fails", () => {
     const html = (props: object) =>
       renderToStaticMarkup(createElement(App, { hash: "#/", ...props }));
-    expect(html({})).to.contain('<p role="status" class="row">');
-    expect(html({})).to.contain("Reading the event log…");
+    // The States mock-up's Loading: one Card, its line, three Skeletons.
+    const loading = html({});
+    expect(loading).to.match(/^<main [^>]*><div data-slot="card"[^>]*aria-busy="true"/);
+    expect(text(loading)).to.equal("Reading the building&#x27;s record");
+    expect(loading.match(/data-slot="skeleton"/g)).to.have.length(3);
+    expect(loading).to.not.match(/class="(?:card|skeleton|spinner|row)[ "]/);
 
     const failed = html({
       failed: true,
@@ -2055,10 +2114,10 @@ describe("Read interface (#72, #149)", () => {
         description: "connection refused",
       },
     });
-    expect(failed).to.not.contain("Reading the event log…");
-    expect(failed).to.not.contain('class="skeleton"');
+    expect(failed).to.not.contain("Reading the building");
+    expect(failed).to.not.contain('data-slot="skeleton"');
     expect(failed).to.match(
-      /^<main class="shell-main"><div data-slot="alert" role="alert" class="[^"]*bg-destructive-soft[^"]*"><svg[^>]*>.*?<\/svg><div data-slot="alert-title"[^>]*>The event log could not be read\.<\/div><div data-slot="alert-description"[^>]*>connection refused<\/div><\/div><\/main>$/,
+      /^<main [^>]*><div data-slot="alert" role="alert" class="[^"]*bg-destructive-soft[^"]*"><svg[^>]*>.*?<\/svg><div data-slot="alert-title"[^>]*>The event log could not be read\.<\/div><div data-slot="alert-description"[^>]*>connection refused<\/div><\/div><\/main>$/,
     );
   });
 
