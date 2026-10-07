@@ -80,26 +80,28 @@ export function RulesPopover({ rules }: { rules: readonly string[] }) {
   );
 }
 
-// QuorumMeter: both conditions Governance.quorumReached checks, each as its
-// count, a met or not-yet-met StatusBadge and a Progress bar.
-export function QuorumMeter({ quorum: q }: { quorum: QuorumParts }) {
-  const rows = [
-    ["Units voted (25% of the building)", q.unitsVoted, q.unitsNeeded, "units", q.unitsMet],
-    ["Different owners voted", q.voters, q.votersNeeded, "owners", q.votersMet],
+// Both conditions Governance.quorumReached checks, each worded as every
+// screen that shows the quorum words it: "2 units voted; 10 needed".
+export function quorumConditions(q: QuorumParts) {
+  const voted = (n: bigint | number, unit: string) =>
+    `${n} ${Number(n) === 1 ? unit : `${unit}s`} voted`;
+  return [
+    ["Units voted (25% of the building)", q.unitsVoted, q.unitsNeeded, `${voted(q.unitsVoted, "unit")}; ${q.unitsNeeded} needed`, q.unitsMet],
+    ["Different owners voted", q.voters, q.votersNeeded, `${voted(q.voters, "owner")}; ${q.votersNeeded} needed`, q.votersMet],
   ] as const;
+}
+
+// QuorumMeter: both conditions, each as its count, a met or not-yet-met
+// StatusBadge and a Progress bar.
+export function QuorumMeter({ quorum: q }: { quorum: QuorumParts }) {
   return (
     <div className="flex flex-col gap-3">
-      {rows.map(([label, count, of, unit, met]) => (
+      {quorumConditions(q).map(([label, count, of, words, met]) => (
         <div key={label} className="flex flex-col gap-1.5">
           <span className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-base">
             <span>{label}</span>
             <span className="flex items-center gap-2">
-              <span>
-                <b className="tabular-nums">
-                  {String(count)} of {String(of)}
-                </b>{" "}
-                {unit}
-              </span>
+              <b className="tabular-nums">{words}</b>
               <StatusBadge word={met ? "met" : "not yet met"} />
             </span>
           </span>

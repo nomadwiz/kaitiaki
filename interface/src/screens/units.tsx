@@ -1,6 +1,7 @@
 // Your units (`#/units`, #179), composed from doc/asset/mockups/YourUnits:
 // the Direct debit card (ADR-020), then one card per unit of the viewer's
-// with its unpaid charges, each with Pay (#153). A paid charge is not listed,
+// with its unpaid charges, each with Pay (#153): a Table from 800px, a
+// stacked row per charge below it (#202). A paid charge is not listed,
 // so a paid arrear stops showing (information view R4).
 import { BadgeCheck, Banknote, CircleAlert } from "lucide-react";
 
@@ -23,9 +24,10 @@ import {
   TableRow,
 } from "../components/ui/table.js";
 import { date, nzd } from "../format.js";
+import { cn } from "../lib/utils.js";
 import { Waiting } from "../states.js";
 import type { View } from "../view.js";
-import { Heading } from "./home.js";
+import { Heading, rows } from "./home.js";
 import { Signed, type Acting } from "./proposal.js";
 
 export const DEBIT_RULES = [
@@ -39,6 +41,8 @@ export const PAY_RULES = [
   "A scheduled charge can be paid before it falls due.",
   "A paid arrear stops showing anywhere.",
 ] as const;
+
+type Charge = View["ownUnits"][number]["charges"][number];
 
 export function YourUnits({
   units,
@@ -65,6 +69,29 @@ export function YourUnits({
   // One write at a time: each approval sets the allowance, so a second
   // would starve the first.
   const busy = acting !== undefined || paying !== undefined;
+  const state = (c: Charge) =>
+    c.overdue ? <StatusBadge word="in arrears" /> : "Scheduled";
+  const pay = (unitId: bigint, c: Charge, className?: string) =>
+    onPay && (
+      <Button
+        type="button"
+        variant={c.due ? "default" : "outline"}
+        className={className}
+        aria-disabled={busy || undefined}
+        onClick={busy ? undefined : () => onPay(unitId, c.chargeId, c.amount)}
+      >
+        {paying === c.chargeId ? (
+          <Waiting />
+        ) : c.due ? (
+          <>
+            <Banknote aria-hidden="true" />
+            Pay now
+          </>
+        ) : (
+          "Pay early"
+        )}
+      </Button>
+    );
   const figures = [
     ["Scheduled total", total],
     ["Approved", ownWallet?.approved],
@@ -149,62 +176,55 @@ export function YourUnits({
                   </Alert>
                 ))}
               {u.charges.length ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Charge</TableHead>
-                      <TableHead>Due</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead>State</TableHead>
-                      <TableHead>
-                        <span className="sr-only">Action</span>
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                // Both layouts are in the markup, so the tests read them
+                // both: the Table from 800px, a stacked row per charge below.
+                <>
+                  <div className="max-wide:hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Charge</TableHead>
+                          <TableHead>Due</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                          <TableHead>State</TableHead>
+                          <TableHead>
+                            <span className="sr-only">Action</span>
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {u.charges.map((c) => (
+                          <TableRow key={String(c.chargeId)}>
+                            <TableCell>#{String(c.chargeId)}</TableCell>
+                            <TableCell>{date(c.dueDate)}</TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {nzd(c.amount)}
+                            </TableCell>
+                            <TableCell>{state(c)}</TableCell>
+                            <TableCell className="text-right">
+                              {pay(u.unitId, c)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <ul className={cn(rows, "wide:hidden")}>
                     {u.charges.map((c) => (
-                      <TableRow key={String(c.chargeId)}>
-                        <TableCell>#{String(c.chargeId)}</TableCell>
-                        <TableCell>{date(c.dueDate)}</TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {nzd(c.amount)}
-                        </TableCell>
-                        <TableCell>
-                          {c.overdue ? (
-                            <StatusBadge word="in arrears" />
-                          ) : (
-                            "Scheduled"
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {onPay && (
-                            <Button
-                              type="button"
-                              variant={c.due ? "default" : "outline"}
-                              aria-disabled={busy || undefined}
-                              onClick={
-                                busy
-                                  ? undefined
-                                  : () => onPay(u.unitId, c.chargeId, c.amount)
-                              }
-                            >
-                              {paying === c.chargeId ? (
-                                <Waiting />
-                              ) : c.due ? (
-                                <>
-                                  <Banknote aria-hidden="true" />
-                                  Pay now
-                                </>
-                              ) : (
-                                "Pay early"
-                              )}
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
+                      <li key={String(c.chargeId)} className="flex flex-col gap-2">
+                        <span className="flex justify-between gap-3">
+                          <span className="font-semibold">#{String(c.chargeId)}</span>
+                          <span className="tabular-nums">{nzd(c.amount)}</span>
+                        </span>
+                        <span className="flex flex-wrap items-center justify-between gap-3 text-base">
+                          <span className="text-muted-foreground">Due {date(c.dueDate)}</span>
+                          {state(c)}
+                        </span>
+                        {pay(u.unitId, c, "w-full")}
+                      </li>
                     ))}
-                  </TableBody>
-                </Table>
+                  </ul>
+                </>
               ) : (
                 <p className="font-semibold">No unpaid charges.</p>
               )}

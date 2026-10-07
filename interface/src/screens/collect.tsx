@@ -2,8 +2,8 @@
 // doc/asset/mockups/CollectLevies: the firm's collection (ADR-020). Every
 // due, unpaid charge starts selected, and Collect sends the selection in one
 // LevyLedger.collect call. Charges are listed by number and dates, never by
-// unit or amount (NFR10). The mock-up's Last collection is not drawn: the
-// log cannot say what the last call did, because a retry still not covered
+// unit or amount (NFR10). No last collection is shown, and the mock-up draws none:
+// the log cannot say what the last call did, because a retry still not covered
 // emits nothing and a covered one reads as an owner's own payment
 // (interface.md §4). The call's own result is its toast (tx.ts).
 import { HandCoins } from "lucide-react";

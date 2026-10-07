@@ -1,8 +1,8 @@
 // Propose work (`#/propose`, #183), composed from doc/asset/mockups/ProposeWork:
-// the firm's proposal form, reached from Proposals. `checkWork` catches a
-// malformed limit, vendor or quote hash before anything is sent, and the
-// form is emptied only once the proposal is mined (a new `key` from App's
-// `fresh`). An empty description is left to the contract.
+// the firm's proposal form, reached from Proposals. `checkWork` catches an
+// empty description and a malformed limit, vendor or quote hash before
+// anything is sent, and the form is emptied only once the proposal is mined
+// (a new `key` from App's `fresh`).
 import { isAddress, parseUnits } from "ethers";
 import { ListPlus } from "lucide-react";
 import { useState, type FormEvent } from "react";
@@ -66,6 +66,7 @@ function cap(v: string) {
 export function checkWork(f: Record<string, string>) {
   const hints: Record<string, string> = {};
   const check = (name: string, hint?: string) => hint && (hints[name] = hint);
+  check("description", f.description.trim() ? undefined : "Add what the work is before proposing.");
   check("cap", cap(f.cap));
   check("vendor", f.vendor ? address(f.vendor) : "Choose an approved vendor.");
   check("quote", hash(f.quote));
@@ -148,7 +149,13 @@ export function ProposeWork({
               <label htmlFor="desc" className={label}>
                 What the work is
               </label>
-              <Textarea id="desc" name="description" disabled={!act} />
+              <Textarea
+                id="desc"
+                name="description"
+                disabled={!act}
+                {...invalid("desc", hints.description)}
+              />
+              {hint("desc", hints.description)}
             </div>
             <div className="flex flex-col gap-2">
               <span id="vendor-l" className={label}>
