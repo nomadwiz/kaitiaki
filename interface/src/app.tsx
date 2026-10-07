@@ -9,13 +9,18 @@ import { toast } from "sonner";
 import { Activity } from "./screens/activity.js";
 import { Building } from "./screens/building.js";
 import { CollectLevies } from "./screens/collect.js";
-import { Firm, type FirmActs } from "./screens/firm.js";
 import { FirmHome } from "./screens/firm-home.js";
 import { Home } from "./screens/home.js";
-import { Proposal, type Acting, type OnAct } from "./screens/proposal.js";
+import {
+  Proposal,
+  type Acting,
+  type FirmActs,
+  type OnAct,
+} from "./screens/proposal.js";
 import { ProposeWork } from "./screens/propose.js";
 import { Proposals } from "./screens/proposals.js";
 import { YourUnits } from "./screens/units.js";
+import { Vendors } from "./screens/vendors.js";
 import { NAV, Shell, type Workspace } from "./shell.js";
 import {
   Alert,
@@ -155,8 +160,14 @@ const SCREENS: Record<Workspace, Record<string, (c: Context) => ReactNode>> = {
     "#/collect": (c) => (
       <CollectLevies toCollect={c.view.toCollect} act={c.onFirm} acting={c.acting} />
     ),
-    // The old Firm screen until #185 rebuilds Vendors.
-    "#/vendors": (c) => <Firm act={c.onFirm} acting={c.acting} fresh={c.fresh} />,
+    "#/vendors": (c) => (
+      <Vendors
+        key={c.fresh?.vendor}
+        vendors={c.view.vendors}
+        act={c.onFirm}
+        acting={c.acting}
+      />
+    ),
     "#/activity": (c) => <Activity workspace="firm" events={c.view.activity} />,
   },
 };

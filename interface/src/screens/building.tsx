@@ -22,7 +22,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../components/ui/card.js";
-import { nzd, unitsLabel } from "../format.js";
+import { date, nzd, unitsLabel } from "../format.js";
 import { cn } from "../lib/utils.js";
 import type { View } from "../view.js";
 import { Heading, rows } from "./home.js";
@@ -43,6 +43,39 @@ export const VENDOR_RULES = [
   "Money can go to no one else.",
   "No vendor can be removed.",
 ] as const;
+
+// The approved vendors, each by name, then its company identifier and the
+// proposal that admitted it, then its shortened address with Copy. Vendors
+// adds the date each was admitted.
+export function VendorList({
+  vendors,
+  dated = false,
+}: {
+  vendors: View["vendors"];
+  dated?: boolean;
+}) {
+  return vendors.length ? (
+    <ul className={rows}>
+      {vendors.map((v) => (
+        <li
+          key={v.payee}
+          className="flex flex-wrap items-center justify-between gap-3"
+        >
+          <span className="flex flex-col gap-0.5">
+            <span className="font-semibold">{v.name}</span>
+            <span className="text-base text-muted-foreground">
+              {v.companyId}, admitted {dated && `${date(v.approvedAt)} `}by
+              proposal #{String(v.proposalId)}
+            </span>
+          </span>
+          <Address value={v.payee} label={`Copy ${v.name}'s address`} />
+        </li>
+      ))}
+    </ul>
+  ) : (
+    <p className="text-muted-foreground">No vendor is approved yet.</p>
+  );
+}
 
 export function Building({
   funds,
@@ -177,27 +210,7 @@ export function Building({
           </CardAction>
         </CardHeader>
         <CardContent>
-          {vendors.length ? (
-            <ul className={rows}>
-              {vendors.map((v) => (
-                <li
-                  key={v.payee}
-                  className="flex flex-wrap items-center justify-between gap-3"
-                >
-                  <span className="flex flex-col gap-0.5">
-                    <span className="font-semibold">{v.name}</span>
-                    <span className="text-base text-muted-foreground">
-                      {v.companyId}, admitted by proposal #
-                      {String(v.proposalId)}
-                    </span>
-                  </span>
-                  <Address value={v.payee} label={`Copy ${v.name}'s address`} />
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-muted-foreground">No vendor is approved yet.</p>
-          )}
+          <VendorList vendors={vendors} />
         </CardContent>
       </Card>
     </>

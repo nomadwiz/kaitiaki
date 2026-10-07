@@ -3,6 +3,7 @@
 // malformed limit, vendor or quote hash before anything is sent, and the
 // form is emptied only once the proposal is mined (a new `key` from App's
 // `fresh`). An empty description is left to the contract.
+import { isAddress, parseUnits } from "ethers";
 import { ListPlus } from "lucide-react";
 import { useState, type FormEvent } from "react";
 
@@ -30,8 +31,7 @@ import { Separator } from "../components/ui/separator.js";
 import { Textarea } from "../components/ui/textarea.js";
 import { Waiting } from "../states.js";
 import type { View } from "../view.js";
-import { checkWork, type FirmActs } from "./firm.js";
-import { Signed, type Acting } from "./proposal.js";
+import { hash, Signed, type Acting, type FirmActs } from "./proposal.js";
 
 export const PROPOSE_RULES = [
   "Owners vote for 14 days, or 21 if quorum is not met.",
@@ -43,16 +43,54 @@ export const PROPOSE_RULES = [
   "A proposal cannot be edited or withdrawn.",
 ] as const;
 
-const label = "text-base font-semibold";
+export type Work = {
+  description: string;
+  limit: bigint;
+  fund: number;
+  vendor: string;
+  quoteHash: string;
+};
+
+export const address = (v: string) =>
+  isAddress(v) ? undefined : "A wallet address is 0x followed by 40 hexadecimal digits.";
+
+// A positive amount in NZD, in the token's units. Commas and a leading
+// "NZD" are allowed, as the design system writes amounts.
+const amount = (v: string) => v.replace(/^\s*NZD\s*/i, "").replace(/,/g, "").trim();
+function cap(v: string) {
+  return /^\d+(\.\d{1,18})?$/.test(amount(v)) && parseUnits(amount(v), 18) > 0n
+    ? undefined
+    : "Enter the limit as an amount in NZD, such as 1,800.00.";
+}
+
+export function checkWork(f: Record<string, string>) {
+  const hints: Record<string, string> = {};
+  const check = (name: string, hint?: string) => hint && (hints[name] = hint);
+  check("cap", cap(f.cap));
+  check("vendor", f.vendor ? address(f.vendor) : "Choose an approved vendor.");
+  check("quote", hash(f.quote));
+  const work: Work | undefined = Object.keys(hints).length
+    ? undefined
+    : {
+        description: f.description,
+        limit: parseUnits(amount(f.cap), 18),
+        fund: Number(f.fund),
+        vendor: f.vendor,
+        quoteHash: f.quote,
+      };
+  return { hints, work };
+}
+
+export const label = "text-base font-semibold";
 
 // A failed check's hint under its field, and the attributes that point at it.
-const hint = (id: string, text?: string) =>
+export const hint = (id: string, text?: string) =>
   text && (
     <p id={`${id}-e`} className="text-base text-destructive">
       {text}
     </p>
   );
-const invalid = (id: string, text?: string) =>
+export const invalid = (id: string, text?: string) =>
   text ? { "aria-invalid": true, "aria-describedby": `${id}-e` } : {};
 
 export function ProposeWork({

@@ -23,9 +23,9 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { App, ELSEWHERE, isElsewhere, type Wallet } from "../interface/src/app.js";
 import { ACTIVITY_RULES, Activity, PER_PAGE } from "../interface/src/screens/activity.js";
 import { GUARANTEES } from "../interface/src/screens/building.js";
-import { votesRules } from "../interface/src/screens/proposal.js";
-import { checkEvidence, checkVendor, checkWork } from "../interface/src/screens/firm.js";
-import { PROPOSE_RULES, ProposeWork } from "../interface/src/screens/propose.js";
+import { checkEvidence, votesRules } from "../interface/src/screens/proposal.js";
+import { PROPOSE_RULES, ProposeWork, checkWork } from "../interface/src/screens/propose.js";
+import { LIST_RULES, PROPOSE_VENDOR_RULES, Vendors, checkVendor } from "../interface/src/screens/vendors.js";
 import { COLLECT_RULES, CollectLevies } from "../interface/src/screens/collect.js";
 import { date, nzd, short } from "../interface/src/format.js";
 import { ABI, approvedRefusal, carryOut, collectLevies, confirmWork, payment, proposeVendor, proposeWork, refusal, send, standingApproval, walletBalance } from "../interface/src/tx.js";
@@ -74,7 +74,7 @@ const ROUTES = {
     ["#/proposal/2", "Roof repair", "Proposals"],
     ["#/propose", "Propose work", "Proposals"],
     ["#/collect", "Collect levies", "Collect levies"],
-    ["#/vendors", "Firm workspace", "Vendors"],
+    ["#/vendors", "Vendors", "Vendors"],
     ["#/activity", "Activity", "Activity"],
     ["#/units", "Home", "Home"],
   ],
@@ -390,9 +390,8 @@ describe("Read interface (#72, #149)", () => {
 
   describe("Firm workspace (#157)", () => {
     const DAY = 24n * 60n * 60n;
-    const CONTROLS = /<(?:input|textarea|select)\b|<button class="btn" type="submit"/g;
-    // A firm screen (the old Firm screen at `#/vendors`, until #184) as
-    // `viewer` sees it, with the firm's address from the deployment file.
+    const CONTROLS = /<(?:input|textarea|select)\b|type="submit"/g;
+    // A firm screen (Vendors unless `hash` says otherwise) as `viewer` sees it, with the firm's address from the deployment file.
     // `onFirm` is given as App gives it to the firm's wallet.
     async function firmPage(s: Awaited<ReturnType<typeof setUp>>, viewer?: string, wallet?: Wallet, hash = "#/vendors") {
       const { view } = await s.render(viewer, hash);
@@ -416,15 +415,14 @@ describe("Read interface (#72, #149)", () => {
     it("FR16, FR17: enables the forms for the firm's wallet, and no other address reaches them (ADR-021)", async () => {
       const s = await setUp();
       const { firm, alice, stranger } = s.signers;
-      const limits = "You can propose, confirm and collect levies. You cannot move money out.";
       const own = await firmPage(s, firm.address);
       expect(own.html).to.not.contain('disabled=""');
       expect(own.html).to.contain("Management firm");
-      expect(text(own.html)).to.contain(limits);
+      expect(own.html.match(CONTROLS)).to.have.length(4);
       for (const viewer of [alice.address, stranger.address, undefined]) {
         const { html } = await firmPage(s, viewer);
         expect(html.match(CONTROLS), String(viewer)).to.equal(null);
-        expect(html).to.not.contain(limits);
+        expect(html).to.not.contain("Propose a vendor");
         expect(html).to.not.contain("Management firm");
       }
       // No firm in the config and no viewer must not match each other.
@@ -474,6 +472,41 @@ describe("Read interface (#72, #149)", () => {
         const busy = renderToStaticMarkup(createElement(ProposeWork, { vendors: view.vendors, act: FIRM_ACTS, acting: { action: "work", id: 0n } }));
         expect(busy).to.match(/<button[^>]*type="submit"[^>]*aria-disabled="true"/);
         expect(text(busy)).to.not.contain("Propose Signed");
+      });
+    });
+
+    describe("Vendors (#185)", () => {
+      const FIRM_ACTS = { onWork() {}, onVendor() {}, onConfirm() {}, onCollect() {} };
+      // A card of the screen, from its heading to the end of its card.
+      const card = (html: string, id: string) => html.split(`id="${id}"`)[1].split(/<\/form>|<div data-slot="card"|<\/main>/)[0].replace(/^[^>]*>/, "");
+
+      it("FR12, FR15, FR16: approved vendors by name, identifier, admission date and proposal, then the shortened address with Copy; Propose a vendor's three fields and Propose vendor beside Signed in your wallet.", async () => {
+        const s = await setUp();
+        const { view, html } = await firmPage(s, s.signers.firm.address);
+        const [v] = view.vendors;
+        expect(html).to.match(/<h1>Vendors<\/h1><div class="grid/);
+        expect(text(card(html, "h-vendors"))).to.equal(
+          `Approved vendors 1 vendor Rules Harbour Lifts Ltd DEMO-0001, admitted ${date(v.approvedAt)} by proposal #${v.proposalId} ${short(v.payee)} Copy`,
+        );
+        expect(html).to.contain('aria-label="Copy Harbour Lifts Ltd&#x27;s address"');
+        expect(html).to.match(/<form aria-labelledby="h-new-vendor"/);
+        expect(text(card(html, "h-new-vendor"))).to.equal("Propose a vendor Rules Name Company identifier Wallet address Propose vendor Signed in your wallet.");
+        expect(LIST_RULES).to.deep.equal(["Work can be paid only to a vendor owners admitted by vote.", "No vendor can be removed."]);
+        expect(PROPOSE_VENDOR_RULES).to.have.length(2);
+      });
+
+      it("says no vendor is approved yet, is drawn disabled on the wrong chain, and waits on the wallet while proposing", async () => {
+        const none = renderToStaticMarkup(createElement(Vendors, { vendors: [], act: FIRM_ACTS }));
+        expect(text(card(none, "h-vendors"))).to.equal("Approved vendors Rules No vendor is approved yet.");
+        const s = await setUp();
+        const wrong = { kind: "browser", account: s.signers.firm.address, chainId: 1n, deploymentChainId: 31337n } as const;
+        const { view, html } = await firmPage(s, s.signers.firm.address, wrong);
+        expect(html).to.match(/<button[^>]*type="submit"[^>]*disabled=""/);
+        expect(html.match(/<input[^>]*disabled=""/g)).to.have.length(3);
+        const busy = renderToStaticMarkup(createElement(Vendors, { vendors: view.vendors, act: FIRM_ACTS, acting: { action: "vendor", id: 0n } }));
+        expect(busy).to.match(/<button[^>]*type="submit"[^>]*aria-disabled="true"/);
+        expect(text(busy)).to.contain("Waiting for your wallet…");
+        expect(text(busy)).to.not.contain("Propose vendor");
       });
     });
 
@@ -672,7 +705,7 @@ describe("Read interface (#72, #149)", () => {
       expect([stair.kind, stair.description, stair.payee]).to.deep.equal(["Admit", "Stair Paint Ltd", carol.address]);
     });
 
-    it("NotFirm and VendorNameIsEmpty show their RefusalNotice messages", async () => {
+    it("NotFirm, VendorNameIsEmpty and CompanyIdIsEmpty show their RefusalNotice messages", async () => {
       const s = await setUp();
       const { firm, stranger, carol, vendor } = s.signers;
       const asStranger = new Contract(s.addresses.governance, ABI, stranger);
@@ -683,7 +716,7 @@ describe("Read interface (#72, #149)", () => {
       const empty = await outcome(proposeVendor(""), () => asFirm.getFunction("propose(address,string,string)")(carol.address, "", "NZBN 9"));
       expect(empty.notice).to.deep.equal({ variant: "destructive", title: "The vendor was not proposed", description: "Add the vendor's name before proposing.", code: "VendorNameIsEmpty" });
       const noId = await outcome(proposeVendor("X"), () => asFirm.getFunction("propose(address,string,string)")(carol.address, "X", ""));
-      expect((noId.notice as { code: string }).code).to.equal("CompanyIdIsEmpty");
+      expect(noId.notice).to.deep.equal({ variant: "destructive", title: "The vendor was not proposed", description: "Add the vendor's company identifier before proposing.", code: "CompanyIdIsEmpty" });
     });
 
     it("lists only queued Work proposals the firm has not confirmed, and no Admit proposal", async () => {
