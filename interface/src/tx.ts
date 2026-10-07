@@ -287,9 +287,18 @@ export const collectLevies = (count: number) => ({
     const collected = logs.filter(
       (log) => WALLET.parseLog(log)?.name === "LevyPaid",
     ).length;
+    // The call succeeds whether or not it took anything (ADR-020), so the
+    // title follows what was taken, not the receipt's status.
     return {
-      title: "Levies collected",
-      body: `${collected} collected, ${count - collected} not covered.`,
+      title:
+        collected === count ? "Levies collected"
+        : collected === 0 ? "Nothing collected"
+        : "Some levies collected",
+      body:
+        `${collected} collected, ${count - collected} not covered.` +
+        (collected < count
+          ? " Not covered means the owner has not set up direct debit or holds too little; the charge stays owed."
+          : ""),
     };
   },
   refused: "The levies were not collected",

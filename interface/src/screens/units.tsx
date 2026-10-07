@@ -126,7 +126,7 @@ export function YourUnits({
             )}
           </dl>
         </CardContent>
-        {onDebit && total > 0n && (
+        {onDebit && total > (ownWallet?.approved ?? 0n) && (
           <CardFooter className="flex-wrap gap-3">
             <Button
               size="lg"

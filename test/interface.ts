@@ -588,15 +588,15 @@ describe("Read interface (#72, #149)", () => {
       const ledger = new Contract(s.addresses.levyLedger, ABI, firm);
       // The toast counts the call's own LevyPaid logs.
       expect((await outcome(collectLevies(3), () => ledger.collect([1n, 3n, 4n]))).toast).to.deep.equal({
-        title: "Levies collected",
-        body: "2 collected, 1 not covered.",
+        title: "Some levies collected",
+        body: "2 collected, 1 not covered. Not covered means the owner has not set up direct debit or holds too little; the charge stays owed.",
       });
       // A retry still not covered: the toast says so, and the log gains
       // nothing (interface.md §4).
       const before = (await s.render(firm.address, "#/activity")).view.activity.length;
       expect((await outcome(collectLevies(1), () => ledger.collect([3n]))).toast).to.deep.equal({
-        title: "Levies collected",
-        body: "0 collected, 1 not covered.",
+        title: "Nothing collected",
+        body: "0 collected, 1 not covered. Not covered means the owner has not set up direct debit or holds too little; the charge stays owed.",
       });
       expect((await s.render(firm.address, "#/activity")).view.activity).to.have.length(before);
 
@@ -693,6 +693,12 @@ describe("Read interface (#72, #149)", () => {
       const busy = await units(s.signers.alice.address, { acting: { action: "debit", id: 0n } });
       expect(busy).to.contain("Waiting for your wallet…");
       expect(busy).to.not.contain("Set up direct debit");
+      // Once the approval covers the total the button goes; short of it, it stays.
+      const asAlice = new Contract(String(s.contracts.token.target), ABI, s.signers.alice);
+      await (await asAlice.approve(s.addresses.levyLedger, 250n * 10n ** 18n)).wait();
+      expect(await units(s.signers.alice.address)).to.contain("Set up direct debit");
+      await (await asAlice.approve(s.addresses.levyLedger, 500n * 10n ** 18n)).wait();
+      expect(await units(s.signers.alice.address)).to.not.contain("Set up direct debit");
     });
 
     it("FR17: proposes work and a vendor through tx.ts's ABI, and both appear in the replayed View", async () => {
