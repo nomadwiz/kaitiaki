@@ -1,14 +1,14 @@
-// Screen 6, Firm (`#/firm`, #157, #173): propose work, propose a vendor,
-// collect due levies; Confirm work is on Proposal (#178). Only the firm's
-// wallet can (`NotFirm` in Governance and LevyLedger), so for every other
-// viewer the same forms are drawn disabled. Each form reads its fields
-// when submitted and holds only the hints for what failed; a malformed value
-// never reaches ethers. An empty name, identifier or description is left to
-// the contract, whose refusal the RefusalNotice words.
+// Screen 6, Firm (`#/firm`, #157, #173): propose a vendor, collect due
+// levies; Propose work is its own screen (#183), Confirm work is on
+// Proposal (#178). Only the firm's wallet can (`NotFirm` in Governance and
+// LevyLedger), so for every other viewer the same forms are drawn disabled.
+// Each form reads its fields when submitted and holds only the hints for
+// what failed; a malformed value never reaches ethers. An empty name,
+// identifier or description is left to the contract, whose refusal the
+// RefusalNotice words.
 import { isAddress, isHexString, parseUnits } from "ethers";
 import { useState, type FormEvent, type ReactNode } from "react";
 
-import { FUND_NAMES } from "../components/kaitiaki.js";
 import { date } from "../format.js";
 import { PageHead } from "../shell.js";
 import { Waiting } from "../states.js";
@@ -40,13 +40,13 @@ const ADDRESS = "A wallet address is 0x followed by 40 hexadecimal digits.";
 const hash = (v: string) => (isHexString(v, 32) ? undefined : HASH);
 const address = (v: string) => (isAddress(v) ? undefined : ADDRESS);
 
-// A positive amount in NZD, in the token's units. Commas are allowed, as
-// the design system writes amounts.
+// A positive amount in NZD, in the token's units. Commas and a leading
+// "NZD" are allowed, as the design system writes amounts.
+const amount = (v: string) => v.replace(/^\s*NZD\s*/i, "").replace(/,/g, "").trim();
 function cap(v: string) {
-  const amount = v.replace(/,/g, "").trim();
-  return /^\d+(\.\d{1,18})?$/.test(amount) && parseUnits(amount, 18) > 0n
+  return /^\d+(\.\d{1,18})?$/.test(amount(v)) && parseUnits(amount(v), 18) > 0n
     ? undefined
-    : "Enter the cap as an amount in NZD, such as 1,800.00.";
+    : "Enter the limit as an amount in NZD, such as 1,800.00.";
 }
 
 export function checkWork(f: Fields) {
@@ -59,7 +59,7 @@ export function checkWork(f: Fields) {
     ? undefined
     : {
         description: f.description,
-        limit: parseUnits(f.cap.replace(/,/g, "").trim(), 18),
+        limit: parseUnits(amount(f.cap), 18),
         fund: Number(f.fund),
         vendor: f.vendor,
         quoteHash: f.quote,
@@ -162,120 +162,6 @@ function Submit({
         label
       )}
     </button>
-  );
-}
-
-function ProposeWork({
-  vendors,
-  act,
-  acting,
-}: {
-  vendors: View["vendors"];
-  act?: FirmActs;
-  acting?: Acting;
-}) {
-  const [hints, setHints] = useState<Hints>({});
-  return (
-    <section className="card">
-      <div className="card-header">
-        <h2 className="card-title">Propose work</h2>
-        <p className="card-description">Owners then have 14 days to vote.</p>
-      </div>
-      <form
-        style={{ display: "contents" }}
-        noValidate
-        onSubmit={submit(
-          acting !== undefined,
-          setHints,
-          (f) => {
-            const { hints, work } = checkWork(f);
-            return { hints, value: work };
-          },
-          act?.onWork,
-        )}
-      >
-        <div className="card-content stack">
-          <Field id="f-desc" label="What the work is">
-            <textarea
-              className="textarea"
-              id="f-desc"
-              name="description"
-              disabled={!act}
-            ></textarea>
-          </Field>
-          <div className="grid-2" style={{ gap: "var(--space-3)" }}>
-            <Field id="f-cap" label="Spending cap (NZD)" error={hints.cap}>
-              <input
-                className="input num"
-                id="f-cap"
-                name="cap"
-                inputMode="decimal"
-                placeholder="0.00"
-                disabled={!act}
-                {...invalid("f-cap", hints.cap)}
-              />
-            </Field>
-            <Field id="f-fund" label="Pays from">
-              <select
-                className="select"
-                id="f-fund"
-                name="fund"
-                disabled={!act}
-              >
-                {FUND_NAMES.map((name, i) => (
-                  <option key={name} value={i}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          </div>
-          <Field
-            id="f-ven"
-            label="Vendor"
-            hint="Only approved vendors are listed."
-            error={hints.vendor}
-          >
-            <select
-              className="select"
-              id="f-ven"
-              name="vendor"
-              disabled={!act}
-              {...invalid("f-ven", hints.vendor)}
-            >
-              {vendors.map((v) => (
-                <option key={v.payee} value={v.payee}>
-                  {v.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field
-            id="f-quote"
-            label="Quote document hash"
-            error={hints.quote}
-          >
-            <input
-              className="input mono"
-              id="f-quote"
-              name="quote"
-              placeholder="0x…"
-              disabled={!act}
-              {...invalid("f-quote", hints.quote)}
-            />
-          </Field>
-        </div>
-        <div className="card-footer">
-          <Submit
-            label="Propose work"
-            readOnly={!act}
-            acting={acting}
-            mine={acting?.action === "work"}
-          />
-          <span className="field-hint">Signed in your wallet.</span>
-        </div>
-      </form>
-    </section>
   );
 }
 
@@ -422,13 +308,11 @@ function CollectLevies({
 }
 
 export function Firm({
-  vendors,
   toCollect,
   act,
   acting,
   fresh = { work: 0, vendor: 0 },
 }: {
-  vendors: View["vendors"];
   toCollect: View["toCollect"];
   act?: FirmActs;
   acting?: Acting;
@@ -451,10 +335,7 @@ export function Firm({
           wallets see this page read-only.
         </p>
       </div>
-      <div className="grid-2">
-        <ProposeWork key={fresh.work} vendors={vendors} act={act} acting={acting} />
-        <ProposeVendor key={fresh.vendor} act={act} acting={acting} />
-      </div>
+      <ProposeVendor key={fresh.vendor} act={act} acting={acting} />
       <CollectLevies charges={toCollect} act={act} acting={acting} />
     </>
   );
