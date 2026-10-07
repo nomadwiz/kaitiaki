@@ -26,6 +26,7 @@ import { GUARANTEES } from "../interface/src/screens/building.js";
 import { votesRules } from "../interface/src/screens/proposal.js";
 import { checkEvidence, checkVendor, checkWork } from "../interface/src/screens/firm.js";
 import { PROPOSE_RULES, ProposeWork } from "../interface/src/screens/propose.js";
+import { COLLECT_RULES, CollectLevies } from "../interface/src/screens/collect.js";
 import { date, nzd, short } from "../interface/src/format.js";
 import { ABI, approvedRefusal, carryOut, collectLevies, confirmWork, payment, proposeVendor, proposeWork, refusal, send, standingApproval, walletBalance } from "../interface/src/tx.js";
 import { buildView } from "../interface/src/view.js";
@@ -72,7 +73,7 @@ const ROUTES = {
     ["#/proposals", "Proposals", "Proposals"],
     ["#/proposal/2", "Roof repair", "Proposals"],
     ["#/propose", "Propose work", "Proposals"],
-    ["#/collect", "Firm workspace", "Collect levies"],
+    ["#/collect", "Collect levies", "Collect levies"],
     ["#/vendors", "Firm workspace", "Vendors"],
     ["#/activity", "Activity", "Activity"],
     ["#/units", "Home", "Home"],
@@ -202,8 +203,13 @@ describe("Read interface (#72, #149)", () => {
     expect(levies).to.equal(`Levies to collect 2 charges are due. The oldest fell due on ${date(due.reduce((a, b) => (a < b ? a : b)))}. Collect levies`);
     expect(text(firm.html)).to.not.match(/Unit \d/);
     for (const charge of firm.view.toCollect) {
-      expect(Object.keys(charge)).to.deep.equal(["chargeId", "dueDate", "due", "attempted"]);
+      expect(Object.keys(charge)).to.deep.equal(["chargeId", "dueDate", "due", "issued"]);
     }
+    // Collect levies lists the charges by number and dates, and names no
+    // unit and no amount.
+    const collect = text((await render(signers.firm.address, "#/collect")).html);
+    expect(collect).to.contain("#1");
+    expect(collect).to.not.match(/Unit \d|NZD/);
   });
 
   it("FR13: Building lists the approved vendor by name, shortened address and company identifier, and a Work card names it", async () => {
@@ -471,21 +477,61 @@ describe("Read interface (#72, #149)", () => {
       });
     });
 
-    it("ADR-020: lists every unpaid charge without its unit or amount, and offers Collect for the due ones", async () => {
-      const s = await setUp();
-      const { view, html } = await firmPage(s, s.signers.firm.address);
-      // Charges 1 and 3 were collected and not covered; 4 is not yet due.
-      expect(view.toCollect.map((c) => [c.chargeId, c.due, c.attempted])).to.deep.equal([
-        [1n, true, true],
-        [3n, true, true],
-        [4n, false, false],
-      ]);
-      const card = html.split('<h2 class="card-title">Collect due levies</h2>')[1].split("</section>")[0];
-      expect(card).to.not.match(/Unit \d|NZD/);
-      expect(text(card)).to.contain("Charge #1");
-      expect(text(card)).to.contain("Not covered when last collected");
-      expect(text(card)).to.contain(`Available from ${date(view.toCollect[2].dueDate)}`);
-      expect(card).to.contain('<button class="btn" type="button">Collect 2 due charges</button>');
+    describe("Collect levies (#184)", () => {
+      const FIRM_ACTS = { onWork() {}, onVendor() {}, onConfirm() {}, onCollect() {} };
+      // A card of the screen, from its heading to the next card.
+      const card = (html: string, id: string) => html.split(`id="${id}"`)[1].split(/<div data-slot="card"|<\/main>/)[0].replace(/^[^>]*>/, "");
+
+      it("ADR-020: Due now lists the due charges by number, due date and when issued, every one selected, with Rules and Collect beside Signed in your wallet.; Coming due dates the next", async () => {
+        const s = await setUp();
+        const { view, html } = await firmPage(s, s.signers.firm.address, undefined, "#/collect");
+        // Charges 1 and 3 were collected and not covered; 4 is not yet due.
+        const [one, three, four] = view.toCollect;
+        expect(view.toCollect.map((c) => [c.chargeId, c.due, c.issued !== undefined])).to.deep.equal([
+          [1n, true, true],
+          [3n, true, true],
+          [4n, false, false],
+        ]);
+        // No subtitle: the title, then the cards.
+        expect(html).to.match(/<h1>Collect levies<\/h1><div data-slot="card"/);
+        const due = card(html, "h-due");
+        expect(text(due)).to.equal(
+          `Due now 2 charges Rules Charge Due Issued #1 ${date(one.dueDate)} ${date(one.issued!)}, not covered #3 ${date(three.dueDate)} ${date(three.issued!)}, not covered Collect 2 charges Signed in your wallet.`,
+        );
+        // The header's box and one per due charge, all ticked; none for
+        // charge 4, which cannot be collected before its date.
+        expect(due.match(/role="checkbox" aria-checked="true"/g)).to.have.length(3);
+        expect(due).to.not.contain("Charge #4");
+        expect(due).to.not.contain('disabled=""');
+        expect(text(card(html, "h-coming"))).to.equal(`Coming due 1 charge falls due on ${date(four.dueDate)}.`);
+        // The log cannot say what the last collection did (interface.md §4).
+        expect(html).to.not.contain("Last collection");
+        expect(COLLECT_RULES).to.have.length(6);
+        expect(COLLECT_RULES).to.include("A retry that is still not covered leaves no record.");
+      });
+
+      it("says no charge is due and offers nothing once all are collected, is drawn disabled on the wrong chain, and waits on the wallet while collecting", async () => {
+        const s = await setUp();
+        const wrong = { kind: "browser", account: s.signers.firm.address, chainId: 1n, deploymentChainId: 31337n } as const;
+        const { view, html } = await firmPage(s, s.signers.firm.address, wrong, "#/collect");
+        expect(html).to.match(/<button[^>]*disabled=""[^>]*>[\s\S]*?Collect 2 charges<\/button>/);
+        expect(html.match(/role="checkbox"[^>]*disabled=""/g)).to.have.length(3);
+        const busy = renderToStaticMarkup(createElement(CollectLevies, { toCollect: view.toCollect, act: FIRM_ACTS, acting: { action: "collect", id: 0n } }));
+        expect(busy).to.match(/<button[^>]*aria-disabled="true"[^>]*>/);
+        expect(text(busy)).to.contain("Waiting for your wallet…");
+        // Carol funds and approves her charge, and the firm collects both.
+        const { carol, firm } = s.signers;
+        await s.contracts.token.mint(carol.address, 250n * 10n ** 18n);
+        await (await new Contract(String(s.contracts.token.target), ABI, carol).approve(s.addresses.levyLedger, 250n * 10n ** 18n)).wait();
+        const alice = s.signers.alice;
+        await s.contracts.token.mint(alice.address, 250n * 10n ** 18n);
+        await (await new Contract(String(s.contracts.token.target), ABI, alice).approve(s.addresses.levyLedger, 500n * 10n ** 18n)).wait();
+        await (await new Contract(s.addresses.levyLedger, ABI, firm).collect([1n, 3n])).wait();
+        const none = (await firmPage(s, firm.address, undefined, "#/collect")).html;
+        expect(text(card(none, "h-due"))).to.equal("Due now No charge is due. Rules");
+        expect(none).to.not.contain("Signed in your wallet.");
+        expect(none).to.not.contain('class="border-2');
+      });
     });
 
     it("ADR-020: collect through tx.ts's ABI takes a direct-debited levy and leaves an uncovered one owed", async () => {
@@ -497,7 +543,19 @@ describe("Read interface (#72, #149)", () => {
       const token = new Contract(String(s.contracts.token.target), ABI, alice);
       await (await token.approve(s.addresses.levyLedger, 500n * 10n ** 18n)).wait();
       const ledger = new Contract(s.addresses.levyLedger, ABI, firm);
-      await (await ledger.collect([1n, 3n, 4n])).wait();
+      // The toast counts the call's own LevyPaid logs.
+      expect((await outcome(collectLevies(3), () => ledger.collect([1n, 3n, 4n]))).toast).to.deep.equal({
+        title: "Levies collected",
+        body: "2 collected, 1 not covered.",
+      });
+      // A retry still not covered: the toast says so, and the log gains
+      // nothing (interface.md §4's [OPEN]).
+      const before = (await s.render(firm.address, "#/activity")).view.activity.length;
+      expect((await outcome(collectLevies(1), () => ledger.collect([3n]))).toast).to.deep.equal({
+        title: "Levies collected",
+        body: "0 collected, 1 not covered.",
+      });
+      expect((await s.render(firm.address, "#/activity")).view.activity).to.have.length(before);
 
       const own = await s.render(alice.address, "#/units");
       expect(own.view.ownUnits.map((u) => [u.unitId, u.status, u.charges.length])).to.deep.equal([
@@ -505,7 +563,7 @@ describe("Read interface (#72, #149)", () => {
         [2n, "current", 0],
       ]);
       const { view } = await firmPage(s, firm.address);
-      expect(view.toCollect.map((c) => [c.chargeId, c.attempted])).to.deep.equal([[3n, true]]);
+      expect(view.toCollect.map((c) => [c.chargeId, c.issued !== undefined])).to.deep.equal([[3n, true]]);
       expect((await s.render(carol.address, "#/units")).view.ownUnits[0].status).to.equal("in arrears");
     });
 

@@ -1,5 +1,5 @@
-// Screen 6, Firm (`#/firm`, #157, #173): propose a vendor, collect due
-// levies; Propose work is its own screen (#183), Confirm work is on
+// Screen 6, Firm (`#/firm`, #157, #173): propose a vendor; Propose work
+// (#183) and Collect levies (#184) are their own screens, Confirm work is on
 // Proposal (#178). Only the firm's wallet can (`NotFirm` in Governance and
 // LevyLedger), so for every other viewer the same forms are drawn disabled.
 // Each form reads its fields when submitted and holds only the hints for
@@ -9,10 +9,8 @@
 import { isAddress, isHexString, parseUnits } from "ethers";
 import { useState, type FormEvent, type ReactNode } from "react";
 
-import { date } from "../format.js";
 import { PageHead } from "../shell.js";
 import { Waiting } from "../states.js";
-import type { View } from "../view.js";
 import type { Acting } from "./proposal.js";
 
 export type Work = {
@@ -233,87 +231,11 @@ function ProposeVendor({ act, acting }: { act?: FirmActs; acting?: Acting }) {
   );
 }
 
-// Every due, unpaid charge in one collection (ADR-020). Each is taken from
-// its owner's wallet if the owner approved the levy ledger and holds it;
-// otherwise it is recorded as owed. Listed without unit or amount.
-function CollectLevies({
-  charges,
-  act,
-  acting,
-}: {
-  charges: View["toCollect"];
-  act?: FirmActs;
-  acting?: Acting;
-}) {
-  const due = charges.filter((c) => c.due).map((c) => c.chargeId);
-  const busy = acting !== undefined;
-  return (
-    <section className="card">
-      <div className="card-header">
-        <h2 className="card-title">Collect due levies</h2>
-        <p className="card-description">
-          Takes each due levy from its owner’s wallet, if the owner has set up
-          direct debit and holds the amount. If not, the charge is recorded as
-          owed and the unit is in arrears after its due date. Charges are
-          listed without their unit.
-        </p>
-      </div>
-      <div className="card-content stack" style={{ overflowX: "auto" }}>
-        {charges.length === 0 ? (
-          <p className="muted-text">No charge is waiting to be collected.</p>
-        ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Charge</th>
-                <th>Due</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {charges.map((c) => (
-                <tr key={String(c.chargeId)}>
-                  <td>Charge #{String(c.chargeId)}</td>
-                  <td>{date(c.dueDate)}</td>
-                  <td className="muted-text">
-                    {c.attempted
-                      ? "Not covered when last collected"
-                      : c.due
-                        ? "Due"
-                        : `Available from ${date(c.dueDate)}`}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-        {due.length > 0 && (
-          <button
-            className="btn"
-            type="button"
-            disabled={!act}
-            aria-disabled={busy || undefined}
-            onClick={act && !busy ? () => act.onCollect(due) : undefined}
-          >
-            {acting?.action === "collect" ? (
-              <Waiting />
-            ) : (
-              `Collect ${due.length} due charge${due.length === 1 ? "" : "s"}`
-            )}
-          </button>
-        )}
-      </div>
-    </section>
-  );
-}
-
 export function Firm({
-  toCollect,
   act,
   acting,
   fresh = { work: 0, vendor: 0 },
 }: {
-  toCollect: View["toCollect"];
   act?: FirmActs;
   acting?: Acting;
   // A new number empties that form: a new key mounts it afresh.
@@ -336,7 +258,6 @@ export function Firm({
         </p>
       </div>
       <ProposeVendor key={fresh.vendor} act={act} acting={acting} />
-      <CollectLevies charges={toCollect} act={act} acting={acting} />
     </>
   );
 }
