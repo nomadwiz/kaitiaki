@@ -188,7 +188,11 @@ export function Proposals({
                 />
               ))
             ) : (
-              <p className="text-muted-foreground">{g.empty}</p>
+              <Card>
+                <CardContent>
+                  <p className="font-semibold">{g.empty}</p>
+                </CardContent>
+              </Card>
             )}
           </TabsContent>
         ))}

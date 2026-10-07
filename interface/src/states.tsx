@@ -11,6 +11,7 @@ import {
   AlertTitle,
   Alert as Callout,
 } from "./components/ui/alert.js";
+import { Card, CardContent } from "./components/ui/card.js";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +19,7 @@ import {
   DialogFooter,
   DialogTitle,
 } from "./components/ui/dialog.js";
+import { Skeleton } from "./components/ui/skeleton.js";
 
 // What a button shows while the viewer's wallet signs.
 export function Waiting() {
@@ -82,27 +84,20 @@ export function SigningDialog({ signing }: { signing: string }) {
 // request cancelled in the wallet, which needs only its one line.
 export type Done = { title: string; body?: string; cancelled?: true };
 
+// The States mock-up's Loading: the line naming what is read, over
+// shadcn/ui's Skeleton.
 export function Loading() {
   return (
-    <section className="card" aria-busy="true">
-      <div
-        className="card-content stack"
-        style={{ paddingTop: "var(--space-6)" }}
-      >
-        <p role="status" className="row">
-          <span
-            className="btn"
-            data-variant="ghost"
-            style={{ padding: 0, minHeight: 0 }}
-          >
-            <span className="spinner" aria-hidden="true"></span>
-          </span>
-          Reading the event log…
+    <Card aria-busy="true">
+      <CardContent className="flex flex-col gap-3">
+        <p role="status" className="flex items-center gap-2 text-base text-muted-foreground">
+          <LoaderCircle aria-hidden="true" className="size-5 animate-spin" />
+          Reading the building's record
         </p>
-        <span className="skeleton" style={{ height: 28, width: "60%" }}></span>
-        <span className="skeleton" style={{ height: 48 }}></span>
-        <span className="skeleton" style={{ height: 48, width: "80%" }}></span>
-      </div>
-    </section>
+        <Skeleton className="h-[22px] w-3/5" />
+        <Skeleton className="h-[22px] w-[92%]" />
+        <Skeleton className="h-[22px] w-[76%]" />
+      </CardContent>
+    </Card>
   );
 }

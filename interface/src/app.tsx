@@ -249,7 +249,7 @@ export function App({
   let page: ReactNode;
   if (!view || !workspace) {
     page = (
-      <main className="shell-main">
+      <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-4 pt-5 pb-8 wide:px-12 wide:pt-10 wide:pb-16">
         {notices}
         {!failed && <Loading />}
       </main>

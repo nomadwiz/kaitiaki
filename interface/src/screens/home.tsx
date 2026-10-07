@@ -130,7 +130,7 @@ export function Home({
                 ))}
               </ul>
             ) : (
-              <p className="text-muted-foreground">
+              <p className="font-semibold">
                 No proposals are open for voting.
               </p>
             )}
@@ -231,7 +231,7 @@ export function Home({
                 })}
               </ul>
             ) : (
-              <p className="text-muted-foreground">Nothing is queued to pay.</p>
+              <p className="font-semibold">Nothing is queued to pay.</p>
             )}
           </CardContent>
         </Card>

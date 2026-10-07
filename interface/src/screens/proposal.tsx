@@ -267,7 +267,7 @@ function YourVote({
           />
         </CardAction>
       </CardHeader>
-      <form className="vote" data-proposal={String(p.id)} onSubmit={submit}>
+      <form className="grid gap-3" data-proposal={String(p.id)} onSubmit={submit}>
         <CardContent className="flex flex-col gap-3">
           {signing ? (
             <>

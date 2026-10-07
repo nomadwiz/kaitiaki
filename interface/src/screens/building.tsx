@@ -73,7 +73,7 @@ export function VendorList({
       ))}
     </ul>
   ) : (
-    <p className="text-muted-foreground">No vendor is approved yet.</p>
+    <p className="font-semibold">No vendor is approved yet.</p>
   );
 }
 
@@ -171,12 +171,12 @@ export function Building({
           </Alert>
           {otherUnits.length ? (
             <ul
-              className="register grid w-full grid-cols-2 gap-x-4 wide:grid-cols-4 wide:gap-x-6 [&>li]:flex [&>li]:min-h-11 [&>li]:items-center [&>li]:justify-between [&>li]:border-b [&>li]:py-0 [&>li]:text-base"
+              className="grid w-full grid-cols-2 gap-x-4 wide:grid-cols-4 wide:gap-x-6 [&>li]:flex [&>li]:min-h-11 [&>li]:items-center [&>li]:justify-between [&>li]:border-b [&>li]:py-0 [&>li]:text-base"
               aria-label="Other units"
             >
               {otherUnits.map((u) => (
                 <li key={String(u.unitId)} data-other-unit="">
-                  <span className="unit font-semibold whitespace-nowrap tabular-nums">
+                  <span className="font-semibold whitespace-nowrap tabular-nums">
                     Unit {String(u.unitId)}
                   </span>
                   <span
@@ -190,7 +190,7 @@ export function Building({
               ))}
             </ul>
           ) : (
-            <p className="text-muted-foreground">
+            <p className="font-semibold">
               No other unit is in the building.
             </p>
           )}
