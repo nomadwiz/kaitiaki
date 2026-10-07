@@ -153,7 +153,7 @@ describe("Read interface (#72, #149)", () => {
       return {
         view,
         html: renderToStaticMarkup(
-          createElement(App, { hash, view, wallet, firm: building.signers.firm.address, onPay: () => {}, onAct: () => {}, onVote: () => {} }),
+          createElement(App, { hash, view, wallet, firm: building.signers.firm.address, onConnect: () => {}, onPay: () => {}, onAct: () => {}, onVote: () => {} }),
         ),
       };
     };
@@ -1889,6 +1889,40 @@ describe("Read interface (#72, #149)", () => {
     }
   });
 
+  it("#186: Connect and No unit show one Card holding no fund, proposal, unit or event data, on every route", async () => {
+    const { signers, render } = await setUp();
+    const { stranger } = signers;
+    const browser = (account?: string): Wallet => ({ kind: "browser", account, chainId: 31337n, deploymentChainId: 31337n });
+    // Everything the building's log gives an owner and the firm: none of it
+    // may reach an entry screen.
+    const owner = (await render(signers.carol.address, "#/")).view;
+    const data = [
+      ...owner.proposals.map((p) => p.description),
+      ...owner.vendors.flatMap((v) => [v.name, v.companyId, v.payee, short(v.payee)]),
+      ...owner.activity.map((e) => e.text),
+    ];
+    expect(owner.proposals).to.not.be.empty;
+    expect(owner.vendors).to.not.be.empty;
+    expect(owner.activity).to.not.be.empty;
+    const CONNECT = "Kaitiaki Connect your wallet Connect wallet Your wallet signs every action. Kaitiaki never asks for a key, seed phrase or password.";
+    const NO_UNIT = `Kaitiaki This wallet holds no unit in this building If you own a unit here, switch to the wallet bound to it. Connected ${stranger.address}`;
+    for (const hash of [...ROUTES.owner, ...ROUTES.firm].map(([h]) => h)) {
+      for (const [html, words] of [
+        [(await render(undefined, hash, browser())).html, CONNECT],
+        [(await render(stranger.address, hash, browser(stranger.address))).html, NO_UNIT],
+        [(await render(stranger.address, hash)).html, NO_UNIT],
+      ]) {
+        // The page's words are exactly the Card's, in one Card, with no
+        // navigation.
+        expect(text(html), hash).to.equal(words);
+        expect(html.match(/data-slot="card"/g), hash).to.have.length(1);
+        expect(html, hash).to.not.contain("<nav");
+        for (const d of data) expect(html, `${hash}: ${d}`).to.not.contain(d);
+        expect(html, hash).to.not.match(/NZD|Unit \d|Proposal #|Charge #|Operating|Long-term maintenance/);
+      }
+    }
+  });
+
   it("FR41: holds no key, and its ABI has no view or pure function", async () => {
     const functions = ABI.fragments.filter(
       (f): f is FunctionFragment => f.type === "function",
@@ -1989,10 +2023,8 @@ describe("Read interface (#72, #149)", () => {
         hash,
         browser(undefined, 31337n),
       );
-      expect(html, hash).to.contain(
-        '<h3 class="card-title">Connect your wallet to vote or pay</h3>',
-      );
-      expect(html.match(/>Connect wallet</g), hash).to.have.length(1);
+      expect(html, hash).to.match(/<h1 class="[^"]*">Connect your wallet<\/h1>/);
+      expect(html.match(/<button[^>]*>.*?Connect wallet<\/button>/g), hash).to.have.length(1);
     }
 
     // Connected, holding no unit.
@@ -2002,9 +2034,8 @@ describe("Read interface (#72, #149)", () => {
         hash,
         browser(stranger.address, 31337n),
       );
-      expect(html, hash).to.match(
-        /<div data-slot="alert" role="status"[^>]*><div data-slot="alert-title"[^>]*>This wallet holds no unit in this building, so it cannot vote\.<\/div>/,
-      );
+      expect(html, hash).to.match(/<h1 class="[^"]*">This wallet holds no unit in this building<\/h1>/);
+      expect(html, hash).to.contain(stranger.address);
       expect(html, hash).to.not.contain("<form");
       expect(html, hash).to.not.contain("Connect your wallet");
     }
