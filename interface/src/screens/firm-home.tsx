@@ -6,7 +6,7 @@
 import { Banknote, ClipboardCheck, HandCoins, Plus, Store } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { RulesPopover, StatusBadge } from "../components/kaitiaki.js";
+import { quorumConditions, RulesPopover, StatusBadge } from "../components/kaitiaki.js";
 import { Button, buttonVariants } from "../components/ui/button.js";
 import {
   Card,
@@ -219,30 +219,33 @@ export function FirmHome({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {voting.map((p) => {
-                  const q = p.quorum;
-                  return (
-                    <TableRow key={String(p.id)}>
-                      <TableCell>
-                        <a href={`#/proposal/${p.id}`}>{title(p)}</a>
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge word={p.state} />
-                      </TableCell>
-                      <TableCell className="tabular-nums">
-                        {p.waived ? (
-                          <span className="font-semibold whitespace-normal text-warning">
-                            Quorum waived. One owner's vote can decide.
-                          </span>
-                        ) : (
-                          // Both conditions Governance.quorumReached checks.
-                          `${q.unitsVoted} of ${q.unitsNeeded} units, ${q.voters} of ${q.votersNeeded} owners, ${q.unitsMet && q.votersMet ? "met" : "not yet met"}`
-                        )}
-                      </TableCell>
-                      <TableCell>{date(p.closes!)}</TableCell>
-                    </TableRow>
-                  );
-                })}
+                {voting.map((p) => (
+                  <TableRow key={String(p.id)}>
+                    <TableCell>
+                      <a href={`#/proposal/${p.id}`}>{title(p)}</a>
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge word={p.state} />
+                    </TableCell>
+                    <TableCell className="tabular-nums">
+                      {p.waived ? (
+                        <span className="font-semibold whitespace-normal text-warning">
+                          Quorum waived. One owner's vote can decide.
+                        </span>
+                      ) : (
+                        <span className="flex flex-col gap-1">
+                          {quorumConditions(p.quorum).map(([label, , , words, met]) => (
+                            <span key={label} className="flex items-center gap-2">
+                              {words}
+                              <StatusBadge word={met ? "met" : "not yet met"} />
+                            </span>
+                          ))}
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>{date(p.closes!)}</TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           ) : (

@@ -1,5 +1,5 @@
 // Proposals (`#/proposals`, #177), composed from doc/asset/mockups/Proposals,
-// in both workspaces: every proposal under Voting, Waiting to pay or Closed,
+// in both workspaces: every proposal under Voting, Waiting to carry out or Closed,
 // each card linking to its screen. The owner's copy names the viewer's units
 // that have not voted; the firm's links to Propose work and to Vendors.
 import { Plus, Store, TriangleAlert } from "lucide-react";
@@ -22,11 +22,12 @@ import type { View } from "../view.js";
 
 type Proposal = View["proposals"][number];
 
-// Each tab and the states it holds. Passed and Queued wait for Queue, the
-// wait and, for Work, the firm's confirmation before anything is paid.
+// Each tab and the states it holds. Passed and Queued, Work and Admit vendor
+// alike, wait for Queue, the wait and, for Work, the firm's confirmation
+// before Carry out.
 const GROUPS = [
   ["voting", "Voting", ["Open", "Extended"], "No proposals are open for voting."],
-  ["waiting", "Waiting to pay", ["Passed", "Queued"], "No proposals are waiting to pay."],
+  ["waiting", "Waiting to carry out", ["Passed", "Queued"], "No proposals are waiting to be carried out."],
   ["closed", "Closed", ["Failed", "Executed"], "No proposals are closed."],
 ] as const;
 

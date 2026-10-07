@@ -310,6 +310,15 @@ describe("Read interface (#72, #149)", () => {
       expect(card(2)).to.contain('data-tone="late">in arrears</span>');
       expect(rows(1)).to.deep.equal([`#4 ${date(unit(view, 1n).charges[0].dueDate)} NZD 250.00 Scheduled Pay early`]);
       expect(rows(2)).to.deep.equal([`#1 ${date(unit(view, 2n).charges[0].dueDate)} NZD 250.00 in arrears Pay now`]);
+      // Below 800px the Table is hidden, and each charge is a stacked row:
+      // number and amount, then due date and state, then Pay full width.
+      const stacked = (n: number) =>
+        [...card(n).matchAll(/<li class="flex flex-col gap-2">([\s\S]*?)<\/li>/g)].map(([, row]) => text(row));
+      expect(card(1)).to.match(/<div class="max-wide:hidden"><div data-slot="table-container"/);
+      expect(card(1)).to.match(/<ul class="[^"]*wide:hidden">/);
+      expect(stacked(1)).to.deep.equal([`#4 NZD 250.00 Due ${date(unit(view, 1n).charges[0].dueDate)} Scheduled Pay early`]);
+      expect(stacked(2)).to.deep.equal([`#1 NZD 250.00 Due ${date(unit(view, 2n).charges[0].dueDate)} in arrears Pay now`]);
+      expect(card(2)).to.match(/<li class="flex flex-col gap-2">[\s\S]*?<button [^>]*class="[^"]*w-full[^"]*"[^>]*>[\s\S]*?Pay now<\/button><\/li>/);
       expect(text(card(2))).to.match(/Charge #1 was not covered when the firm collected it on \d{1,2} [A-Z][a-z]{2} \d{4} Pay it now to clear the arrear\./);
       expect(text(card(1))).to.not.contain("not covered");
       // Pay sits beside "Signed in your wallet." and the rules it needs.
@@ -349,7 +358,8 @@ describe("Read interface (#72, #149)", () => {
       const { signers, render } = await setUp();
       const units = await render(signers.alice.address, "#/units");
       const home = await render(signers.alice.address, "#/");
-      expect(units.html.match(/>Pay (now|early)</g)).to.have.length(2);
+      // Two charges, each in the Table and in the stacked rows.
+      expect(units.html.match(/>Pay (now|early)</g)).to.have.length(4);
       expect(home.html).to.not.match(/Pay (now|early)/);
       // Home names the arrear only: unit 2's charge #1, not unit 1's
       // scheduled #4.
@@ -582,7 +592,7 @@ describe("Read interface (#72, #149)", () => {
         body: "2 collected, 1 not covered.",
       });
       // A retry still not covered: the toast says so, and the log gains
-      // nothing (interface.md §4's [OPEN]).
+      // nothing (interface.md §4).
       const before = (await s.render(firm.address, "#/activity")).view.activity.length;
       expect((await outcome(collectLevies(1), () => ledger.collect([3n]))).toast).to.deep.equal({
         title: "Levies collected",
@@ -767,7 +777,10 @@ describe("Read interface (#72, #149)", () => {
         expect(h.card("h-confirm")).to.equal("Work to confirm No work is waiting to be confirmed.");
         expect(h.card("h-ready")).to.equal("Ready to carry out Rules Nothing is ready to carry out.");
         // Alice's two units voted; one owner of the two quorum needs.
-        expect(h.voting).to.deep.equal([`Roof repair Open 2 of 1 units, 1 of 2 owners, not yet met ${date((await roof).closes!)}`]);
+        expect(h.voting).to.deep.equal([`Roof repair Open 2 units voted; 1 needed met 1 owner voted; 2 needed not yet met ${date((await roof).closes!)}`]);
+        // Each condition with its own StatusBadge.
+        expect(h.html.split('id="h-voting"')[1]).to.match(/2 units voted; 1 needed<span [^>]*data-tone="ok">met<\/span>[\s\S]*?1 owner voted; 2 needed<span [^>]*data-tone="wait">not yet met<\/span>/);
+        expect(h.html).to.not.match(/\d+ of \d+ (units|owners)/);
         expect(h.html).to.contain('<a href="#/proposal/2">Roof repair</a>');
 
         // Proposal 3 admits a vendor and passes; proposal 2 misses quorum
@@ -828,9 +841,13 @@ describe("Read interface (#72, #149)", () => {
       });
     });
 
-    it("catches a malformed hash, address or cap before anything is sent, and leaves emptiness to the contract", () => {
-      const ok = { description: "", cap: "10", fund: "0", vendor: ZERO, quote: id("q") };
+    it("catches an empty description and a malformed hash, address or cap before anything is sent, and leaves a vendor's emptiness to the contract", () => {
+      const ok = { description: "Fix the gutter", cap: "10", fund: "0", vendor: ZERO, quote: id("q") };
       expect(checkWork(ok).work).to.not.equal(undefined);
+      // An empty "What the work is" is stopped under its field (#202).
+      for (const description of ["", "  "]) {
+        expect(checkWork({ ...ok, description }).hints).to.deep.equal({ description: "Add what the work is before proposing." });
+      }
       // The limit as the design system writes amounts.
       expect(checkWork({ ...ok, cap: "NZD 48,000.00" }).work?.limit).to.equal(48_000n * 10n ** 18n);
       for (const bad of [
@@ -1392,8 +1409,9 @@ describe("Read interface (#72, #149)", () => {
       // Alice's two units voted for it; one unit is a quarter of four, one
       // wallet is not two.
       expect(text(card(html, "h-votes"))).to.equal(
-        "Votes not yet met Rules Units voted (25% of the building) 2 of 1 units met Different owners voted 1 of 2 owners not yet met For 2 units Against 0 units",
+        "Votes not yet met Rules Units voted (25% of the building) 2 units voted; 1 needed met Different owners voted 1 owner voted; 2 needed not yet met For 2 units Against 0 units",
       );
+      expect(html).to.not.match(/\d+ of \d+ (units|owners)/);
       expect(votesRules(p)).to.deep.equal([
         "Passes when more units vote for than against. A tie fails.",
         "Quorum needs both: 1 of the building's 4 units, and 2 different owners.",
@@ -1738,23 +1756,24 @@ describe("Read interface (#72, #149)", () => {
         .slice(1)
         .map((card) => card.slice(card.indexOf(">") + 1));
 
-    it("FR19: groups every proposal under Voting, Waiting to pay and Closed, each card with its badge, kind, vendor, limit, fund and date", async () => {
+    it("FR19: groups every proposal under Voting, Waiting to carry out and Closed, each card with its badge, kind, vendor, limit, fund and date", async () => {
       const { signers, render } = await setUp();
       const { view, html } = await render(signers.carol.address, "#/proposals");
-      expect(tabs(html)).to.deep.equal(["Voting 1", "Waiting to pay 0", "Closed 1"]);
+      expect(tabs(html)).to.deep.equal(["Voting 1", "Waiting to carry out 0", "Closed 1"]);
       const [open] = cards(html, "voting");
       const closes = view.proposals.find((p) => p.id === 2n)!.closes!;
       expect(text(open)).to.equal(
         `Open Work Roof repair Vote Harbour Lifts Ltd ${short(signers.vendor.address)} DEMO-0001 Up to NZD 400.00 Operating Closes ${date(closes)} ` +
-          "Units voted (25% of the building) 2 of 1 units met Different owners voted 1 of 2 owners not yet met Unit 4 has not voted.",
+          "Units voted (25% of the building) 2 units voted; 1 needed met Different owners voted 1 owner voted; 2 needed not yet met Unit 4 has not voted.",
       );
+      expect(html).to.not.match(/\d+ of \d+ (units|owners)/);
       expect(open).to.contain('data-tone="info">Open</span>');
       expect(open).to.contain('aria-valuenow="50"');
       expect(text(cards(html, "closed")[0])).to.equal(
         `Executed Admit vendor Admit Harbour Lifts Ltd View DEMO-0001 ${short(signers.vendor.address)} Carried out ${date(view.proposals[0].steps.at(-1)!.date!)}`,
       );
       // An empty group is one Card saying what is missing (States, #187).
-      expect(cards(html, "waiting").map(text)).to.deep.equal(["No proposals are waiting to pay."]);
+      expect(cards(html, "waiting").map(text)).to.deep.equal(["No proposals are waiting to be carried out."]);
       // Each card is one link, its title, stretched over the card.
       for (const card of [...cards(html, "voting"), ...cards(html, "closed")]) {
         expect(card.match(/<a /g)).to.have.length(1);
@@ -1772,12 +1791,28 @@ describe("Read interface (#72, #149)", () => {
       const { html } = await render(signers.firm.address, "#/proposals");
       expect(html).to.match(/<a [^>]*href="#\/propose"[^>]*>[\s\S]*?<\/svg>Propose work<\/a>/);
       expect(html).to.match(/<a [^>]*href="#\/vendors"[^>]*>[\s\S]*?<\/svg>Propose a vendor<\/a>/);
-      expect(tabs(html)).to.deep.equal(["Voting 1", "Waiting to pay 0", "Closed 1"]);
+      expect(tabs(html)).to.deep.equal(["Voting 1", "Waiting to carry out 0", "Closed 1"]);
       expect(cards(html, "voting")[0]).to.contain(">View</span>");
       expect(html).to.not.match(/not voted|>Vote</);
     });
 
-    it("FR20, FR21: moves a proposal from Voting to Waiting to pay to Closed, naming what happens next, and waives quorum in an Alert", async () => {
+    it("Waiting to carry out holds a passed and a queued Admit vendor proposal as it holds Work (#202)", async () => {
+      const { ethers, contracts, signers, render } = await setUp();
+      const { governance } = contracts;
+      await governance.connect(signers.firm).getFunction("propose(address,string,string)")(signers.stranger.address, "Lift Co", "NZBN 1");
+      await governance.connect(signers.alice).castVote(3, true);
+      await governance.connect(signers.bob).castVote(3, true);
+      await advance(ethers, await governance.VOTING_PERIOD());
+      let { html } = await render(signers.carol.address, "#/proposals");
+      // Proposal 2 missed quorum and is extended; proposal 3 passed.
+      expect(tabs(html)).to.deep.equal(["Voting 1", "Waiting to carry out 1", "Closed 1"]);
+      expect(text(cards(html, "waiting")[0])).to.match(/^Passed Admit vendor Admit Lift Co View/);
+      await governance.connect(signers.stranger).queue(3);
+      ({ html } = await render(signers.carol.address, "#/proposals"));
+      expect(text(cards(html, "waiting")[0])).to.match(/^Queued Admit vendor Admit Lift Co View/);
+    });
+
+    it("FR20, FR21: moves a proposal from Voting to Waiting to carry out to Closed, naming what happens next, and waives quorum in an Alert", async () => {
       const { ethers, contracts, signers, render } = await setUp();
       const { governance } = contracts;
       const page = async () => {
@@ -1796,7 +1831,7 @@ describe("Read interface (#72, #149)", () => {
 
       await advance(ethers, await governance.EXTENSION());
       ({ html, at } = await page());
-      expect(tabs(html)).to.deep.equal(["Voting 0", "Waiting to pay 1", "Closed 1"]);
+      expect(tabs(html)).to.deep.equal(["Voting 0", "Waiting to carry out 1", "Closed 1"]);
       expect(text(cards(html, "waiting")[0])).to.contain(`Passed Work Roof repair View`);
       expect(text(cards(html, "waiting")[0])).to.contain(`Voting closed ${at("Passed")}`);
 
@@ -1813,7 +1848,7 @@ describe("Read interface (#72, #149)", () => {
       expect(text(cards(html, "waiting")[0])).to.contain(`Work confirmed ${at("Firm confirms work")}`);
       await governance.connect(signers.stranger).execute(2);
       ({ html, at } = await page());
-      expect(tabs(html)).to.deep.equal(["Voting 0", "Waiting to pay 0", "Closed 2"]);
+      expect(tabs(html)).to.deep.equal(["Voting 0", "Waiting to carry out 0", "Closed 2"]);
       expect(text(cards(html, "closed")[1])).to.contain(`Executed Work Roof repair View`);
       expect(text(cards(html, "closed")[1])).to.contain(`Carried out ${at("Executed")}`);
 
@@ -1826,7 +1861,7 @@ describe("Read interface (#72, #149)", () => {
       await governance.connect(signers.carol).castVote(3, false);
       await advance(ethers, await governance.VOTING_PERIOD());
       ({ html } = await page());
-      expect(tabs(html)).to.deep.equal(["Voting 0", "Waiting to pay 0", "Closed 3"]);
+      expect(tabs(html)).to.deep.equal(["Voting 0", "Waiting to carry out 0", "Closed 3"]);
       const failed = text(cards(html, "closed")[2]);
       expect(failed).to.match(/^Failed Work Paint the hallway View Harbour Lifts Ltd 0x[0-9a-fA-F]{4}…[0-9a-fA-F]{4} DEMO-0001 Up to NZD 100\.00 Long-term maintenance Voting closed \d{1,2} [A-Z][a-z]{2} \d{4}$/);
     });
