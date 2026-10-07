@@ -60,7 +60,7 @@ export function Activity({
       </div>
       <Card className="gap-0 py-2 max-wide:py-2">
         {events.length === 0 ? (
-          <p className="px-6 py-3.5 text-muted-foreground max-wide:px-4">No events yet.</p>
+          <p className="px-6 py-3.5 font-semibold max-wide:px-4">No events yet.</p>
         ) : (
           <ol aria-label="Events" className="[&>li+li]:border-t">
             {events.slice((page - 1) * PER_PAGE, page * PER_PAGE).map((e, i) => (

@@ -67,7 +67,7 @@ function List({ empty, children }: { empty: string; children: ReactNode[] }) {
   return children.length ? (
     <ul className={rows}>{children}</ul>
   ) : (
-    <p className="text-muted-foreground">{empty}</p>
+    <p className="font-semibold">{empty}</p>
   );
 }
 
@@ -246,7 +246,7 @@ export function FirmHome({
               </TableBody>
             </Table>
           ) : (
-            <p className="text-muted-foreground">
+            <p className="font-semibold">
               No proposals are open for voting.
             </p>
           )}

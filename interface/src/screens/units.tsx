@@ -206,7 +206,7 @@ export function YourUnits({
                   </TableBody>
                 </Table>
               ) : (
-                <p className="text-muted-foreground">No unpaid charges.</p>
+                <p className="font-semibold">No unpaid charges.</p>
               )}
             </CardContent>
             {onPay && u.charges.length > 0 && (

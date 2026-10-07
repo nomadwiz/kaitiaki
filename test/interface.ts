@@ -1753,8 +1753,8 @@ describe("Read interface (#72, #149)", () => {
       expect(text(cards(html, "closed")[0])).to.equal(
         `Executed Admit vendor Admit Harbour Lifts Ltd View DEMO-0001 ${short(signers.vendor.address)} Carried out ${date(view.proposals[0].steps.at(-1)!.date!)}`,
       );
-      expect(cards(html, "waiting")).to.deep.equal([]);
-      expect(html).to.contain("No proposals are waiting to pay.");
+      // An empty group is one Card saying what is missing (States, #187).
+      expect(cards(html, "waiting").map(text)).to.deep.equal(["No proposals are waiting to pay."]);
       // Each card is one link, its title, stretched over the card.
       for (const card of [...cards(html, "voting"), ...cards(html, "closed")]) {
         expect(card.match(/<a /g)).to.have.length(1);

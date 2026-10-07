@@ -73,7 +73,7 @@ export function VendorList({
       ))}
     </ul>
   ) : (
-    <p className="text-muted-foreground">No vendor is approved yet.</p>
+    <p className="font-semibold">No vendor is approved yet.</p>
   );
 }
 
@@ -190,7 +190,7 @@ export function Building({
               ))}
             </ul>
           ) : (
-            <p className="text-muted-foreground">
+            <p className="font-semibold">
               No other unit is in the building.
             </p>
           )}
