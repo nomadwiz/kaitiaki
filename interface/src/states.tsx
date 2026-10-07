@@ -106,33 +106,3 @@ export function Loading() {
     </section>
   );
 }
-
-export function ConnectWallet({ onConnect }: { onConnect?: () => void }) {
-  return (
-    <section className="card">
-      <div className="card-header">
-        <h3 className="card-title">Connect your wallet to vote or pay</h3>
-        <p className="card-description">You can read everything without one.</p>
-      </div>
-      <div className="card-content stack">
-        <button className="btn" type="button" onClick={onConnect}>
-          Connect wallet
-        </button>
-        <p className="field-hint">
-          Kaitiaki never asks for a private key, seed phrase or password. Your
-          wallet signs each action.
-        </p>
-      </div>
-    </section>
-  );
-}
-
-export function NoUnit() {
-  return (
-    <Alert
-      variant="default"
-      title="This wallet holds no unit in this building, so it cannot vote."
-      description="You can still read the whole record, and pay a levy charge for any unit."
-    />
-  );
-}

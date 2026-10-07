@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Activity } from "./screens/activity.js";
 import { Building } from "./screens/building.js";
 import { CollectLevies } from "./screens/collect.js";
+import { Entry } from "./screens/entry.js";
 import { FirmHome } from "./screens/firm-home.js";
 import { Home } from "./screens/home.js";
 import {
@@ -22,14 +23,7 @@ import { Proposals } from "./screens/proposals.js";
 import { YourUnits } from "./screens/units.js";
 import { Vendors } from "./screens/vendors.js";
 import { NAV, Shell, type Workspace } from "./shell.js";
-import {
-  Alert,
-  ConnectWallet,
-  Loading,
-  NoUnit,
-  SigningDialog,
-  type Notice,
-} from "./states.js";
+import { Alert, Loading, SigningDialog, type Notice } from "./states.js";
 import type { View } from "./view.js";
 
 export type Wallet =
@@ -263,14 +257,9 @@ export function App({
   } else if (workspace === "connect" || workspace === "no-unit") {
     // The entry screens show no navigation and no building data (#186).
     page = (
-      <main className="shell-main">
+      <Entry viewer={viewer} onConnect={canConnect ? onConnect : undefined}>
         {notices}
-        {workspace === "no-unit" ? (
-          <NoUnit />
-        ) : (
-          canConnect && <ConnectWallet onConnect={onConnect} />
-        )}
-      </main>
+      </Entry>
     );
   } else {
     page = (
