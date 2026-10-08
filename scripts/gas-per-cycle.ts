@@ -91,7 +91,7 @@ const ledger = await ethers.deployContract(
 );
 const governance = await ethers.deployContract(
   "Governance",
-  [firm.address, payees.target, members.target, timelockAt, treasury.target],
+  [firm.address, payees.target, members.target, ledger.target, timelockAt, treasury.target],
   deployer,
 );
 const timelock = await ethers.deployContract(

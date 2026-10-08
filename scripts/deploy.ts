@@ -38,10 +38,11 @@ const fromBlock = await ethers.provider.getBlockNumber();
 const firm = deployer.address;
 const adapter = deployer.address;
 
-// Governance names Treasury and the Timelock, Treasury names LevyLedger, and
-// PayeeRegistry names the Timelock, each before it exists. Each address is
-// the deployer's nonce plus its place in this list, so nothing else may send
-// from this account until the script ends; each is checked as it lands.
+// Governance names Treasury, LevyLedger and the Timelock, Treasury names
+// LevyLedger, and PayeeRegistry names the Timelock, each before it exists.
+// Each address is the deployer's nonce plus its place in this list, so
+// nothing else may send from this account until the script ends; each is
+// checked as it lands.
 const CONTRACTS = [
   ["token", "MockNZD"],
   ["payeeRegistry", "PayeeRegistry"],
@@ -70,6 +71,7 @@ const constructorArgs: Record<Key, unknown[]> = {
     firm,
     expected.payeeRegistry,
     expected.membershipRegistry,
+    expected.levyLedger,
     expected.timelock,
     expected.treasury,
   ],

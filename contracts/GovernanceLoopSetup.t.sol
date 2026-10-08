@@ -8,6 +8,7 @@ import {MembershipRegistry} from "./MembershipRegistry.sol";
 import {PayeeRegistry} from "./PayeeRegistry.sol";
 import {Treasury} from "./Treasury.sol";
 import {MockNZD} from "./MockNZD.sol";
+import {LevyLedgerStub} from "./stubs/LevyLedgerStub.sol";
 import {Fund, IRelease} from "./interfaces/IRelease.sol";
 
 /// @notice The real contracts, wired as ADR-015 sets out, and the steps of the
@@ -40,6 +41,9 @@ abstract contract GovernanceLoopSetup is Test {
         members.bindUnit(3, bob);
         members.bindUnit(4, carol);
 
+        // No unit is in arrears here: these tests stand in for LevyLedger.
+        LevyLedgerStub levies = new LevyLedgerStub();
+
         // Each of the four below names one deployed after it, so their
         // addresses are worked out from this contract's nonce first.
         uint64 nonce = vm.getNonce(address(this));
@@ -60,6 +64,7 @@ abstract contract GovernanceLoopSetup is Test {
             firm,
             payees,
             members,
+            levies,
             TimelockController(payable(timelockAt)),
             IRelease(address(treasury))
         );

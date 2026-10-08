@@ -85,6 +85,7 @@ contract LoopScenariosTest is Test {
             firm,
             payees,
             members,
+            ledger,
             TimelockController(payable(timelockAt)),
             IRelease(address(treasury))
         );

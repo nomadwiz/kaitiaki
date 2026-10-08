@@ -7,8 +7,10 @@ import {Governance} from "./Governance.sol";
 import {Fund, IRelease} from "./interfaces/IRelease.sol";
 import {IPayeeQuery} from "./interfaces/IPayeeQuery.sol";
 import {IMembershipQuery} from "./interfaces/IMembershipQuery.sol";
+import {IArrearsQuery} from "./interfaces/IArrearsQuery.sol";
 import {PayeeRegistryStub} from "./stubs/PayeeRegistryStub.sol";
 import {MembershipRegistryStub} from "./stubs/MembershipRegistryStub.sol";
+import {LevyLedgerStub} from "./stubs/LevyLedgerStub.sol";
 
 /// @notice Issue #53. Raising proposals: FR16, FR17, FR18. Refusal test B2 is
 /// the fuzz test in `GovernanceRefusals.t.sol` (#61); the unregistered-vendor
@@ -17,6 +19,7 @@ contract GovernanceProposeTest is Test {
     Governance internal governance;
     PayeeRegistryStub internal payees;
     MembershipRegistryStub internal members;
+    LevyLedgerStub internal levies;
 
     address internal firm = makeAddr("firm");
     address internal vendor = makeAddr("vendor");
@@ -43,8 +46,9 @@ contract GovernanceProposeTest is Test {
     function setUp() public {
         payees = new PayeeRegistryStub();
         members = new MembershipRegistryStub();
+        levies = new LevyLedgerStub();
         timelock = new TimelockController(7 days, new address[](0), new address[](0), address(0));
-        governance = new Governance(firm, payees, members, timelock, treasury);
+        governance = new Governance(firm, payees, members, levies, timelock, treasury);
     }
 
     // --- Deployment ----------------------------------------------------------
@@ -53,6 +57,7 @@ contract GovernanceProposeTest is Test {
         assertEq(governance.firm(), firm);
         assertEq(address(governance.payees()), address(payees));
         assertEq(address(governance.members()), address(members));
+        assertEq(address(governance.levies()), address(levies));
         assertEq(address(governance.timelock()), address(timelock));
         assertEq(address(governance.treasury()), address(treasury));
         assertEq(governance.proposalCount(), 0);
@@ -60,27 +65,39 @@ contract GovernanceProposeTest is Test {
 
     function test_ConstructorRefusesZeroFirm() public {
         vm.expectRevert(Governance.FirmIsZero.selector);
-        new Governance(address(0), payees, members, timelock, treasury);
+        new Governance(address(0), payees, members, levies, timelock, treasury);
     }
 
     function test_ConstructorRefusesZeroRegistry() public {
         vm.expectRevert(Governance.PayeeRegistryIsZero.selector);
-        new Governance(firm, IPayeeQuery(address(0)), members, timelock, treasury);
+        new Governance(firm, IPayeeQuery(address(0)), members, levies, timelock, treasury);
     }
 
     function test_ConstructorRefusesZeroMembershipRegistry() public {
         vm.expectRevert(Governance.MembershipRegistryIsZero.selector);
-        new Governance(firm, payees, IMembershipQuery(address(0)), timelock, treasury);
+        new Governance(firm, payees, IMembershipQuery(address(0)), levies, timelock, treasury);
+    }
+
+    function test_ConstructorRefusesZeroLevyLedger() public {
+        vm.expectRevert(Governance.LevyLedgerIsZero.selector);
+        new Governance(firm, payees, members, IArrearsQuery(address(0)), timelock, treasury);
     }
 
     function test_ConstructorRefusesZeroTimelock() public {
         vm.expectRevert(Governance.TimelockIsZero.selector);
-        new Governance(firm, payees, members, TimelockController(payable(address(0))), treasury);
+        new Governance(
+            firm,
+            payees,
+            members,
+            levies,
+            TimelockController(payable(address(0))),
+            treasury
+        );
     }
 
     function test_ConstructorRefusesZeroTreasury() public {
         vm.expectRevert(Governance.TreasuryIsZero.selector);
-        new Governance(firm, payees, members, timelock, IRelease(address(0)));
+        new Governance(firm, payees, members, levies, timelock, IRelease(address(0)));
     }
 
     // --- FR16: the firm may propose admitting a vendor -----------------------

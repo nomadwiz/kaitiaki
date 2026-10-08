@@ -5,6 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {TimelockController} from "@openzeppelin/contracts/governance/TimelockController.sol";
 import {Governance} from "./Governance.sol";
 import {Fund, IRelease} from "./interfaces/IRelease.sol";
+import {IArrearsQuery} from "./interfaces/IArrearsQuery.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 import {Treasury} from "./Treasury.sol";
@@ -483,14 +484,15 @@ contract TreasuryTest is Test {
     }
 
     /// A real Governance for reading proposal terms. These tests call
-    /// `release` as the timelock directly, so Governance's own timelock and
-    /// treasury are never reached and stand-in addresses will do.
+    /// `release` as the timelock directly, so Governance's own levy ledger,
+    /// timelock and treasury are never reached and stand-in addresses will do.
     function _governanceReadingTerms() internal returns (Governance) {
         return
             new Governance(
                 address(this),
                 payeeRegistry,
                 members,
+                IArrearsQuery(makeAddr("governance-levies")),
                 TimelockController(payable(timelock)),
                 IRelease(makeAddr("governance-treasury"))
             );

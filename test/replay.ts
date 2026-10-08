@@ -30,11 +30,17 @@ describe("QAS-4 replay", () => {
     // admits payees, so the admission and the payment are both queued and
     // executed through it. PayeeRegistry, Governance and Treasury name the
     // Timelock deployed after the LevyLedger, and Governance names the
-    // Treasury deployed straight after it.
+    // Treasury and the LevyLedger deployed after it.
     const nonce = await firm.getNonce();
     const treasuryAddress = getCreateAddress({
       from: firm.address,
       nonce: nonce + 4,
+    });
+    // Treasury and LevyLedger name each other: Treasury takes the ledger's
+    // address before it exists (spec §4).
+    const ledgerAddress = getCreateAddress({
+      from: firm.address,
+      nonce: nonce + 5,
     });
     const timelockAddress = getCreateAddress({
       from: firm.address,
@@ -51,15 +57,10 @@ describe("QAS-4 replay", () => {
       firm.address,
       payees.target,
       registry.target,
+      ledgerAddress,
       timelockAddress,
       treasuryAddress,
     ]);
-    // Treasury and LevyLedger name each other: Treasury takes the ledger's
-    // address before it exists (spec §4).
-    const ledgerAddress = getCreateAddress({
-      from: firm.address,
-      nonce: (await firm.getNonce()) + 1,
-    });
     const treasury = await ethers.deployContract("Treasury", [
       8_000,
       governance.target,
@@ -146,16 +147,16 @@ describe("QAS-4 replay", () => {
 
     // Alice votes for with units 1 and 2, then receives unit 5 and votes
     // against with it. One wallet, two votes, both counted: the tally keys on
-    // units, never on the wallet (spec §6, ADR-003). Proposals 3 and 5 each
-    // have one vote for, so they miss quorum's two-wallet minimum. Nobody
-    // votes on proposal 4.
+    // units, never on the wallet (spec §6, ADR-003). Carol's unit is in
+    // arrears, so she does not vote (FR10). Proposals 3 and 5 each have one
+    // vote for, so they miss quorum's two-wallet minimum. Nobody votes on
+    // proposal 4.
     await governance.connect(alice).castVote(2, true);
-    await governance.connect(bob).castVote(2, false);
+    await governance.connect(bob).castVote(2, true);
     await registry.connect(adapter).bindUnit(5, alice.address);
     await governance.connect(alice).castVote(2, false);
-    await governance.connect(carol).castVote(2, true);
     await governance.connect(bob).castVote(3, true);
-    await governance.connect(carol).castVote(5, true);
+    await governance.connect(bob).castVote(5, true);
 
     // Proposal 2 passes when its window closes. Anyone queues it, the firm
     // attests the work once the delay has run, and anyone executes it, which
@@ -207,7 +208,7 @@ describe("QAS-4 replay", () => {
     }
     expect(derived.tallies.get(2n)).to.deep.equal({
       forVotes: 3n,
-      againstVotes: 2n,
+      againstVotes: 1n,
     });
 
     // Quorum from ProposalCreated's principal units and the VoteCast log.
@@ -335,7 +336,7 @@ describe("QAS-4 replay", () => {
     // early payment, two charges collected without payment, a late
     // collection, the admission
     // proposal with two votes, queued and executed, four work proposals, a
-    // fifth binding, six votes, proposal 2 queued, attested and paid, then
+    // fifth binding, five votes, proposal 2 queued, attested and paid, then
     // proposal 3 queued.
     expect(derived.transitions.map((t) => t.name)).to.deep.equal([
       "RoleGranted",
@@ -358,7 +359,6 @@ describe("QAS-4 replay", () => {
       "VoteCast",
       "VoteCast",
       "UnitBound",
-      "VoteCast",
       "VoteCast",
       "VoteCast",
       "VoteCast",

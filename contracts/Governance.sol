@@ -6,6 +6,7 @@ import {Fund, IRelease} from "./interfaces/IRelease.sol";
 import {IAdmit} from "./interfaces/IAdmit.sol";
 import {IPayeeQuery} from "./interfaces/IPayeeQuery.sol";
 import {IMembershipQuery} from "./interfaces/IMembershipQuery.sol";
+import {IArrearsQuery} from "./interfaces/IArrearsQuery.sol";
 
 /// @notice Proposals, voting, quorum, queueing and attestation for one
 /// building (doc/design/spec.md §4). Written for this project rather than extending
@@ -16,7 +17,8 @@ import {IMembershipQuery} from "./interfaces/IMembershipQuery.sol";
 /// One function name, `propose`, overloaded for the two kinds — the name the
 /// spec, the views and the figures use throughout.
 ///
-/// Built: raising proposals (#53), voting on them (#54), the voting window,
+/// Built: raising proposals (#53), voting on them (#54) — a unit in arrears
+/// does not vote (FR10) — the voting window,
 /// quorum, extension and waiver that decide them (#55), queueing and executing
 /// a passed proposal through the timelock (#56), and the firm's attestation
 /// that lets a `Work` proposal's release run (#57).
@@ -107,6 +109,10 @@ contract Governance {
     /// from anything the voter supplies (FR2, B8).
     IMembershipQuery public immutable members;
 
+    /// @notice The levy ledger. A unit in arrears when a vote is cast does not
+    /// vote (FR10; Unit Titles Act 2010, s 96(3)).
+    IArrearsQuery public immutable levies;
+
     /// @notice OpenZeppelin's `TimelockController`, unchanged, with this
     /// contract as its only proposer and only executor and no external admin
     /// (ADR-015). It holds `RELEASER_ROLE` on the treasury alone.
@@ -186,6 +192,7 @@ contract Governance {
     error FirmIsZero();
     error PayeeRegistryIsZero();
     error MembershipRegistryIsZero();
+    error LevyLedgerIsZero();
     error TimelockIsZero();
     error TreasuryIsZero();
     error VendorIsZero();
@@ -201,6 +208,8 @@ contract Governance {
     error NotBoundOwner(address caller);
     /// Every unit the caller owns has already voted on this proposal.
     error AlreadyVoted(uint256 proposalId, address voter);
+    /// FR10: every unit the caller owns that has not voted is in arrears.
+    error InArrears(uint256 proposalId, address voter);
     /// FR20: the window, and any extension, has closed.
     error VotingClosed(uint256 proposalId);
     /// Only a passed proposal is queued (FR22) or attested (FR26, B6).
@@ -229,17 +238,20 @@ contract Governance {
         address firm_,
         IPayeeQuery payees_,
         IMembershipQuery members_,
+        IArrearsQuery levies_,
         TimelockController timelock_,
         IRelease treasury_
     ) {
         if (firm_ == address(0)) revert FirmIsZero();
         if (address(payees_) == address(0)) revert PayeeRegistryIsZero();
         if (address(members_) == address(0)) revert MembershipRegistryIsZero();
+        if (address(levies_) == address(0)) revert LevyLedgerIsZero();
         if (address(timelock_) == address(0)) revert TimelockIsZero();
         if (address(treasury_) == address(0)) revert TreasuryIsZero();
         firm = firm_;
         payees = payees_;
         members = members_;
+        levies = levies_;
         timelock = timelock_;
         treasury = treasury_;
     }
@@ -291,7 +303,9 @@ contract Governance {
     /// owns that has not yet voted on it — one vote per unit per proposal
     /// (ADR-003). Each call votes all such units the same way; a later call
     /// votes only units acquired since, in whichever direction it names.
-    /// Eligibility is checked unit by unit against the register (B8).
+    /// Eligibility is checked unit by unit against the register (B8). A unit
+    /// in arrears is skipped and the caller's other units still vote; once its
+    /// charge is paid it may vote (FR10; ADR-003, amendment of 09-10-2026).
     /// Voting runs for the window and, if it closed without quorum, the
     /// extension (FR20).
     /// @return weight The number of units this call voted with.
@@ -303,15 +317,21 @@ contract Governance {
         uint256[] memory held = members.unitsOf(msg.sender);
         uint256[] memory voted = new uint256[](held.length);
         bool ownsAny;
+        bool inArrears;
         for (uint256 i = 0; i < held.length; ++i) {
             uint256 unitId = held[i];
             if (!members.isOwner(unitId, msg.sender)) continue;
             ownsAny = true;
             if (unitHasVoted[proposalId][unitId]) continue;
+            if (levies.arrearsOf(unitId)) {
+                inArrears = true;
+                continue;
+            }
             unitHasVoted[proposalId][unitId] = true;
             voted[weight++] = unitId;
         }
         if (!ownsAny) revert NotBoundOwner(msg.sender);
+        if (weight == 0 && inArrears) revert InArrears(proposalId, msg.sender);
         if (weight == 0) revert AlreadyVoted(proposalId, msg.sender);
 
         uint256[] memory unitIds = new uint256[](weight);
