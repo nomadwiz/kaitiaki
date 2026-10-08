@@ -80,6 +80,7 @@ export async function checkWiring(ethers: Ethers, d: Deployment) {
     ["Governance firm", await governance.firm(), d.firm],
     ["Governance payees", await governance.payees(), a.payeeRegistry],
     ["Governance members", await governance.members(), a.membershipRegistry],
+    ["Governance levies", await governance.levies(), a.levyLedger],
     ["Governance timelock", await governance.timelock(), a.timelock],
     ["Governance treasury", await governance.treasury(), a.treasury],
     [

@@ -777,9 +777,9 @@ describe("Read interface (#72, #149)", () => {
         expect(h.card("h-confirm")).to.equal("Work to confirm No work is waiting to be confirmed.");
         expect(h.card("h-ready")).to.equal("Ready to carry out Rules Nothing is ready to carry out.");
         // Alice's two units voted; one owner of the two quorum needs.
-        expect(h.voting).to.deep.equal([`Roof repair Open 2 units voted; 1 needed met 1 owner voted; 2 needed not yet met ${date((await roof).closes!)}`]);
+        expect(h.voting).to.deep.equal([`Roof repair Open 1 unit voted; 1 needed met 1 owner voted; 2 needed not yet met ${date((await roof).closes!)}`]);
         // Each condition with its own StatusBadge.
-        expect(h.html.split('id="h-voting"')[1]).to.match(/2 units voted; 1 needed<span [^>]*data-tone="ok">met<\/span>[\s\S]*?1 owner voted; 2 needed<span [^>]*data-tone="wait">not yet met<\/span>/);
+        expect(h.html.split('id="h-voting"')[1]).to.match(/1 unit voted; 1 needed<span [^>]*data-tone="ok">met<\/span>[\s\S]*?1 owner voted; 2 needed<span [^>]*data-tone="wait">not yet met<\/span>/);
         expect(h.html).to.not.match(/\d+ of \d+ (units|owners)/);
         expect(h.html).to.contain('<a href="#/proposal/2">Roof repair</a>');
 
@@ -910,10 +910,9 @@ describe("Read interface (#72, #149)", () => {
     expect(view.queued).to.deep.equal({ operating: 0n, maintenance: 0n });
     expect(html).to.contain("Nothing is queued to pay.");
 
-    // Bob and carol vote with alice, so quorum holds and the window closes
-    // without an extension; anyone then queues it.
+    // Bob votes with alice, so quorum holds and the window closes without an
+    // extension; anyone then queues it. Carol's unit is in arrears (FR10).
     await governance.connect(signers.bob).castVote(2, true);
-    await governance.connect(signers.carol).castVote(2, true);
     await advance(ethers, await governance.VOTING_PERIOD());
     await governance.connect(signers.stranger).queue(2);
     ({ view, html } = await render(signers.carol.address));
@@ -952,8 +951,9 @@ describe("Read interface (#72, #149)", () => {
     const window = await governance.VOTING_PERIOD();
     const closes = createdAt + window;
 
-    // Carol's unit has not voted on proposal 2; alice's both have.
-    let { view, html } = await render(signers.carol.address);
+    // Bob's unit has not voted on proposal 2. Alice's unit 1 has, and her
+    // unit 2 and carol's unit 4 are in arrears, so neither is asked (FR10).
+    let { view, html } = await render(signers.bob.address);
     const vote = (page: string) => page.split('id="h-vote"')[1].split('id="h-levies"')[0];
     expect(view.proposals.find((p) => p.id === 2n)?.closes).to.equal(closes);
     expect(vote(html)).to.contain(`Closes ${date(closes)}`);
@@ -963,13 +963,15 @@ describe("Read interface (#72, #149)", () => {
     expect(vote(html)).to.contain('data-tone="info">Open</span>');
     expect(vote(html)).to.not.contain("Quorum waived");
     expect(html).to.not.contain("<form");
-    ({ html } = await render(signers.alice.address));
-    expect(vote(html)).to.contain("No proposals are open for voting.");
+    for (const owner of [signers.alice, signers.carol]) {
+      ({ html } = await render(owner.address));
+      expect(vote(html)).to.contain("No proposals are open for voting.");
+    }
 
     // One wallet voted, so no quorum: voting extends by seven days, and the
     // waiver stays in sight.
     await advance(ethers, window);
-    ({ view, html } = await render(signers.carol.address));
+    ({ view, html } = await render(signers.bob.address));
     const extended = closes + 7n * 86_400n;
     expect(view.proposals.find((p) => p.id === 2n)?.closes).to.equal(extended);
     expect(vote(html)).to.contain(`Closes ${date(extended)}`);
@@ -1008,14 +1010,16 @@ describe("Read interface (#72, #149)", () => {
 
   it("offers a vote only to a unit that has not voted, and only while voting is open", async () => {
     const { signers, render } = await setUp();
-    // Carol's unit has not voted on proposal 2; alice's both have.
+    // Bob's unit has not voted on proposal 2. Alice's unit 1 has, and a
+    // unit in arrears is offered no vote: alice's unit 2, carol's unit 4
+    // (FR10).
     const at = "#/proposal/2";
-    expect((await render(signers.carol.address, at)).html).to.match(
+    expect((await render(signers.bob.address, at)).html).to.match(
       /<form [^>]*data-proposal="2">/,
     );
-    expect((await render(signers.alice.address, at)).html).to.not.contain(
-      "<form",
-    );
+    for (const owner of [signers.alice, signers.carol]) {
+      expect((await render(owner.address, at)).html).to.not.contain("<form");
+    }
     // A wallet with no unit cannot vote at all.
     expect((await render(signers.stranger.address, at)).html).to.not.contain(
       "<form",
@@ -1035,7 +1039,7 @@ describe("Read interface (#72, #149)", () => {
       signers.vendor.address,
       zeroPadValue("0x03", 32),
     );
-    for (const owner of [signers.alice, signers.bob, signers.carol]) {
+    for (const owner of [signers.alice, signers.bob]) {
       await governance.connect(owner).castVote(3, true);
     }
     await advance(ethers, await governance.VOTING_PERIOD());
@@ -1110,7 +1114,8 @@ describe("Read interface (#72, #149)", () => {
         states.push(p.state);
         return p;
       };
-      // Alice's two units are one wallet: units are met, owners are not.
+      // Alice voted with unit 1 alone, her unit 2 being in arrears (FR10):
+      // a quarter of the units is met, two owners is not.
       let p = await check();
       expect(p.quorum).to.include({ unitsMet: true, votersMet: false });
       // A proposal nobody has voted on meets neither.
@@ -1162,7 +1167,7 @@ describe("Read interface (#72, #149)", () => {
       let q = await byId(3n);
       expect(q.state).to.equal("Failed");
       expect(await governance.quorumReached(3)).to.equal(false);
-      // Proposal 4 is voted down by three wallets: quorum met, and Failed.
+      // Proposal 4 is voted down by two wallets: quorum met, and Failed.
       // Proposal 5 gets no vote, so it extends.
       const propose = (name: string, hash: string) =>
         governance
@@ -1176,7 +1181,7 @@ describe("Read interface (#72, #149)", () => {
         );
       await propose("Repaint the car park", "0x06");
       await propose("Mow the lawn", "0x07");
-      for (const owner of [signers.alice, signers.bob, signers.carol]) {
+      for (const owner of [signers.alice, signers.bob]) {
         await governance.connect(owner).castVote(4, false);
       }
       await advance(ethers, await governance.VOTING_PERIOD());
@@ -1280,7 +1285,6 @@ describe("Read interface (#72, #149)", () => {
       expect(await firm()).to.not.contain('data-proposal=');
 
       await governance.connect(signers.bob).castVote(2, true);
-      await governance.connect(signers.carol).castVote(2, false);
       await advance(ethers, await governance.VOTING_PERIOD());
       // Passed: anyone may queue, in either workspace.
       for (const html of [await owner(), await firm()]) {
@@ -1406,10 +1410,10 @@ describe("Read interface (#72, #149)", () => {
         `What owners are voting on Vendor Harbour Lifts Ltd ${short(signers.vendor.address)} Copy DEMO-0001 Limit NZD 400.00 Paid from Operating Quote ${short(p.quoteHash)} Copy Proposed ${date(p.createdAt)}, by the management firm`,
       );
       expect(card(html, "h-facts")).to.contain('aria-label="Copy quote hash"');
-      // Alice's two units voted for it; one unit is a quarter of four, one
-      // wallet is not two.
+      // Alice's unit 1 voted for it, her unit 2 being in arrears (FR10); one
+      // unit is a quarter of four, one wallet is not two.
       expect(text(card(html, "h-votes"))).to.equal(
-        "Votes not yet met Rules Units voted (25% of the building) 2 units voted; 1 needed met Different owners voted 1 owner voted; 2 needed not yet met For 2 units Against 0 units",
+        "Votes not yet met Rules Units voted (25% of the building) 1 unit voted; 1 needed met Different owners voted 1 owner voted; 2 needed not yet met For 1 units Against 0 units",
       );
       expect(html).to.not.match(/\d+ of \d+ (units|owners)/);
       expect(votesRules(p)).to.deep.equal([
@@ -1422,23 +1426,23 @@ describe("Read interface (#72, #149)", () => {
 
     it("VoteControl names the viewer's units that have not voted, and keeps its form while the wallet signs", async () => {
       const { signers, render } = await setUp();
-      let { html } = await render(signers.carol.address, "#/proposal/2");
+      let { html } = await render(signers.bob.address, "#/proposal/2");
       const vote = card(html, "h-your-vote");
-      expect(text(vote)).to.equal("Your vote Unit 4 has not voted. Rules Vote for Vote against Signed in your wallet.");
+      expect(text(vote)).to.equal("Your vote Unit 3 has not voted. Rules Vote for Vote against Signed in your wallet.");
       expect(vote).to.contain('data-proposal="2"');
       for (const [value, label] of [["true", "Vote for"], ["false", "Vote against"]]) {
         expect(vote).to.match(new RegExp(`<button (?=[^>]*type="submit")(?=[^>]*name="inFavour")(?=[^>]*value="${value}")[^>]*>[\\s\\S]*?${label}</button>`));
       }
-      const { view } = await render(signers.carol.address);
+      const { view } = await render(signers.bob.address);
       html = renderToStaticMarkup(
         createElement(App, { hash: "#/proposal/2", view, voting: 2n, onVote() {} }),
       );
       expect(html).to.contain("Waiting for your wallet…");
       expect(html).to.not.contain('name="inFavour"');
       // A wrong-chain browser wallet is offered no vote.
-      ({ html } = await render(signers.carol.address, "#/proposal/2", {
+      ({ html } = await render(signers.bob.address, "#/proposal/2", {
         kind: "browser",
-        account: signers.carol.address,
+        account: signers.bob.address,
         chainId: 1n,
         deploymentChainId: 31337n,
       }));
@@ -1543,9 +1547,9 @@ describe("Read interface (#72, #149)", () => {
       expect(html).to.not.contain(short(signers.vendor.address));
       expect(sentences(rows, "VoteCast")).to.deep.equal([
         "An owner voted for Proposal #2.",
-        "Units 1 and 2 voted for Proposal #2 (2 units).",
+        "Unit 1 voted for Proposal #2 (1 unit).",
         "An owner voted for Proposal #1.",
-        "Units 1 and 2 voted for Proposal #1 (2 units).",
+        "Unit 1 voted for Proposal #1 (1 unit).",
       ]);
       expect(sentences(rows, "ProposalCreated")).to.deep.equal([
         "The firm proposed #2: Roof repair, up to NZD 400.00, from Operating, to Harbour Lifts Ltd.",
@@ -1758,13 +1762,13 @@ describe("Read interface (#72, #149)", () => {
 
     it("FR19: groups every proposal under Voting, Waiting to carry out and Closed, each card with its badge, kind, vendor, limit, fund and date", async () => {
       const { signers, render } = await setUp();
-      const { view, html } = await render(signers.carol.address, "#/proposals");
+      const { view, html } = await render(signers.bob.address, "#/proposals");
       expect(tabs(html)).to.deep.equal(["Voting 1", "Waiting to carry out 0", "Closed 1"]);
       const [open] = cards(html, "voting");
       const closes = view.proposals.find((p) => p.id === 2n)!.closes!;
       expect(text(open)).to.equal(
         `Open Work Roof repair Vote Harbour Lifts Ltd ${short(signers.vendor.address)} DEMO-0001 Up to NZD 400.00 Operating Closes ${date(closes)} ` +
-          "Units voted (25% of the building) 2 units voted; 1 needed met Different owners voted 1 owner voted; 2 needed not yet met Unit 4 has not voted.",
+          "Units voted (25% of the building) 1 unit voted; 1 needed met Different owners voted 1 owner voted; 2 needed not yet met Unit 3 has not voted.",
       );
       expect(html).to.not.match(/\d+ of \d+ (units|owners)/);
       expect(open).to.contain('data-tone="info">Open</span>');
@@ -1780,10 +1784,13 @@ describe("Read interface (#72, #149)", () => {
         expect(card).to.match(/<a href="#\/proposal\/\d+" class="[^"]*after:absolute after:inset-0/);
         expect(card).to.not.contain("<button");
       }
-      // Alice's units have voted on proposal 2.
-      const alice = cards((await render(signers.alice.address, "#/proposals")).html, "voting")[0];
-      expect(alice).to.not.contain("not voted");
-      expect(alice).to.contain(">View</span>");
+      // Alice's unit 1 has voted on proposal 2, and a unit in arrears is
+      // offered no vote: her unit 2, and carol's unit 4 (FR10).
+      for (const owner of [signers.alice, signers.carol]) {
+        const card = cards((await render(owner.address, "#/proposals")).html, "voting")[0];
+        expect(card).to.not.contain("not voted");
+        expect(card).to.contain(">View</span>");
+      }
     });
 
     it("the firm's copy links to Propose work and Vendors, and offers no vote", async () => {
@@ -1858,7 +1865,6 @@ describe("Read interface (#72, #149)", () => {
         .getFunction("propose(string,uint256,uint8,address,bytes32)")("Paint the hallway", parseUnits("100", 18), 1, signers.vendor.address, zeroPadValue("0x04", 32));
       await governance.connect(signers.alice).castVote(3, true);
       await governance.connect(signers.bob).castVote(3, false);
-      await governance.connect(signers.carol).castVote(3, false);
       await advance(ethers, await governance.VOTING_PERIOD());
       ({ html } = await page());
       expect(tabs(html)).to.deep.equal(["Voting 0", "Waiting to carry out 0", "Closed 3"]);
@@ -1895,13 +1901,13 @@ describe("Read interface (#72, #149)", () => {
 
   it("ADR-021: a firm's address that holds a unit is offered no vote", async () => {
     const { signers, render } = await setUp();
-    // Carol's unit has not voted on proposal 2, so as an owner she is offered
-    // the vote; named as the firm in the deployment file, she is not.
-    const { view, html } = await render(signers.carol.address, "#/proposal/2");
+    // Bob's unit has not voted on proposal 2, so as an owner he is offered
+    // the vote; named as the firm in the deployment file, he is not.
+    const { view, html } = await render(signers.bob.address, "#/proposal/2");
     expect(view.proposals.find((p) => p.id === 2n)!.canVote).to.equal(true);
     expect(html).to.contain('data-proposal="2"');
     const asFirm = renderToStaticMarkup(
-      createElement(App, { hash: "#/proposal/2", view, firm: signers.carol.address, onVote() {} }),
+      createElement(App, { hash: "#/proposal/2", view, firm: signers.bob.address, onVote() {} }),
     );
     expect(asFirm).to.contain("Management firm");
     expect(asFirm).to.not.contain('data-proposal=');
@@ -1965,7 +1971,7 @@ describe("Read interface (#72, #149)", () => {
         await advance(ethers, await governance.TIMELOCK_DELAY());
       }
       for (const hash of hashes) {
-        for (const viewer of [signers.alice, signers.carol]) {
+        for (const viewer of [signers.alice, signers.bob, signers.carol]) {
           const html = await page(viewer.address, hash);
           for (const [name, mark] of FIRM) expect(html, `${stage}, owner ${hash}: ${name}`).to.not.match(mark);
           for (const [name, mark] of OWNER) if (mark.test(html)) seen.owner.add(name);
@@ -2072,7 +2078,7 @@ describe("Read interface (#72, #149)", () => {
 
   it("names a wallet on another chain and offers it nothing; asks an unconnected wallet to connect; tells a wallet with no unit", async () => {
     const { signers, render } = await setUp();
-    const { carol, stranger } = signers;
+    const { bob, stranger } = signers;
     const browser = (account: string | undefined, chainId: bigint): Wallet => ({
       kind: "browser",
       account,
@@ -2081,9 +2087,9 @@ describe("Read interface (#72, #149)", () => {
     });
 
     // On chain 1, against a deployment on 31337: both ids named, and no
-    // action — not carol's vote, which she could cast on the right chain,
+    // action — not bob's vote, which he could cast on the right chain,
     // and not Connect wallet.
-    for (const account of [undefined, carol.address]) {
+    for (const account of [undefined, bob.address]) {
       const { html } = await render(
         account,
         "#/proposal/2",
@@ -2095,13 +2101,13 @@ describe("Read interface (#72, #149)", () => {
       expect(html, account).to.not.contain("<form");
       expect(html, account).to.not.contain("Connect wallet");
     }
-    // The control: on the right chain, carol is offered her vote.
+    // The control: on the right chain, bob is offered his vote.
     expect(
       (
         await render(
-          carol.address,
+          bob.address,
           "#/proposal/2",
-          browser(carol.address, 31337n),
+          browser(bob.address, 31337n),
         )
       ).html,
     ).to.match(/<form [^>]*data-proposal="2">/);
@@ -2187,6 +2193,7 @@ describe("Transactions (#150)", () => {
   const MESSAGES: [string, unknown[], string][] = [
     ["NotBoundOwner", [who], "This wallet holds no unit in this building, so it cannot vote."],
     ["AlreadyVoted", [2, who], "Your units have already voted on this proposal."],
+    ["InArrears", [2, who], "A unit with an overdue levy cannot vote until the levy is paid."],
     ["VotingClosed", [2], "Voting on this proposal has closed."],
     ["NotReady", [2, when], "The 7-day wait ends on 14 Oct 2026."],
     ["NotAttested", [2], "Payment waits for the firm to confirm the work is done."],

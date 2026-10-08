@@ -56,6 +56,7 @@ export async function deployBuilding(ethers: Ethers) {
     firm.address,
     payees.target,
     registry.target,
+    at(5),
     timelockAt,
     at(4),
   ]);

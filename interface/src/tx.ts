@@ -52,6 +52,8 @@ export const ABI = new Interface([
   "error CompanyIdIsEmpty()",
   "error EvidenceHashIsZero()",
   "error FirmIsZero()",
+  "error InArrears(uint256 proposalId, address voter)",
+  "error LevyLedgerIsZero()",
   "error MembershipRegistryIsZero()",
   "error NotAttested(uint256 proposalId)",
   "error NotBoundOwner(address caller)",
@@ -108,6 +110,8 @@ const MESSAGES: Record<string, (args: bigint[]) => string> = {
   NotBoundOwner: () =>
     "This wallet holds no unit in this building, so it cannot vote.",
   AlreadyVoted: () => "Your units have already voted on this proposal.",
+  InArrears: () =>
+    "A unit with an overdue levy cannot vote until the levy is paid.",
   VotingClosed: () => "Voting on this proposal has closed.",
   NotReady: ([, eta]) => `The 7-day wait ends on ${date(eta)}.`,
   NotAttested: () => "Payment waits for the firm to confirm the work is done.",

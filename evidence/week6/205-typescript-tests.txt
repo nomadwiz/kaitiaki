@@ -1,0 +1,184 @@
+# npm run test:mocha
+
+
+> kaitiaki@0.1.0 test:mocha
+> hardhat test mocha
+
+
+Warning: "at" will be promoted to keyword in the future and will not be allowed as an identifier anymore.
+   --> ./node_modules/@openzeppelin/contracts/utils/structs/EnumerableSet.sol:264:5:
+    |
+264 |     function at(Bytes32Set storage set, uint256 index) internal view returns (bytes32) {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning: "at" will be promoted to keyword in the future and will not be allowed as an identifier anymore.
+   --> ./node_modules/@openzeppelin/contracts/utils/structs/EnumerableSet.sol:366:5:
+    |
+366 |     function at(Bytes4Set storage set, uint256 index) internal view returns (bytes4) {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning: "at" will be promoted to keyword in the future and will not be allowed as an identifier anymore.
+   --> ./node_modules/@openzeppelin/contracts/utils/structs/EnumerableSet.sol:468:5:
+    |
+468 |     function at(AddressSet storage set, uint256 index) internal view returns (address) {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning: "at" will be promoted to keyword in the future and will not be allowed as an identifier anymore.
+   --> ./node_modules/@openzeppelin/contracts/utils/structs/EnumerableSet.sol:570:5:
+    |
+570 |     function at(UintSet storage set, uint256 index) internal view returns (uint256) {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning: "at" will be promoted to keyword in the future and will not be allowed as an identifier anymore.
+   --> ./node_modules/@openzeppelin/contracts/utils/structs/EnumerableSet.sol:716:5:
+    |
+716 |     function at(StringSet storage set, uint256 index) internal view returns (string memory) {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning: "at" will be promoted to keyword in the future and will not be allowed as an identifier anymore.
+   --> ./node_modules/@openzeppelin/contracts/utils/structs/EnumerableSet.sol:858:5:
+    |
+858 |     function at(BytesSet storage set, uint256 index) internal view returns (bytes memory) {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Compiled 35 Solidity files with solc 0.8.36 (evm target: prague)
+
+Running Mocha tests
+
+
+  check-config-secrets
+    ✔ passes a clean tree (134ms)
+    ✔ fails on a tracked file holding a private-key-shaped value (70ms)
+    ✔ fails on a tracked .env (73ms)
+    ✔ fails when a line of .env.example has a value (82ms)
+    ✔ passes a committed Ignition journal, whose transaction hashes are key-shaped (80ms)
+    ✔ fails closed outside a git repository
+
+  Read interface (#72, #149)
+    ✔ NFR10: for a unit other than the viewer's own, renders exactly one of {current, in arrears} and no digit (477ms)
+    ✔ FR13: Building lists the approved vendor by name, shortened address and company identifier, and a Work card names it (68ms)
+    ✔ shows the viewer's own arrears, and stops surfacing a resolved arrear (R4) (80ms)
+    ✔ shows fund balances and proposals in the state Governance gives them (61ms)
+    ✔ FR40: the queued-to-pay figure is the sum of the Queued limits on that fund, from events, and Home lists the queued work with its date (56ms)
+    ✔ lists what needs the viewer's vote, each with the date voting closes (66ms)
+    ✔ Home names each of the viewer's units in arrears and the next charge, with a Rules button on each card that has rules (47ms)
+    ✔ offers a vote only to a unit that has not voted, and only while voting is open (66ms)
+    ✔ FR40: a queued long-term maintenance proposal counts against that fund and not Operating (52ms)
+    ✔ ADR-021: each workspace has its own five-item navigation, one current link in each bar, and a route of the other workspace opens Home and says so (143ms)
+    ✔ ADR-021: a firm's address that holds a unit is offered no vote (39ms)
+    ✔ ADR-021, interface.md §2: every screen offers an owner none of the firm's navigation or actions, the firm none of an owner's, and a no-unit address no building data (1058ms)
+    ✔ #186: Connect and No unit show one Card with exactly its own words and no navigation, on every route (259ms)
+    ✔ FR41: holds no key, and its ABI has no view or pure function
+    ✔ shows a refusal as a destructive Alert with its error name, and no Toast or Dialog markup of its own (#189)
+    ✔ names a wallet on another chain and offers it nothing; asks an unconnected wallet to connect; tells a wallet with no unit (71ms)
+    ✔ shows the loading state until the log is read, and only the notice if reading fails
+    ✔ formats money exactly, truncated to the cent, and dates in New Zealand time
+    Your units (#153)
+      ✔ lists every unpaid charge of the viewer's units, collected or not yet, and no one else's (41ms)
+      ✔ pays a scheduled charge before it is issued, and an overdue one, approve then payLevy (41ms)
+      ✔ offers Pay on Your units and not on Home (45ms)
+      ✔ disables every other Pay while one payment is in progress (44ms)
+      ✔ gives a levy payment's signing sentence the two signatures it needs
+    Firm workspace (#157)
+      ✔ FR16, FR17: enables the forms for the firm's wallet, and no other address reaches them (ADR-021) (75ms)
+      ✔ ADR-020: collect through tx.ts's ABI takes a direct-debited levy and leaves an uncovered one owed (79ms)
+      ✔ ADR-020: paying one charge by hand leaves the direct debit standing for the rest, rebuilt from events alone (46ms)
+      ✔ interface.md §3: rebuilds the direct debit and the wallet balance from MockNZD's events, as the token itself counts them (104ms)
+      ✔ ADR-020: Set up direct debit approves the levy ledger for the owner's unpaid total (49ms)
+      ✔ FR17: proposes work and a vendor through tx.ts's ABI, and both appear in the replayed View (40ms)
+      ✔ NotFirm, VendorNameIsEmpty and CompanyIdIsEmpty show their RefusalNotice messages
+      ✔ lists only queued Work proposals the firm has not confirmed, and no Admit proposal (49ms)
+      ✔ catches an empty description and a malformed hash, address or cap before anything is sent, and leaves a vendor's emptiness to the contract
+      Propose work (#183)
+        ✔ UC3, FR17: a Breadcrumb back to Proposals, Rules by the title, the five fields with no helper text, and Propose beside Signed in your wallet.
+        ✔ offers only admitted vendors, by name and identifier, and none until one is admitted (38ms)
+        ✔ is drawn disabled on the wrong chain, and waits on the wallet while proposing
+      Vendors (#185)
+        ✔ FR12, FR15, FR16: approved vendors by name, identifier, admission date and proposal, then the shortened address with Copy; Propose a vendor's three fields and Propose vendor beside Signed in your wallet.
+        ✔ says no vendor is approved yet, is drawn disabled on the wrong chain, and waits on the wallet while proposing (40ms)
+      Collect levies (#184)
+        ✔ ADR-020: Due now lists the due charges by number, due date and when issued, every one selected, with Rules and Collect beside Signed in your wallet.; Coming due dates the next (39ms)
+        ✔ says no charge is due and offers nothing once all are collected, is drawn disabled on the wrong chain, and waits on the wallet while collecting (56ms)
+      Firm Home (#182)
+        ✔ is titled Home with no subtitle, links to Collect levies and Propose work, and has Rules on Ready to carry out
+        ✔ lists work to confirm and proposals ready to carry out from ProposalQueued and WorkAttested, each linking to its Proposal, and the firm's proposals in voting with quorum and closing date (124ms)
+        ✔ says one due charge, and none, in its own words (62ms)
+    Proposal screen (#178)
+      ✔ meters both quorum conditions as Governance.quorumReached does, at every state (166ms)
+      ✔ draws the timeline from stateAt and block times, with Extended only once voting was extended (51ms)
+      ✔ follows a Work proposal through Queue, Confirm work and Carry out, in both workspaces, offering each only from its date (119ms)
+      ✔ offers Carry out on a queued Admit proposal only from its eta, and a failed proposal's later steps are skipped (66ms)
+      ✔ offers no action to a wallet on the wrong chain, and shows the wait on the one being signed, with every other aria-disabled (40ms)
+      ✔ lists what owners vote on, the tally in units, both quorum conditions, and the rules
+      ✔ VoteControl names the viewer's units that have not voted, and keeps its form while the wallet signs (46ms)
+      ✔ explains no step: a line saying something appears here names its date (54ms)
+      ✔ says plainly that a proposal does not exist
+    Activity (#155, #181)
+      ✔ lists every event newest first, each as its plain sentence, and names the viewer's own levy events (44ms)
+      ✔ pages ten events at a time under shadcn/ui's Pagination, from page 1, and has no subtitle (45ms)
+      ✔ NFR10: a levy event for another owner's unit names no unit, amount or charge, and with no viewer every levy event is anonymous (100ms)
+      ✔ names a payee not yet admitted by its shortened address, never a guessed name
+      ✔ shows a plain line for an empty log (39ms)
+    Proposals (#177)
+      ✔ FR19: groups every proposal under Voting, Waiting to carry out and Closed, each card with its badge, kind, vendor, limit, fund and date (52ms)
+      ✔ the firm's copy links to Propose work and Vendors, and offers no vote
+      ✔ Waiting to carry out holds a passed and a queued Admit vendor proposal as it holds Work (#202) (47ms)
+      ✔ FR20, FR21: moves a proposal from Voting to Waiting to carry out to Closed, naming what happens next, and waives quorum in an Alert (89ms)
+
+  Transactions (#150)
+    ✔ knows every custom error of the six contracts and MockNZD
+    ✔ decodes each named error to its RefusalNotice message
+    ✔ names an error it has no message for, and never guesses a reason
+    ✔ never throws on revert data it cannot decode
+    ✔ tells the truth when a payment is refused after its approval was mined
+    ✔ has its own sentence for a wallet rejection
+    ✔ decodes a real refusal: a wallet with no unit votes
+    send
+      ✔ shows the Dialog only while the wallet signs, then a toast, then reads the log again
+      ✔ shows a request cancelled in the wallet as a toast, not an Alert, unless a payment's approval was already mined
+      ✔ resolves true only when the transaction was mined, which is when a form is emptied
+      ✔ closes the Dialog and shows a RefusalNotice when the contract refuses
+      ✔ opens no Dialog when the local node signs, because no wallet asks anything
+    real refusals on the seeded building (#156)
+      ✔ NotReady: carrying out, or the firm confirming, before the wait ends names the date
+      ✔ ChargeNotDue: the firm collecting a charge before its due date names the date
+      ✔ NotFirm: an owner collecting a due levy is refused in plain words
+
+  QAS-4 replay
+    ✔ derives fund balances, role holders, tallies, quorum, proposal states, eligibility, payees, queueing, attestation and arrears from events alone (56ms)
+    ✔ refuses a VoteCast naming a unit no UnitBound gave the voter
+    ✔ refuses a unit counted twice on one proposal
+    ✔ refuses a VoteCast whose weight is not its number of units
+    ✔ refuses a VoteCast on a proposal no ProposalCreated made
+    ✔ refuses a payee admitted twice
+    ✔ refuses a release to a payee no PayeeAdmitted admitted
+    ✔ refuses a release on an admission proposal
+    ✔ refuses a charge paid for a unit other than the one it was scheduled for
+    ✔ refuses a charge issued for a different amount than it was scheduled for
+    ✔ refuses a charge issued for a different due date than it was scheduled for
+    ✔ refuses a charge issued that was never scheduled
+    ✔ refuses a charge paid that was never scheduled
+    ✔ refuses a charge scheduled twice
+    ✔ refuses a charge issued twice
+    ✔ refuses a charge paid twice
+    ✔ refuses a ProposalQueued on a proposal no ProposalCreated made
+    ✔ refuses a proposal queued twice
+    ✔ refuses a WorkAttested on an admission proposal
+    ✔ refuses a WorkAttested on a proposal never queued
+    ✔ refuses a proposal attested twice
+    ✔ refuses a PayeeAdmitted on a proposal never queued
+    ✔ refuses a PayeeAdmitted before its proposal's eta
+    ✔ refuses a PaymentReleased on a proposal never queued
+    ✔ refuses a PaymentReleased before its proposal's eta
+    ✔ refuses a log from a replayed address with no known event
+    ✔ derives quorum's unit half, rounded up, from principal units
+    ✔ keeps a proposal Extended after a vote in the extension
+
+  toolchain
+    ✔ connects to the in-process simulated network
+    ✔ gives tests funded signers
+
+
+  111 passing (6s)
+
+

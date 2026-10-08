@@ -15,7 +15,8 @@ const { ethers } = await network.getOrCreate();
 const { fromBlock, addresses, signers, contracts } =
   await deployBuilding(ethers);
 // Bob's vote on proposal 2, so the page shows the state the report's
-// Figures 6 to 8 do: 3 units for, quorum reached. scripts/building.ts leaves
+// Figures 6 to 8 do: 2 units for, quorum reached. Alice's unit 2 and carol's
+// unit 4 are in arrears, so neither votes (FR10). scripts/building.ts leaves
 // it out because test/interface.ts needs alice's vote alone.
 await contracts.governance.connect(signers.bob).castVote(2, true);
 

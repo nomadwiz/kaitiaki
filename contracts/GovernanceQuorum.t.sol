@@ -7,6 +7,7 @@ import {Governance} from "./Governance.sol";
 import {IRelease} from "./interfaces/IRelease.sol";
 import {PayeeRegistryStub} from "./stubs/PayeeRegistryStub.sol";
 import {MembershipRegistryStub} from "./stubs/MembershipRegistryStub.sol";
+import {LevyLedgerStub} from "./stubs/LevyLedgerStub.sol";
 
 /// @notice Issue #55. FR20: the 14-day window, quorum, the 7-day extension and
 /// the waiver (doc/design/spec.md §5; ADR-003, amendment of 30-09-2026). Set in
@@ -31,6 +32,7 @@ contract GovernanceQuorumTest is Test {
     function setUp() public {
         payees = new PayeeRegistryStub();
         members = new MembershipRegistryStub();
+        LevyLedgerStub levies = new LevyLedgerStub();
         TimelockController timelock = new TimelockController(
             7 days,
             new address[](0),
@@ -41,6 +43,7 @@ contract GovernanceQuorumTest is Test {
             firm,
             payees,
             members,
+            levies,
             timelock,
             IRelease(makeAddr("treasury"))
         );

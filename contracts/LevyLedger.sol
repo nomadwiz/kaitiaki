@@ -5,6 +5,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {Treasury} from "./Treasury.sol";
 import {IMembershipQuery} from "./interfaces/IMembershipQuery.sol";
+import {IArrearsQuery} from "./interfaces/IArrearsQuery.sol";
 
 /// @title Levy charges, payment and arrears: the money-in side of the loop.
 /// @notice Issues #58 and #173 — FR5, FR7–FR9; B1; ADR-020. A charge names a
@@ -24,7 +25,7 @@ import {IMembershipQuery} from "./interfaces/IMembershipQuery.sol";
 /// Treasury and LevyLedger name each other at construction. Deploy Treasury
 /// first, naming this contract's precomputed address as its depositor: this
 /// constructor reads the settlement asset from it.
-contract LevyLedger {
+contract LevyLedger is IArrearsQuery {
     struct Charge {
         uint256 unitId;
         uint256 amount;
@@ -156,6 +157,7 @@ contract LevyLedger {
 
     /// @notice FR9. Whether `unitId` has a charge that is issued, unpaid and
     /// past its due date. Derived on every call, never stored (ADR-016).
+    /// Governance reads it when a vote is cast (FR10).
     function arrearsOf(uint256 unitId) external view returns (bool) {
         // ponytail: scans the whole schedule; index charges by unit if a
         // schedule grows past a few hundred entries.

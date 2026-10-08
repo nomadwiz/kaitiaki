@@ -7,14 +7,17 @@ import {Governance} from "./Governance.sol";
 import {Fund, IRelease} from "./interfaces/IRelease.sol";
 import {PayeeRegistryStub} from "./stubs/PayeeRegistryStub.sol";
 import {MembershipRegistryStub} from "./stubs/MembershipRegistryStub.sol";
+import {LevyLedgerStub} from "./stubs/LevyLedgerStub.sol";
 
 /// @notice Issue #54. Voting: FR2 (only bound wallets vote), FR19 (weight is
-/// units held), one vote per unit per proposal (ADR-003). The refusal test B8
-/// itself is issue #67; the unbound-wallet case here only proves the guard.
+/// units held), one vote per unit per proposal (ADR-003), and FR10 (a unit in
+/// arrears does not vote; ADR-003, amendment of 09-10-2026). The refusal test
+/// B8 itself is issue #67; the unbound-wallet case here only proves the guard.
 contract GovernanceVoteTest is Test {
     Governance internal governance;
     PayeeRegistryStub internal payees;
     MembershipRegistryStub internal members;
+    LevyLedgerStub internal levies;
 
     address internal firm = makeAddr("firm");
     address internal vendor = makeAddr("vendor");
@@ -35,6 +38,7 @@ contract GovernanceVoteTest is Test {
     function setUp() public {
         payees = new PayeeRegistryStub();
         members = new MembershipRegistryStub();
+        levies = new LevyLedgerStub();
         TimelockController timelock = new TimelockController(
             7 days,
             new address[](0),
@@ -45,6 +49,7 @@ contract GovernanceVoteTest is Test {
             firm,
             payees,
             members,
+            levies,
             timelock,
             IRelease(makeAddr("treasury"))
         );
@@ -192,6 +197,46 @@ contract GovernanceVoteTest is Test {
         vm.startPrank(bob);
         governance.castVote(proposalId, true);
         assertEq(governance.castVote(work, false), 1);
+        vm.stopPrank();
+    }
+
+    // --- FR10: a unit in arrears does not vote --------------------------------
+
+    /// Only the unit in arrears loses its vote; the owner's other units vote.
+    function test_UnitInArrearsDoesNotVote() public {
+        levies.setArrears(2, true);
+
+        vm.expectEmit(address(governance));
+        emit VoteCast(proposalId, alice, true, 1, _units(1));
+        vm.prank(alice);
+        assertEq(governance.castVote(proposalId, true), 1);
+
+        assertFalse(governance.unitHasVoted(proposalId, 2));
+        assertEq(governance.tallyOf(proposalId).forVotes, 1);
+    }
+
+    function test_OwnerWithOnlyUnitsInArrearsRefused() public {
+        levies.setArrears(3, true);
+
+        vm.prank(bob);
+        vm.expectRevert(abi.encodeWithSelector(Governance.InArrears.selector, proposalId, bob));
+        governance.castVote(proposalId, true);
+    }
+
+    /// Arrears is read when the vote is cast, so paying restores the vote.
+    /// Until then a second call is refused for arrears, not as a repeat vote.
+    function test_UnitVotesOnceItsArrearsArePaid() public {
+        levies.setArrears(2, true);
+        vm.startPrank(alice);
+        governance.castVote(proposalId, true);
+
+        vm.expectRevert(abi.encodeWithSelector(Governance.InArrears.selector, proposalId, alice));
+        governance.castVote(proposalId, false);
+
+        levies.setArrears(2, false);
+        vm.expectEmit(address(governance));
+        emit VoteCast(proposalId, alice, false, 1, _units(2));
+        assertEq(governance.castVote(proposalId, false), 1);
         vm.stopPrank();
     }
 

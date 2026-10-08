@@ -85,6 +85,7 @@ contract LoopScenariosTest is Test {
             firm,
             payees,
             members,
+            ledger,
             TimelockController(payable(timelockAt)),
             IRelease(address(treasury))
         );
@@ -201,6 +202,27 @@ contract LoopScenariosTest is Test {
         for (uint256 unitId = 1; unitId <= UNITS; ++unitId) {
             if (unitId != 10) assertFalse(ledger.arrearsOf(unitId));
         }
+    }
+
+    /// FR10 against the real ledger: carol's unit, collected and unpaid, is in
+    /// arrears and cannot vote; once she pays, it votes (ADR-003, amendment of
+    /// 09-10-2026). Charge i is unit i + 1's, so unit 10's is charge 9.
+    function test_UnitInArrearsVotesOnceItsLevyIsPaid() public {
+        token.mint(carol, LEVY);
+        _collectAll();
+        vm.warp(due + 1);
+        vm.prank(firm);
+        uint256 proposalId = governance.propose(roofer, "Test Vendor Ltd", "TEST-0001");
+
+        vm.expectRevert(abi.encodeWithSelector(Governance.InArrears.selector, proposalId, carol));
+        _vote(carol, proposalId, true);
+
+        vm.startPrank(carol);
+        token.approve(address(ledger), LEVY);
+        ledger.payLevy(9);
+        vm.stopPrank();
+        _vote(carol, proposalId, true);
+        assertTrue(governance.unitHasVoted(proposalId, 10));
     }
 
     // --- Scenario 2: a proposal from draft to payment (FR16–FR22, FR25; NFR5)
