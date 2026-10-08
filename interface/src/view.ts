@@ -350,9 +350,11 @@ export function buildView(
     const state = stateAt(derived, p.proposalId, now);
     const voted = votedUnits.get(p.proposalId) ?? new Set<bigint>();
     // The units a vote would count: not yet voted, and not in arrears, which
-    // castVote skips (FR10).
+    // castVote skips (FR10). A vote lands in a later block, so arrears is
+    // judged a second on: a charge due now is overdue by then.
     const unvoted = viewerUnits.filter(
-      (unitId) => !voted.has(unitId) && !arrearsAt(derived.charges, unitId, now),
+      (unitId) =>
+        !voted.has(unitId) && !arrearsAt(derived.charges, unitId, now + 1n),
     );
     if (state === "Queued") {
       queued[p.fund === FUND_OPERATING ? "operating" : "maintenance"] +=

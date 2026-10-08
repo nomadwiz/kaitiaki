@@ -618,3 +618,13 @@ The report's coverage figure came from `week5/70-qas8-stolen-firm-key-tests.txt`
 | --- | --- | --- |
 | `78-solidity-coverage.txt` | The Solidity suites pass, 182 passing, with 100% line and statement coverage of `MockNZD`, `MembershipRegistry`, `PayeeRegistry`, `Governance`, `Treasury`, `LevyLedger` and the four stubs. `TimelockController` is OpenZeppelin's, used unchanged, and is not measured | `npm run test:coverage` |
 | `78-typescript-tests.txt` | The TypeScript suites pass, 111 passing: the configuration secrets check, the read interface, the transaction path, the QAS-4 replay and the toolchain | `npm run test:mocha` |
+
+### Issue #205 — FR10: a unit in arrears does not vote
+
+The whole suites and the gas run, captured after `Governance.castVote` began skipping a unit in arrears. They supersede `78-solidity-coverage.txt`, `78-typescript-tests.txt` and the loop figures in `173-gas-per-cycle.txt` for the report; the levy-cycle figures in that capture do not move.
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `205-solidity-coverage.txt` | The Solidity suites pass, 187 passing, with 100% line and statement coverage of `MockNZD`, `MembershipRegistry`, `PayeeRegistry`, `Governance`, `Treasury`, `LevyLedger` and the five stubs. **FR10**: `test_UnitInArrearsDoesNotVote` (an owner of two units, one in arrears, votes with the other alone), `test_OwnerWithOnlyUnitsInArrearsRefused` (`InArrears`), `test_UnitVotesOnceItsArrearsArePaid`, and against the real ledger `test_UnitInArrearsVotesOnceItsLevyIsPaid`. With the guard in `castVote` removed, all four fail | `npm run test:coverage` |
+| `205-typescript-tests.txt` | The TypeScript suites pass, 111 passing. The read interface offers no vote to a unit in arrears, and the replay derives the tallies with Carol's unit, in arrears, not voting | `npm run test:mocha` |
+| `205-gas-per-cycle.txt` | **One full loop** costs 3,441,221 gas: 2,589,628 for the owners' votes, 386,954 for the firm and 464,639 for anyone's queue and execute calls. A vote with 8 units costs 611,265 and with 10 units 683,549, up from 331,004 and 354,365 in `173-gas-per-cycle.txt`, because each unit now asks `LevyLedger.arrearsOf`, which scans the 40-charge schedule. **One levy cycle** is unchanged at 3,407,782 | `npx hardhat run scripts/gas-per-cycle.ts` |
