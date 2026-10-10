@@ -12,12 +12,11 @@ import {
   type Deployment,
 } from "./wiring.js";
 
-const DEPLOYMENT_RECORD = "73-deployment-11155111.json";
 const { ethers } = await network.getOrCreate();
 const { chainId } = await ethers.provider.getNetwork();
 const record = JSON.parse(
   await readFile(
-    new URL(`../evidence/week5/${DEPLOYMENT_RECORD}`, import.meta.url),
+    new URL(`../evidence/week5/73-deployment-${chainId}.json`, import.meta.url),
     "utf8",
   ),
 ) as Omit<Deployment, "operatingBps" | "timelockDelay">;

@@ -4,8 +4,9 @@ Etherscan source verification — issue #73
 Network   Sepolia (chain 11155111)
 Command   npx hardhat run scripts/verify.ts --network sepolia
 Input     evidence/week5/73-deployment-11155111.json (addresses and constructor arguments)
-Date      03-10-2026
+Date      10-10-2026
 Result    7 of 7 contracts verified successfully on Etherscan
+This file is a hand-formatted summary of the verification results.
 
 #    Contract             Address                                      Result
 --   ------------------   ------------------------------------------   --------

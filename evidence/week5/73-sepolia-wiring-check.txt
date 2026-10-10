@@ -1,5 +1,5 @@
 # npx hardhat run scripts/check-deployment.ts --network sepolia
-# Read-only, through the public endpoint ethereum-sepolia-rpc.publicnode.com, 03-10-2026
+# Read-only, through the public endpoint ethereum-sepolia-rpc.publicnode.com, 10-10-2026
 
 Deployment on chain 11155111, as recorded
 ok   Treasury RELEASER_ROLE members: 1
@@ -13,9 +13,12 @@ ok   Treasury payeeRegistry: 0xb716f86ff6e8CD368F99362039DdA4740A9DBCC8
 ok   Treasury settlementAsset: 0xC57DD76b39E6876a4CA6D79134136F1FC62411F7
 ok   LevyLedger treasury: 0x1e93ded1DED4aA6b80C9a2cbD80EfD7a0B41744B
 ok   LevyLedger settlementAsset: 0xC57DD76b39E6876a4CA6D79134136F1FC62411F7
+ok   LevyLedger members: 0x842C30B549cc83A2d6971c271B938fd1feF8b5C1
+ok   LevyLedger firm: 0xC60ACBAEF64f0db5520083c1C54a5b7a9ef9b433
 ok   Governance firm: 0xC60ACBAEF64f0db5520083c1C54a5b7a9ef9b433
 ok   Governance payees: 0xb716f86ff6e8CD368F99362039DdA4740A9DBCC8
 ok   Governance members: 0x842C30B549cc83A2d6971c271B938fd1feF8b5C1
+ok   Governance levies: 0x93b1184d2F77d5686609770a6A27BF3295650E7e
 ok   Governance timelock: 0x50Ee201e1fC3b6f4563b05ea2D02E9009de97d74
 ok   Governance treasury: 0x1e93ded1DED4aA6b80C9a2cbD80EfD7a0B41744B
 ok   Governance TIMELOCK_DELAY: 604800
@@ -26,4 +29,4 @@ ok   Timelock PROPOSER_ROLE: Governance: true
 ok   Timelock EXECUTOR_ROLE: Governance: true
 ok   Timelock EXECUTOR_ROLE: anyone: false
 ok   Timelock DEFAULT_ADMIN_ROLE: deployer: false
-24 of 24 wiring checks passed
+27 of 27 wiring checks passed

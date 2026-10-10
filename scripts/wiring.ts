@@ -77,6 +77,8 @@ export async function checkWiring(ethers: Ethers, d: Deployment) {
     ["Treasury settlementAsset", await treasury.settlementAsset(), a.token],
     ["LevyLedger treasury", await ledger.treasury(), a.treasury],
     ["LevyLedger settlementAsset", await ledger.settlementAsset(), a.token],
+    ["LevyLedger members", await ledger.members(), a.membershipRegistry],
+    ["LevyLedger firm", await ledger.firm(), d.firm],
     ["Governance firm", await governance.firm(), d.firm],
     ["Governance payees", await governance.payees(), a.payeeRegistry],
     ["Governance members", await governance.members(), a.membershipRegistry],
