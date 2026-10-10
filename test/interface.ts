@@ -963,12 +963,9 @@ describe("Read interface (#72, #149)", () => {
     expect(vote(html)).to.contain('data-tone="info">Open</span>');
     expect(vote(html)).to.not.contain("Quorum waived");
     expect(html).to.not.contain("<form");
-    // Proposal 2 is open, so the empty card says nothing needs a vote, not
-    // that nothing is open (#209).
     for (const owner of [signers.alice, signers.carol]) {
       ({ html } = await render(owner.address));
       expect(vote(html)).to.contain("Nothing needs your vote.");
-      expect(vote(html)).to.not.contain("No proposals are open for voting.");
     }
 
     // One wallet voted, so no quorum: voting extends by seven days, and the

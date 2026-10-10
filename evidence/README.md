@@ -638,4 +638,4 @@ Owner Home's *Needs your vote* lists only the proposals the viewer can still vot
 
 | File | What it shows | Reproduce with |
 | --- | --- | --- |
-| `209-home-as-alice.png` | **Report Figure 6. FR8, FR9, FR10.** Home as alice, as `205-home-as-alice.png` shows it, except that *Needs your vote* reads "Nothing needs your vote." Proposal 2 is open, but her unit 1 has voted and her unit 2 is in arrears | `npm run demo`, then `node scripts/screenshot.mjs evidence/week6/209-home-as-alice.png 'http://localhost:5173/?as=<alice>#/'` |
+| `209-home-as-alice.png` | **Report Figure 6. FR8, FR9, FR10.** Home as alice (units 1 and 2) on the seeded building. *Needs your vote* reads "Nothing needs your vote.": proposal 2 is open, but her unit 1 has voted and her unit 2 is in arrears (FR10). *Your levies* names unit 2 in arrears with its uncovered charge (FR9), and the funds hold NZD 400 operating and NZD 100 long-term maintenance (FR8). The next charge's date is 30 days from when the demo ran, so it differs between captures | `npm run demo`, then `node scripts/screenshot.mjs evidence/week6/209-home-as-alice.png 'http://localhost:5173/?as=<alice>#/'` |
