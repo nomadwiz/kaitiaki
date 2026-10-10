@@ -965,7 +965,7 @@ describe("Read interface (#72, #149)", () => {
     expect(html).to.not.contain("<form");
     for (const owner of [signers.alice, signers.carol]) {
       ({ html } = await render(owner.address));
-      expect(vote(html)).to.contain("No proposals are open for voting.");
+      expect(vote(html)).to.contain("Nothing needs your vote.");
     }
 
     // One wallet voted, so no quorum: voting extends by seven days, and the
