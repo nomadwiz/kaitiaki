@@ -3,23 +3,23 @@
 
 Deployment on chain 11155111, as recorded
 ok   Treasury RELEASER_ROLE members: 1
-ok   Treasury RELEASER_ROLE member 0: 0x836305b8e52934C013e60CDC4B8f4218B62c1887
+ok   Treasury RELEASER_ROLE member 0: 0x50Ee201e1fC3b6f4563b05ea2D02E9009de97d74
 ok   Treasury DEPOSITOR_ROLE members: 1
-ok   Treasury DEPOSITOR_ROLE member 0: 0x08Cce2751c3FA74564070554E2284E696b5b3D50
+ok   Treasury DEPOSITOR_ROLE member 0: 0x93b1184d2F77d5686609770a6A27BF3295650E7e
 ok   Treasury DEFAULT_ADMIN_ROLE members: 0
 ok   Treasury operatingRatioBps: 8000
-ok   Treasury governance: 0xD9CC466313590793BD6004D69F981Ee371004AFf
-ok   Treasury payeeRegistry: 0xc06718941f0dfD4726D2B9c2CA26Abc63857C256
-ok   Treasury settlementAsset: 0x9AC2b0Cab32c4C409e928F243C523dFc1F50cd82
-ok   LevyLedger treasury: 0x83f0DD7a74ec2dEc32b33796628c9De9ea87DF1D
-ok   LevyLedger settlementAsset: 0x9AC2b0Cab32c4C409e928F243C523dFc1F50cd82
+ok   Treasury governance: 0x993F85830c7E1Ba1301F3ec4F963Cbb4AA2EB949
+ok   Treasury payeeRegistry: 0xb716f86ff6e8CD368F99362039DdA4740A9DBCC8
+ok   Treasury settlementAsset: 0xC57DD76b39E6876a4CA6D79134136F1FC62411F7
+ok   LevyLedger treasury: 0x1e93ded1DED4aA6b80C9a2cbD80EfD7a0B41744B
+ok   LevyLedger settlementAsset: 0xC57DD76b39E6876a4CA6D79134136F1FC62411F7
 ok   Governance firm: 0xC60ACBAEF64f0db5520083c1C54a5b7a9ef9b433
-ok   Governance payees: 0xc06718941f0dfD4726D2B9c2CA26Abc63857C256
-ok   Governance members: 0x9c35AfCd8E7A8cEC27b9003eA0FB8CaE233E4BF9
-ok   Governance timelock: 0x836305b8e52934C013e60CDC4B8f4218B62c1887
-ok   Governance treasury: 0x83f0DD7a74ec2dEc32b33796628c9De9ea87DF1D
+ok   Governance payees: 0xb716f86ff6e8CD368F99362039DdA4740A9DBCC8
+ok   Governance members: 0x842C30B549cc83A2d6971c271B938fd1feF8b5C1
+ok   Governance timelock: 0x50Ee201e1fC3b6f4563b05ea2D02E9009de97d74
+ok   Governance treasury: 0x1e93ded1DED4aA6b80C9a2cbD80EfD7a0B41744B
 ok   Governance TIMELOCK_DELAY: 604800
-ok   PayeeRegistry executor: 0x836305b8e52934C013e60CDC4B8f4218B62c1887
+ok   PayeeRegistry executor: 0x50Ee201e1fC3b6f4563b05ea2D02E9009de97d74
 ok   MembershipRegistry adapter: 0xC60ACBAEF64f0db5520083c1C54a5b7a9ef9b433
 ok   Timelock delay: 604800
 ok   Timelock PROPOSER_ROLE: Governance: true

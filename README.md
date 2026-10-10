@@ -47,7 +47,7 @@ npm run typecheck
 
 ## Deploy
 
-[`scripts/deploy.ts`](scripts/deploy.ts) deploys the real system (#73). What it deploys, and the wiring check that makes it refuse a wrong deployment, are described at the top of the script. To dry-run it on Hardhat's in-process network:
+[`scripts/deploy.ts`](scripts/deploy.ts) deploys a fresh replacement set of the real system (#73); existing contracts are never upgraded or modified. Constructor arguments can be set with the `KAITIAKI_FIRM`, `KAITIAKI_ADAPTER`, `KAITIAKI_OPERATING_BPS`, `KAITIAKI_TIMELOCK_DELAY`, and matching `KAITIAKI_LEVY_UNIT_IDS`, `KAITIAKI_LEVY_AMOUNTS`, and `KAITIAKI_LEVY_DUE_DATES` environment variables. Defaults preserve the current deployment, including an empty levy schedule. What it deploys, and the wiring check that makes it refuse a wrong deployment, are described at the top of the script. On Sepolia it replaces the recorded addresses in `evidence/week5/73-deployment-11155111.json`. On the local network it replaces `interface/public/deployment.json` with the new local addresses. To dry-run it on Hardhat's in-process network:
 
 ```
 npx hardhat run scripts/deploy.ts
