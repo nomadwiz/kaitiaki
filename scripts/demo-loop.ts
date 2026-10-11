@@ -54,6 +54,7 @@ const ready = async (n: number) =>
 
 // A refusal's error name, from whichever contract raised it: execute runs
 // through the timelock into Treasury or PayeeRegistry, which bubble theirs.
+// Undefined for anything else, such as a dropped node.
 const abis = await Promise.all(
   ["Governance", "Treasury", "PayeeRegistry", "TimelockController"].map(
     async (name) => (await ethers.getContractFactory(name)).interface,
@@ -67,14 +68,16 @@ function reason(error: any) {
       if (parsed) return parsed.name;
     } catch {}
   }
-  return error?.shortMessage ?? String(error);
+  return undefined;
 }
 const refused = new Map<number, string>();
 async function attempt(n: number, send: () => Promise<{ wait(): Promise<unknown> }>) {
   try {
     await (await send()).wait();
   } catch (error) {
-    refused.set(n, reason(error));
+    const name = reason(error);
+    if (!name) throw error; // not a contract's refusal, so nothing to carry on from
+    refused.set(n, name);
   }
 }
 
@@ -110,8 +113,13 @@ if (until >= 2) {
       (await isWork(n)) &&
       !(await governance.attested(n))
     ) {
+      // From the description, so the seeded roof repair keeps its evidence
+      // hash: "photos and invoice: roof repair".
+      const { description } = await governance.proposal(n);
       await attempt(n, () =>
-        governance.connect(firm).attest(n, id(`photos and invoice: proposal ${n}`)),
+        governance
+          .connect(firm)
+          .attest(n, id(`photos and invoice: ${description.toLowerCase()}`)),
       );
     }
   }
@@ -134,22 +142,24 @@ for (const n of ids) {
     const { forVotes, againstVotes } = await governance.tallyOf(n);
     console.log(`Proposal ${n} failed: ${forVotes} units for, ${againstVotes} against.`);
   } else if (until < 3) {
-    // Where the chain actually is, which may be behind or past the stage asked for.
-    const [where, rank] =
-      now === "executed" ? ["executed", 3]
-      : work && (await governance.attested(n)) ? ["attested", 2]
-      // An admission has nothing to attest, so once ready it is as far as
-      // attested takes a Work proposal.
-      : now === "queued" && (await ready(n)) ? (work ? ["ready", 1] : ["ready to execute", 2])
-      : now === "queued" ? ["queued", 0.5]
-      : [now, now === "passed" ? 0 : -1];
+    // Where the chain actually is, by its place in `stages`, which may be
+    // behind or past the stage asked for. Passed is 0; queued but still
+    // waiting sits between passed and ready.
+    let where = now;
+    let rank = now === "queued" ? 0.5 : 0;
+    if (now === "executed") [where, rank] = ["executed", 3];
+    else if (await governance.attested(n)) [where, rank] = ["attested", 2];
+    else if (now === "queued" && (await ready(n))) {
+      // An admission has nothing to attest, so once ready it is at both
+      // ready and attested.
+      [where, rank] = ["ready", work ? 1 : Math.max(1, Math.min(until, 2))];
+    }
     const asked = stages[until];
-    console.log(
-      rank === until && !work && until === 2 ? `Proposal ${n} is ready to execute: an admission has no attestation.`
-      : rank === until ? `Proposal ${n} stopped at ${asked}.`
-      : rank > until ? `Proposal ${n} is already past ${asked}: ${where}.`
-      : `Proposal ${n} is ${where}, so it could not reach ${asked}.`,
-    );
+    if (rank === until && until === 2 && !work) {
+      console.log(`Proposal ${n} is ready to execute: an admission has no attestation.`);
+    } else if (rank === until) console.log(`Proposal ${n} stopped at ${asked}.`);
+    else if (rank > until) console.log(`Proposal ${n} is already past ${asked}: ${where}.`);
+    else console.log(`Proposal ${n} is ${where}, so it could not reach ${asked}.`);
   } else if (work) {
     const paid = await treasury.released(n);
     if (paid === 0n) throw new Error(`proposal ${n} paid nothing`);
