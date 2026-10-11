@@ -130,9 +130,9 @@ export function Home({
                 ))}
               </ul>
             ) : (
-              <p className="font-semibold">
-                No proposals are open for voting.
-              </p>
+              // Lists only what the viewer can still vote on, so a proposal
+              // may be open while this is empty (FR10, #209).
+              <p className="font-semibold">Nothing needs your vote.</p>
             )}
           </CardContent>
         </Card>

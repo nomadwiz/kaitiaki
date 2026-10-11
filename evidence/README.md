@@ -621,7 +621,7 @@ The report's coverage figure came from `week5/70-qas8-stolen-firm-key-tests.txt`
 
 ### Issue #205 — FR10: a unit in arrears does not vote
 
-The whole suites, the gas run and the report's Figures 6 to 8, captured after `Governance.castVote` began skipping a unit in arrears. The three screenshots replace `week5/72-interface-as-alice.png`, `-as-bob.png` and `-as-carol.png` as the report's figures, and show the interface as rebuilt after #72. They supersede `78-solidity-coverage.txt`, `78-typescript-tests.txt` and `173-gas-per-cycle.txt` for the report.
+The whole suites, the gas run and the report's Figures 6 to 8, captured after `Governance.castVote` began skipping a unit in arrears. The three screenshots replace `week5/72-interface-as-alice.png`, `-as-bob.png` and `-as-carol.png` as the report's figures, and show the interface as rebuilt in #175. They supersede `78-solidity-coverage.txt`, `78-typescript-tests.txt` and `173-gas-per-cycle.txt` for the report.
 
 | File | What it shows | Reproduce with |
 | --- | --- | --- |
@@ -631,3 +631,11 @@ The whole suites, the gas run and the report's Figures 6 to 8, captured after `G
 | `205-building-as-carol.png` | **Report Figure 7. NFR10, FR9, information view R4.** Building as carol (unit 4). Other units gives units 1 and 3 as `current` and unit 2 as `in arrears`, with no amount or date. Bob's late payment for unit 3 leaves no trace | `npm run demo`, then `node scripts/screenshot.mjs evidence/week6/205-building-as-carol.png 'http://localhost:5173/?as=<carol>#/building'` |
 | `205-proposal-2-as-carol.png` | **Report Figure 8. FR10, FR19.** Proposal 2 as carol, Open. The tally is 2 units for, alice's unit 1 and bob's unit 3 (FR19), and both quorum conditions are met. Carol's only unit is in arrears, so the page offers her no vote form (FR10) | `npm run demo`, then `node scripts/screenshot.mjs evidence/week6/205-proposal-2-as-carol.png 'http://localhost:5173/?as=<carol>#/proposal/2'` |
 | `205-gas-per-cycle.txt` | **One full loop** costs 3,441,221 gas: 2,589,628 for the owners' votes, 386,954 for the firm and 464,639 for anyone's queue and execute calls. A vote with 8 units costs 611,265 and with 10 units 683,549, up from 331,004 and 354,365 in `173-gas-per-cycle.txt`, because each unit now asks `LevyLedger.arrearsOf`, which scans the 40-charge schedule. **One levy cycle** costs 3,407,782, against 3,408,006 in `173-gas-per-cycle.txt`; #205 does not cause the difference, which `main` before it measures too | `npx hardhat run scripts/gas-per-cycle.ts` |
+
+### Issue #209 — Home's empty Needs your vote card
+
+Owner Home's *Needs your vote* lists only the proposals the viewer can still vote on, so it is empty while a proposal is open that each of the viewer's units has voted on or may not vote on (FR10). Its empty line now says so. This capture replaces `205-home-as-alice.png` as the report's Figure 6.
+
+| File | What it shows | Reproduce with |
+| --- | --- | --- |
+| `209-home-as-alice.png` | **Report Figure 6. FR8, FR9, FR10.** Home as alice (units 1 and 2) on the seeded building. *Needs your vote* reads "Nothing needs your vote.": proposal 2 is open, but her unit 1 has voted and her unit 2 is in arrears (FR10). *Your levies* names unit 2 in arrears with its uncovered charge (FR9), and the funds hold NZD 400 operating and NZD 100 long-term maintenance (FR8). The next charge's date is 30 days from when the demo ran, so it differs between captures | `npm run demo`, then `node scripts/screenshot.mjs evidence/week6/209-home-as-alice.png 'http://localhost:5173/?as=<alice>#/'` |
