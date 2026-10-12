@@ -1,12 +1,13 @@
-Deployment gas, Sepolia against the local network — issue #73, ADR-017
+Historical deployment gas, Sepolia against the matching local run — issue #73, ADR-017
 =====================================================================
 
 Sepolia   gasUsed from the receipts of the seven deployment transactions
           (blocks 11831860-11831866, sender 0xC60ACBAEF64f0db5520083c1C54a5b7a9ef9b433),
-          read through ethereum-sepolia-rpc.publicnode.com on 03-10-2026
-Local     gasUsed from `npx hardhat run scripts/deploy.ts` on Hardhat's
-          in-process network, which simulates the latest stable hardfork,
-          Osaka, because hardhat.config.ts names none
+          read through ethereum-sepolia-rpc.publicnode.com on 03-10-2026;
+          this is an earlier deployment, not the current block 11881238 record
+Local     gasUsed from the matching `npx hardhat run scripts/deploy.ts` dry run
+          on `main` at 0bbddf7, Hardhat's in-process network, which simulates
+          the latest stable hardfork, Osaka, because hardhat.config.ts names none
 
 Contract              Sepolia      Local    Difference
 ------------------   ---------   ---------   ----------

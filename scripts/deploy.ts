@@ -7,10 +7,10 @@
 //   npx hardhat run scripts/deploy.ts                    # in-process, a dry run
 //   npx hardhat run scripts/deploy.ts --network sepolia  # the test network
 //
-// On a public network it writes the addresses, the deployment block and each
-// contract's constructor arguments to evidence/week5/73-deployment-<chain>.json,
-// which scripts/verify.ts reads. No transaction hash is written: it has the
-// shape of a private key, which check:config-secrets refuses.
+// On a public network it writes the addresses, deployment block and constructor
+// arguments to evidence/week5/73-deployment-<chain>.json. No
+// transaction hash is written: it has the shape of a private key, which
+// check:config-secrets refuses.
 //
 // This deployment is for readability (ADR-017, deciding #100). It uses the
 // real parameters (spec §5), so the loop is not run here in real time; it is
@@ -61,8 +61,6 @@ const expected = Object.fromEntries(
     getCreateAddress({ from: deployer.address, nonce: nonce + i }),
   ]),
 ) as Record<Key, string>;
-const delay = TIMELOCK_DELAY;
-
 const constructorArgs: Record<Key, unknown[]> = {
   token: [],
   payeeRegistry: [expected.timelock],
@@ -86,8 +84,20 @@ const constructorArgs: Record<Key, unknown[]> = {
   // No charges: the schedule is a gap recorded on #73, and it is fixed at
   // construction (spec §4), so no levy cycle runs on this deployment. The
   // loop and NFR11's gas are shown on the local network instead (ADR-017).
-  levyLedger: [expected.treasury, [], [], []],
-  timelock: [delay, [expected.governance], [expected.governance], ZeroAddress],
+  levyLedger: [
+    expected.treasury,
+    expected.membershipRegistry,
+    firm,
+    [],
+    [],
+    [],
+  ],
+  timelock: [
+    TIMELOCK_DELAY,
+    [expected.governance],
+    [expected.governance],
+    ZeroAddress,
+  ],
 };
 const deployed = {} as Record<Key, string>;
 let gasUsed = 0n;
@@ -113,7 +123,7 @@ const failed = await checkWiring(ethers, {
   firm,
   adapter,
   operatingBps: OPERATING_BPS,
-  timelockDelay: delay,
+  timelockDelay: TIMELOCK_DELAY,
   addresses: deployed,
 });
 if (failed > 0) {
